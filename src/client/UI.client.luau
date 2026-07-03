@@ -79,9 +79,13 @@ cookResult.OnClientEvent:Connect(function(name: string, rarity: HotDogDex.Rarity
 	reveal.TextColor3 = HotDogDex.colorFor(rarity)
 	reveal.TextTransparency = 0
 	-- Pop in, then fade over a second.
-	TweenService:Create(reveal, TweenInfo.new(1.0, Enum.EasingStyle.Quad, Enum.EasingDirection.In, 0, false, 0.6), {
-		TextTransparency = 1,
-	}):Play()
+	TweenService:Create(
+		reveal,
+		TweenInfo.new(1.0, Enum.EasingStyle.Quad, Enum.EasingDirection.In, 0, false, 0.6),
+		{
+			TextTransparency = 1,
+		}
+	):Play()
 end)
 
 gui.Parent = player:WaitForChild("PlayerGui")

@@ -17,12 +17,27 @@ export type HotDog = {
 -- Rarity tiers, ordered common -> rare. `weight` is the relative chance of
 -- rolling this tier; `income` is coins/sec per hot dog of the tier.
 local RARITY = {
-	{ rarity = "Common" :: Rarity, weight = 100, income = 1, color = Color3.fromRGB(200, 200, 200) },
+	{
+		rarity = "Common" :: Rarity,
+		weight = 100,
+		income = 1,
+		color = Color3.fromRGB(200, 200, 200),
+	},
 	{ rarity = "Uncommon" :: Rarity, weight = 45, income = 3, color = Color3.fromRGB(90, 200, 90) },
 	{ rarity = "Rare" :: Rarity, weight = 20, income = 8, color = Color3.fromRGB(70, 140, 240) },
 	{ rarity = "Epic" :: Rarity, weight = 8, income = 20, color = Color3.fromRGB(170, 90, 230) },
-	{ rarity = "Legendary" :: Rarity, weight = 3, income = 55, color = Color3.fromRGB(240, 170, 40) },
-	{ rarity = "Mythic" :: Rarity, weight = 0.9, income = 150, color = Color3.fromRGB(240, 70, 70) },
+	{
+		rarity = "Legendary" :: Rarity,
+		weight = 3,
+		income = 55,
+		color = Color3.fromRGB(240, 170, 40),
+	},
+	{
+		rarity = "Mythic" :: Rarity,
+		weight = 0.9,
+		income = 150,
+		color = Color3.fromRGB(240, 70, 70),
+	},
 	{ rarity = "Secret" :: Rarity, weight = 0.1, income = 500, color = Color3.fromRGB(15, 15, 15) },
 }
 
