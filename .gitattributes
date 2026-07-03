@@ -1,0 +1,7 @@
+# Normalize line endings so cross-platform commits don't churn.
+* text=auto eol=lf
+
+# Treat downloaded reference docs as text too.
+*.md text eol=lf
+*.txt text eol=lf
+*.luau text eol=lf
