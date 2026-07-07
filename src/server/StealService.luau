@@ -11,11 +11,12 @@ local ServerScriptService = game:GetService("ServerScriptService")
 
 local GameConfig = require(ReplicatedStorage.Shared.GameConfig)
 local HotDogDex = require(ReplicatedStorage.Shared.HotDogDex)
+local Variants = require(ReplicatedStorage.Shared.Variants)
 local DataManager = require(ServerScriptService.Server.DataManager)
 local PlotManager = require(ServerScriptService.Server.PlotManager)
 
 type Carry = {
-	dogName: string,
+	dogName: string, -- inventory KEY (may encode a variant, e.g. "Chicago Dog#Gold")
 	victimUserId: number,
 	folder: Folder,
 	highlight: Highlight,
@@ -71,7 +72,7 @@ local function attachCarry(thief: Player, dogName: string): CarryVisuals?
 		return nil
 	end
 
-	local dog = HotDogDex.get(dogName)
+	local dog = HotDogDex.getByKey(dogName)
 	local color = dog and HotDogDex.colorFor(dog.rarity) or Color3.fromRGB(255, 255, 255)
 
 	local folder = Instance.new("Folder")
@@ -153,12 +154,13 @@ function StealService.dropCarry(thief: Player)
 	carrying[thief.UserId] = nil
 	clearCarryVisuals(thief, carry)
 
+	local label = Variants.displayName(carry.dogName)
 	local victim = Players:GetPlayerByUserId(carry.victimUserId)
 	if victim then
 		grantDog(victim, carry.dogName) -- back to its rightful owner
-		feedback(victim, true, "You recovered your " .. carry.dogName .. "!")
+		feedback(victim, true, "You recovered your " .. label .. "!")
 	end
-	feedback(thief, false, "You dropped the " .. carry.dogName .. "!")
+	feedback(thief, false, "You dropped the " .. label .. "!")
 end
 
 -- === Public: steal prompt triggered (registered with PlotManager) ===
@@ -227,9 +229,10 @@ local function onStealTriggered(
 		folder = visuals.folder,
 		highlight = visuals.highlight,
 	}
+	local dogLabel = Variants.displayName(dogName)
 	PlotManager.setDepositEnabled(thief, true)
-	remCarryUpdate:FireClient(thief, true, dogName)
-	remStealAlert:FireClient(victim, thief.UserId, thief.DisplayName, dogName)
+	remCarryUpdate:FireClient(thief, true, dogLabel)
+	remStealAlert:FireClient(victim, thief.UserId, thief.DisplayName, dogLabel)
 end
 
 -- === Public: deposit at own stand (registered with PlotManager) ===
@@ -263,7 +266,7 @@ local function onDeposit(thief: Player)
 	recentSteals[thief.UserId][carry.victimUserId] =
 		{ untilTime = now + cd, raids = raids, lastRaidAt = now }
 
-	feedback(thief, true, "Stole a " .. carry.dogName .. "! It's yours now.")
+	feedback(thief, true, "Stole a " .. Variants.displayName(carry.dogName) .. "! It's yours now.")
 end
 
 -- Charge recharge loop: tops up every player's steal energy over time.

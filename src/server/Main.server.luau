@@ -15,6 +15,7 @@ local ServerScriptService = game:GetService("ServerScriptService")
 
 local GameConfig = require(ReplicatedStorage.Shared.GameConfig)
 local HotDogDex = require(ReplicatedStorage.Shared.HotDogDex)
+local Variants = require(ReplicatedStorage.Shared.Variants)
 local DataManager = require(ServerScriptService.Server.DataManager)
 local PlotManager = require(ServerScriptService.Server.PlotManager)
 local StealService = require(ServerScriptService.Server.StealService)
@@ -22,6 +23,19 @@ local DefenseService = require(ServerScriptService.Server.DefenseService)
 local UpgradeService = require(ServerScriptService.Server.UpgradeService)
 local RebirthService = require(ServerScriptService.Server.RebirthService)
 local DailyService = require(ServerScriptService.Server.DailyService)
+local ShopService = require(ServerScriptService.Server.ShopService)
+-- M3-remainder → M6 systems (scaffold stubs; see each service for its TODOs).
+local MutationService = require(ServerScriptService.Server.MutationService)
+local PrestigeShopService = require(ServerScriptService.Server.PrestigeShopService)
+local FusionService = require(ServerScriptService.Server.FusionService)
+local EventService = require(ServerScriptService.Server.EventService)
+local LeaderboardService = require(ServerScriptService.Server.LeaderboardService)
+local AchievementService = require(ServerScriptService.Server.AchievementService)
+local CodesService = require(ServerScriptService.Server.CodesService)
+local PurchaseService = require(ServerScriptService.Server.PurchaseService)
+local CosmeticService = require(ServerScriptService.Server.CosmeticService)
+local TradeService = require(ServerScriptService.Server.TradeService)
+local EmoteService = require(ServerScriptService.Server.EmoteService)
 
 -- === Set up remotes ===
 -- Created in code so there's nothing to wire up by hand in Studio. The client
@@ -56,13 +70,38 @@ local cookTenResult = makeRemote("CookTenResult") -- server -> client: 10-roll s
 local cookStats = makeRemote("CookStats") -- server -> client: grill level + pity progress
 local progressionUpdate = makeRemote("ProgressionUpdate") -- server -> client: levels/rebirths
 local requestState = makeRemote("RequestState") -- client -> server: "I'm ready, send my state"
+makeRemote("BuyFromShop") -- client -> server: buy a dog from the rotating shop (ShopService)
+makeRemote("ShopUpdate") -- server -> client: today's shop offers + refresh timer (ShopService)
+-- === M3-remainder → M6 remotes (scaffold) ===
+makeRemote("BuyPrestige") -- c -> s: spend prestige (PrestigeShopService)
+makeRemote("PrestigeShopUpdate") -- s -> c: prestige catalog + balance
+makeRemote("Fuse") -- c -> s: fuse duplicates (FusionService)
+local setVaultPin = makeRemote("SetVaultPin") -- c -> s: pin/unpin a dog as vault-safe
+makeRemote("EventUpdate") -- s -> c: active weekly event (EventService)
+makeRemote("ClaimEventReward") -- c -> s: claim an event reward tier
+makeRemote("LeaderboardUpdate") -- s -> c: cached top-N boards (LeaderboardService)
+makeRemote("RequestLeaderboard") -- c -> s: refresh a board
+makeRemote("AchievementUpdate") -- s -> c: achievement progress (AchievementService)
+makeRemote("ClaimAchievement") -- c -> s: claim a completed achievement
+makeRemote("RedeemCode") -- c -> s: redeem a promo code (CodesService)
+makeRemote("PromptPurchase") -- c -> s: prompt a pass/product purchase (PurchaseService)
+makeRemote("PurchaseUpdate") -- s -> c: owned-pass status
+makeRemote("BuyCosmetic") -- c -> s: buy a cosmetic (CosmeticService)
+makeRemote("EquipCosmetic") -- c -> s: equip a cosmetic
+makeRemote("CosmeticUpdate") -- s -> c: cosmetic catalog + owned/equipped
+makeRemote("TradeRequest") -- c -> s: request a trade (TradeService)
+makeRemote("TradeUpdate") -- both: set offer / broadcast session state
+makeRemote("TradeConfirm") -- c -> s: confirm your side
+makeRemote("TradeCancel") -- c -> s: cancel the trade
+makeRemote("PlayEmote") -- both: request an emote / broadcast to others (EmoteService)
 remotes.Parent = ReplicatedStorage
 
 -- === Pure helpers ===
 local function incomePerSecond(data: DataManager.PlayerData): number
 	local total = 0
-	for name, count in data.hotDogs do
-		local dog = HotDogDex.get(name)
+	for key, count in data.hotDogs do
+		-- getByKey decodes composite keys, so a minted variant pays its scaled income.
+		local dog = HotDogDex.getByKey(key)
 		if dog then
 			total += dog.income * count
 		end
@@ -148,8 +187,16 @@ local function pushProgression(player: Player)
 end
 
 local function ownsEveryDog(data: DataManager.PlayerData): boolean
+	-- Collapse composite keys to their base dog: owning a Gold variant still credits
+	-- the base dog toward dex completion.
+	local ownedBase: { [string]: boolean } = {}
+	for key, count in data.hotDogs do
+		if count > 0 then
+			ownedBase[Variants.baseName(key)] = true
+		end
+	end
 	for _, dog in HotDogDex.all() do
-		if (data.hotDogs[dog.name] or 0) <= 0 then
+		if not ownedBase[dog.name] then
 			return false
 		end
 	end
@@ -180,16 +227,21 @@ end
 
 -- Roll one hot dog for `player`, applying grill odds + pity, and bank it. Shared by
 -- cook-1 and cook-10. Returns the rolled dog (caller charges coins + pushes state).
-local function doCook(player: Player, data: DataManager.PlayerData): HotDogDex.HotDog
+local function doCook(player: Player, data: DataManager.PlayerData): (HotDogDex.HotDog, string)
 	data.cooksSinceRare += 1
 	local guaranteeRare = data.cooksSinceRare >= GameConfig.PityCooks
 	local dog = HotDogDex.roll(data.grillLvl, guaranteeRare)
 	if HotDogDex.rarityRank(dog.rarity) >= 3 then
 		data.cooksSinceRare = 0 -- pity satisfied by a Rare-or-better
 	end
-	data.hotDogs[dog.name] = (data.hotDogs[dog.name] or 0) + 1
+	-- Random mutation on acquire (GDD §4.4): maybeMint returns the inventory KEY to
+	-- bank — a composite "Name#Variant" when it mutates, or the plain name otherwise.
+	-- Income, pedestals/vault, and dex credit are all variant-aware, so a minted key
+	-- is fully live. Returns the base dog (for the reveal) plus the banked key.
+	local key = MutationService.maybeMint(dog.name)
+	data.hotDogs[key] = (data.hotDogs[key] or 0) + 1
 	DailyService.progress(player, "cook", 1)
-	return dog
+	return dog, key
 end
 
 -- === Build the world & init services ===
@@ -215,6 +267,50 @@ RebirthService.init({
 	pushProgression = pushProgression,
 })
 DailyService.init({ remotes = remotes, updateLeaderstats = updateLeaderstats })
+ShopService.init({
+	remotes = remotes,
+	updateLeaderstats = updateLeaderstats,
+	onInventoryChanged = pushInventory,
+})
+-- === M3-remainder → M6 services (scaffold stubs) ===
+PrestigeShopService.init({
+	remotes = remotes,
+	updateLeaderstats = updateLeaderstats,
+	pushProgression = pushProgression,
+})
+FusionService.init({
+	remotes = remotes,
+	updateLeaderstats = updateLeaderstats,
+	onInventoryChanged = pushInventory,
+})
+EventService.init({ remotes = remotes, updateLeaderstats = updateLeaderstats })
+LeaderboardService.init({ remotes = remotes })
+AchievementService.init({ remotes = remotes, updateLeaderstats = updateLeaderstats })
+CodesService.init({ remotes = remotes, updateLeaderstats = updateLeaderstats })
+PurchaseService.init({ remotes = remotes, updateLeaderstats = updateLeaderstats })
+CosmeticService.init({ remotes = remotes })
+TradeService.init({ remotes = remotes })
+EmoteService.init({ remotes = remotes })
+
+-- Manual vault selection (M2 fast-follow): toggle whether a dog key is pinned safe.
+-- PlotManager.syncDisplay honours data.vaultPins (see its TODO). Kept here as a tiny
+-- handler until the Dex pin UI is built. Server-authoritative + rate-limited.
+setVaultPin.OnServerEvent:Connect(function(player: Player, key)
+	if type(key) ~= "string" then
+		return
+	end
+	local data = DataManager.get(player)
+	if not data then
+		return
+	end
+	if data.vaultPins[key] then
+		data.vaultPins[key] = nil
+	else
+		data.vaultPins[key] = true
+	end
+	PlotManager.syncDisplay(player)
+	pushInventory(player)
+end)
 
 -- === Player lifecycle ===
 -- Offline earnings computed at join, delivered once the client asks for state (so
@@ -230,6 +326,15 @@ local function pushAllState(player: Player)
 	pushCookStats(player)
 	pushProgression(player)
 	DailyService.onJoin(player)
+	ShopService.pushShop(player)
+	-- New initial-state pushes MUST live here too (they ride the RequestState
+	-- handshake past the join race) — see the handoff notes.
+	PrestigeShopService.pushShop(player)
+	EventService.pushEvent(player)
+	LeaderboardService.pushLeaderboard(player)
+	AchievementService.pushAchievements(player)
+	CosmeticService.pushCosmetics(player)
+	PurchaseService.pushStatus(player)
 	local welcome = pendingWelcome[player.UserId]
 	if welcome then
 		pendingWelcome[player.UserId] = nil
@@ -312,13 +417,14 @@ cookHotDog.OnServerEvent:Connect(function(player: Player)
 	end
 
 	data.coins -= GameConfig.CookCost
-	local dog = doCook(player, data)
+	local dog, key = doCook(player, data)
+	local _, variant = Variants.decode(key)
 
 	updateLeaderstats(player)
 	PlotManager.syncDisplay(player)
 	pushInventory(player)
 	pushCookStats(player)
-	cookResult:FireClient(player, dog.name, dog.rarity)
+	cookResult:FireClient(player, dog.name, dog.rarity, variant)
 end)
 
 -- Cook-ten (item 9): pay 10× cost up front, roll 10, send a summary of the results.
@@ -339,10 +445,11 @@ cookTen.OnServerEvent:Connect(function(player: Player)
 	end
 
 	data.coins -= totalCost
-	local results: { { name: string, rarity: HotDogDex.Rarity } } = {}
+	local results: { { name: string, rarity: HotDogDex.Rarity, variant: Variants.Variant } } = {}
 	for _ = 1, n do
-		local dog = doCook(player, data)
-		table.insert(results, { name = dog.name, rarity = dog.rarity })
+		local dog, key = doCook(player, data)
+		local _, variant = Variants.decode(key)
+		table.insert(results, { name = dog.name, rarity = dog.rarity, variant = variant })
 	end
 
 	updateLeaderstats(player)

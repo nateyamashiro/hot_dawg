@@ -30,36 +30,58 @@ New files: `src/client/PlotPresentation.client.luau`, `src/client/Menu.client.lu
 
 ## 🔜 Top of the list now
 
-- **2-player Studio playtest** of M2 + M3 (validate feel; tune the reasoned numbers in `GAME_DESIGN §6`).
-- **Rotating shop** — buy specific dogs for coins (targeted goal, less pure RNG) — M3 remainder.
-- **Spend prestige currency** — first premium-unlock sink (it's banked but unused today).
+- **Spend prestige currency** — next code feature; first premium-unlock sink (banked but unused today).
+  Also closes the `mutationLuck` `luckBonus` loop the mutations feature stubbed.
+- **2-player Studio playtest** of M2 + M3 + mutations (validate feel; tune the numbers in `GAME_DESIGN §6`).
+
+## ✅ Shipped since the Top 10 (static-clean; playtest owed)
+
+- **Mutations / variants** (2026-07-08) — random Gold/Rainbow/Giant mint on cook (`GameConfig.MutationChance`),
+  composite-key inventory (`"Name#Gold"` in the existing `hotDogs` map). Made every read path
+  variant-aware: `HotDogDex.getByKey`, `sortedUnits→{Unit}` (carries the key), `Main.incomePerSecond`,
+  dex-completion (collapses keys to base names), `PlotManager`/`StealService` (key-based transfer +
+  variant labels/tint), and a variant-coloured `CookResult` reveal. No DataStore bump.
+  **Still open:** steal-path minting (`MutateOnSteal`, off) + real `luckBonus` (needs a `mutationLuck` field).
+- **Rotating shop** (2026-07-07) — buy specific dogs for coins (targeted goal, dampens pure-cook RNG).
+  Daily UTC-rotating offer set chosen deterministically server-side (same shop for everyone),
+  per-rarity premium pricing, unlimited buys in v1. New: `src/server/ShopService.luau`,
+  `src/client/Shop.client.luau`; `BuyFromShop`/`ShopUpdate` remotes; bottom menu row now 5 buttons.
+  **No DataStore bump** (buying just adds to `hotDogs`). **Fast-follow:** per-rotation purchase cap
+  (needs a `_v5` field to track buys/day) + a "featured" jumbo slot.
 
 ---
 
-## Beyond that (later)
+## 🏗️ Scaffolded 2026-07-07 — stubs exist for everything below
+
+The full **M3-remainder → M7** build is planned + skeleton-scaffolded (compiling stubs, real logic
+`TODO(<milestone>)`-marked; DataStore `_v5`; static-clean). Each item below now has a service/client
+to fill in — see `docs/HANDOFF.md` for the build order + the composite-key/mutation gotcha. Implement
+feature by feature, don't re-architect.
 
 **M2 fast-follows**
-- Traps (placeable stun zones) — a 4th defense (walls/guards/tagging already in).
-- Manual vault selection (let players choose which dogs are safe, vs. current auto-top-by-value).
+- 🏗️ Traps (`DefenseService` trap case + `PlotManager.trapModel`) — ~complete, needs polish/UI.
+- 🏗️ Manual vault selection (`Main` `SetVaultPin` handler + `PlotManager.syncDisplay` TODO; needs a
+  Dex pin UI + honoring `vaultPins` in the vault fill).
 
-**M3 remainder** (rotating shop moved up to "Top of the list")
-- Mutations/variants (Gold, Rainbow, Giant) with income multipliers.
-- Duplicates → fusion (deferred from launch).
-- Prestige-currency spending / premium unlocks (banked but unused today).
+**M3 remainder** (rotating shop + mutations shipped; per-day cap scaffolded via `shopBuys`/`ShopDailyBuyCap`)
+- 🏗️ Prestige-currency spending (`PrestigeShopService`/`PrestigeShop.client`) — **next up.**
+- 🏗️ Duplicates → fusion (`FusionService`/`Fusion.client`) — note `GameConfig.FusionForcesMutation`
+  can reuse `Variants.pickMint`/`MutationService` now that the variant layer is live.
 
 **M4 retention** (daily streak/missions already shipped in M3)
-- Weekly themed limited-time events + event-only dogs (FOMO).
-- Achievements/milestones (collect N, 100 steals, rebirth X).
-- Leaderboards UI (rarest / most steals / richest) — `Steals` + `Rebirths` leaderstats tracked.
-- Free battle-pass-style track.
-- Codes system (creator-marketing lever).
+- 🏗️ Weekly events + event-only dogs (`EventService`/`Events.client`).
+- 🏗️ Achievements/milestones (`AchievementService`/`Achievements.client`).
+- 🏗️ Leaderboards via OrderedDataStore (`LeaderboardService`/`Leaderboards.client`).
+- 🏗️ Codes system (`CodesService`/`Codes.client`) — mostly complete. · Free battle-pass track — later.
 
 **M5 monetization** (all non-pay-to-win; gacha stays coin-only)
-- Game passes: 2× coins, auto-collect, extra slots, VIP.
-- Dev products: coin packs, offline-refill/boost, extra steal charges, name/cosmetic tokens.
-- Cosmetics: stand skins, trails/auras, cosmetic pets.
+- 🏗️ Game passes — **Extra slots + VIP first**, then 2× coins / auto-collect (`PurchaseService`).
+- 🏗️ Dev products via `ProcessReceipt` (`receiptHistory` dedup in `_v5`).
+- 🏗️ Cosmetics: stand skins, trails/auras, titles (`CosmeticService`/`Cosmetics.client`).
 
-**Social (later)** — trading (with dupe/scam safeguards), parties/co-op, clans.
+**Social (later)** — 🏗️ trading (baseline safeguards, `TradeService`/`Trade.client`), 🏗️ emotes
+(`EmoteService`), parties/co-op, clans.
 
-**Hardening / infra** — server-side anti-exploit validation + rate-limiting (deferred, but do
-before public launch / before trading ships), AI-gen art pass, icon/thumbnail, soft-launch prep.
+**Hardening / infra** — 🏗️ `RateLimit` spine exists + guards new remotes; do the **FULL** pass (wrap
+every `OnServerEvent`) before trading ships / before public launch. Then AI-gen art pass,
+icon/thumbnail, soft-launch prep.

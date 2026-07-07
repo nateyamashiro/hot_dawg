@@ -3,9 +3,11 @@
 > **Living doc.** Update as decisions get made. `✅` = locked. Keep this the single source of
 > truth for *what* we're building; `CLAUDE.md` covers *how* (tech/workflow).
 
-**Last updated:** 2026-07-07 · **Status:** Milestones 1–3 BUILT & static-clean (M2 clarity polish +
-M3 progression added 2026-07-03). Awaiting a 2-player Studio playtest to validate feel/tuning.
-Next: playtest, then M4 retention (events, leaderboards, achievements) + rotating shop.
+**Last updated:** 2026-07-08 · **Status:** Milestones 1–3 BUILT & static-clean (incl. rotating shop
++ **mutations-on-cook**, shipped 2026-07-08). **M3-remainder → M7 planned + SCAFFOLDED as compiling
+stubs** (see §5 scaffold note, §7 decision log). Awaiting a 2-player Studio playtest to validate
+M2/M3 feel/tuning. Next: the remaining M3-remainder stubs (prestige spend → fusion → manual vault →
+traps), then M4.
 
 ---
 
@@ -186,6 +188,28 @@ Cooking and stealing are **co-equal** paths to rare dogs — players can lean ei
 - **Menu UI** — bottom row (Upgrades/Rebirth/Dex/Daily) + `RequestState` join-race handshake.
 - **Persistence** — DataStore now `_v4` (all new fields back-filled from `_v3`).
 
+**Milestone 3-remainder — mutations / variants** (2026-07-08; first scaffolded feature made real)
+- **Composite-key inventory** — a hot dog is stored under a key that may encode a mutation
+  (`"Chicago Dog"` base, `"Chicago Dog#Gold"` variant); `hotDogs` stays `{ [string]: number }`, so
+  old saves are valid and no DataStore bump was needed (`src/shared/Variants.luau`).
+- **Random mint on cook** — each cook has a `GameConfig.MutationChance` to mint Gold/Rainbow/Giant
+  (weighted by `Variants` mint weights) instead of base, via `MutationService.maybeMint` in `doCook`.
+- **Variant income** — Gold ×2 / Rainbow ×3.5 / Giant ×5 on top of the base dog's rate; all read
+  paths are variant-aware (`HotDogDex.getByKey`/`sortedUnits`, income, pedestal/vault sort + labels,
+  steal transfer, dex-completion collapses keys to base names).
+- **Reveal** — the variant rides `CookResult`; the client plays a bigger, variant-coloured reveal and
+  a "✨ N mutations!" note on cook-10.
+- *Still open:* steal-path minting (`MutateOnSteal`, off by default) + prestige mutation-luck bonus.
+
+**Scaffolded 2026-07-07 (compiling STUBS — architecture only, real logic is `TODO`-marked)**
+The full M3-remainder → M7 build is planned + skeleton-laid: `Variants` (composite-key mutation
+layer) + `MenuLayout` (shared bottom-row/"⋯ More" tray) shared modules; `RateLimit` anti-exploit
+util; server stubs for prestige-spend, fusion, mutation-mint, events, leaderboards (OrderedDataStore),
+achievements, codes, purchases (passes+products), cosmetics, trading, emotes; matching client tray
+panels; `defenses.trap` (4th defense, ~complete) + `vaultPins` (manual vault, handler in `Main`).
+DataStore bumped `_v4` → `_v5` (one migration batching every later field; `hotDogs` unchanged).
+Static-clean; each stub names where real logic goes. See `docs/HANDOFF.md` for the build order.
+
 ## 6. Current tuning values (from `GameConfig.luau` / `HotDogDex.luau`)
 
 **Economy**
@@ -221,6 +245,26 @@ Cooking and stealing are **co-equal** paths to rare dogs — players can lean ei
 - Dex completion: +25,000 coins, +3 prestige (one-time)
 - Daily streak rewards: 100→2500 over 7 days · 3 missions/day from a 6-mission pool
 
+**Rotating shop (M3 remainder, `GameConfig.luau`) — also reasoned, playtest owed**
+- 6 distinct dogs per rotation · refresh every 24h (UTC), chosen deterministically by day index
+  so every player/server sees the same shop that day
+- Shop rarity draw weights (flatter than cook odds): Common 30 · Uncommon 30 · Rare 20 · Epic 12 ·
+  Legendary 5 · Mythic 2 · Secret 0.5
+- Prices by rarity: Common 150 · Uncommon 500 · Rare 1.8k · Epic 6k · Legendary 22k · Mythic 75k ·
+  Secret 300k. Payback (price ÷ income/s) rises 150s→600s with rarity, so the shop is a
+  "pay for certainty" premium, never the coin-efficient path (cooking stays cheaper per coin).
+- v1 = unlimited buys, no new persisted fields. Per-rotation purchase cap deferred (would need `_v5`).
+
+**New scaffold config (all reasoned placeholders, `GameConfig.luau`) — tune when each feature lands**
+- Mutations: `MutationChance` 0.04 · variant income mults Gold ×2 / Rainbow ×3.5 / Giant ×5
+  (mint weights 100/30/8 in `Variants.luau`) · `MutateOnSteal` false
+- Prestige shop: 4 unlocks 5–15 prestige (income +10% / +1 display / +1 vault / +50% mut-luck)
+- Fusion: `FusionInputs` 5, forces a mutation · Trap: 450 coins, 4s stun, 10-stud range
+- Events: weekly rotation, 3 modifiers, reward tiers 100/300/700/1500 · Leaderboards: top-25, 60s refresh
+- Achievements: 5 goals (collect 10/30, steal 25/100, rebirth 3) · Codes: LAUNCH 1000, GLIZZY 500
+- Passes/products: ids 0 (unconfigured) · extra-slots +2 display/+1 vault · VIP +10% income · 2× coins
+- Cosmetics: 3 items (10–25 prestige) · Trade: 30s cooldown, ≤6 items · Emotes: 5 presets
+
 ## 7. Decision log
 
 | Date | Decision | Rationale |
@@ -236,3 +280,10 @@ Cooking and stealing are **co-equal** paths to rare dogs — players can lean ei
 | 2026-07-03 | MVP = core loop + steal + basics | Prove retention before piling on content |
 | 2026-07-03 | M3 built: upgrades, rebirth (keeps upgrades too), offline cap, dex, cook-10+pity, dailies | Progression depth + retention loops; DataStore → `_v4` |
 | 2026-07-03 | Prestige currency banked but not yet spendable | Premium unlocks are a later milestone; field exists so rebirth already feels rewarding |
+| 2026-07-07 | Rotating shop: daily, deterministic-by-UTC-day offers, coin-only, premium priced, unlimited buys v1 | Targeted goal that dampens pure-cook RNG; same shop for everyone = fair + shareable; premium prices keep cooking the coin-efficient path; unlimited-buy avoided a DataStore migration (cap is a fast-follow) |
+| 2026-07-07 | **Mutations = composite-key stacks** (`"Name#Gold"` inside the existing `{name→count}` map) | Lowest-risk model: `hotDogs` type unchanged, old saves valid as base dogs, tested steal/shop/dex/income keep working on strings — interpretation isolated in `Variants.luau`. Serves mutations + fusion + manual-vault + stack-trading without per-unit IDs |
+| 2026-07-07 | **Mutations minted randomly on cook** (small weighted chance; steal opt-in via `MutateOnSteal`) | Slot-machine excitement folded into the existing roll; no new currency. Gold/Rainbow/Giant chosen by `Variants` mint weights |
+| 2026-07-07 | **First game passes = Extra slots + VIP** (then 2× coins + auto-collect) | Clear non-p2w convenience; sequences `PurchaseService` work |
+| 2026-07-07 | **Trading safeguards = baseline** (two-sided confirm + post-trade cooldown + server trade log) | Solid anti-scam floor; value-diff warning / escrow deferred as later hardening |
+| 2026-07-07 | **One `_v5` migration batches ALL later fields** (M3-remainder → M6) | Single migration beats five; empty defaults are harmless; keeps `defaultData()` authoritative |
+| 2026-07-07 | Whole M3-remainder → M7 **scaffolded as compiling stubs** (no full logic) | Establishes the architecture so later sessions implement feature-by-feature against a stable, static-clean skeleton |

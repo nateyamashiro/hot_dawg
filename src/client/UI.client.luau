@@ -10,6 +10,7 @@ local TweenService = game:GetService("TweenService")
 
 local GameConfig = require(ReplicatedStorage.Shared.GameConfig)
 local HotDogDex = require(ReplicatedStorage.Shared.HotDogDex)
+local Variants = require(ReplicatedStorage.Shared.Variants)
 
 local player = Players.LocalPlayer
 
@@ -135,18 +136,31 @@ local function showReveal(text: string, color: Color3)
 	):Play()
 end
 
-cookResult.OnClientEvent:Connect(function(name: string, rarity: HotDogDex.Rarity)
-	showReveal(string.format("%s  [%s]", name, rarity), HotDogDex.colorFor(rarity))
-end)
+cookResult.OnClientEvent:Connect(
+	function(name: string, rarity: HotDogDex.Rarity, variant: Variants.Variant?)
+		local v = variant or "base"
+		local def = Variants.def(v)
+		if def and v ~= "base" then
+			-- Mutation: bigger, variant-coloured reveal to sell the rare pull.
+			showReveal(string.format("✨ %s %s! [%s]", def.label, name, rarity), def.color)
+		else
+			showReveal(string.format("%s  [%s]", name, rarity), HotDogDex.colorFor(rarity))
+		end
+	end
+)
 
 -- Summarize a 10-roll as "3× Common, 2× Rare…", coloured by the best pull.
 local RARITY_ORDER: { HotDogDex.Rarity } =
 	{ "Secret", "Mythic", "Legendary", "Epic", "Rare", "Uncommon", "Common" }
 cookTenResult.OnClientEvent:Connect(
-	function(results: { { name: string, rarity: HotDogDex.Rarity } })
+	function(results: { { name: string, rarity: HotDogDex.Rarity, variant: Variants.Variant? } })
 		local counts: { [string]: number } = {}
+		local mutations = 0
 		for _, r in results do
 			counts[r.rarity] = (counts[r.rarity] or 0) + 1
+			if r.variant and r.variant ~= "base" then
+				mutations += 1
+			end
 		end
 		local parts: { string } = {}
 		local best: HotDogDex.Rarity? = nil
@@ -158,7 +172,15 @@ cookTenResult.OnClientEvent:Connect(
 				end
 			end
 		end
-		showReveal("🍳 " .. table.concat(parts, ", "), HotDogDex.colorFor(best or "Common"))
+		local summary = "🍳 " .. table.concat(parts, ", ")
+		if mutations > 0 then
+			summary ..= string.format(
+				"  ✨ %d mutation%s!",
+				mutations,
+				if mutations == 1 then "" else "s"
+			)
+		end
+		showReveal(summary, HotDogDex.colorFor(best or "Common"))
 	end
 )
 

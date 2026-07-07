@@ -7,6 +7,8 @@
 local Players = game:GetService("Players")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 
+local MenuLayout = require(ReplicatedStorage.Shared.MenuLayout)
+
 local player = Players.LocalPlayer
 
 local remotes = ReplicatedStorage:WaitForChild("Remotes")
@@ -35,10 +37,10 @@ gui.Name = "GlizzyDaily"
 gui.ResetOnSpawn = false
 gui.IgnoreGuiInset = true
 
--- Toggle button (slot 3 in the shared bottom row; see Menu.client).
+-- Toggle button — slot owned in the shared MenuLayout row.
 local toggle = Instance.new("TextButton")
-toggle.Size = UDim2.fromOffset(140, 40)
-toggle.Position = UDim2.new(0.5, -295 + 3 * 150, 1, -150)
+toggle.Size = UDim2.fromOffset(MenuLayout.BUTTON_W, MenuLayout.BUTTON_H)
+toggle.Position = MenuLayout.primaryPosition(MenuLayout.slotOf("Daily") or 3)
 toggle.BackgroundColor3 = Color3.fromRGB(70, 70, 90)
 toggle.TextColor3 = Color3.fromRGB(255, 255, 255)
 toggle.TextScaled = true

@@ -178,6 +178,40 @@ local function buildGuard(plot: PlotManager.Plot)
 	end)
 end
 
+-- === Trap (M2 fast-follow / 4th defense) ===
+-- A placeable stun pad: a carrier who lingers on the plot gets stunned + dropped.
+-- Reuses the net/stun path. Cheaper than a guard but only fires on the plot itself.
+local function buildTrap(plot: PlotManager.Plot)
+	local trap = Instance.new("Model")
+	trap.Name = "Trap"
+	local pad = Instance.new("Part")
+	pad.Anchored = true
+	pad.CanCollide = false
+	pad.Size = Vector3.new(8, 0.4, 8)
+	pad.Color = Color3.fromRGB(200, 60, 60)
+	pad.Material = Enum.Material.Neon
+	pad.Transparency = 0.4
+	pad.CFrame = plot.facing * CFrame.new(0, 0.3, 1)
+	pad.Parent = trap
+	trap.Parent = plot.model
+	plot.trapModel = trap
+
+	-- Scan loop: stun a carrier standing on the trap (works while owner is away).
+	-- TODO(M2-trap): use a Touched signal + a per-carrier re-arm cooldown instead of
+	-- a poll, and a visual "armed/triggered" state.
+	task.spawn(function()
+		while plot.trapModel == trap and trap.Parent do
+			task.wait(GameConfig.GuardScanSeconds)
+			local carrier = nearestCarrierNear(pad.Position, GameConfig.TrapRange, plot.owner)
+			if carrier then
+				StealService.dropCarry(carrier)
+				DefenseService.stun(carrier, GameConfig.TrapStunSeconds)
+				remFeedback:FireClient(carrier, false, "You hit a trap!")
+			end
+		end
+	end)
+end
+
 -- Re-apply defenses a player already owns (called after their plot is assigned).
 function DefenseService.applyLoadedDefenses(player: Player)
 	local data = DataManager.get(player)
@@ -191,6 +225,9 @@ function DefenseService.applyLoadedDefenses(player: Player)
 	end
 	if data.defenses.guard then
 		buildGuard(plot)
+	end
+	if data.defenses.trap then
+		buildTrap(plot)
 	end
 end
 
@@ -231,6 +268,20 @@ local function onBuyDefense(player: Player, which: string)
 		buildGuard(plot)
 		updateLeaderstats(player)
 		feedback(player, true, "Guard hired! They'll net raiders for you.")
+	elseif which == "trap" then
+		if data.defenses.trap then
+			feedback(player, false, "You already have a trap.")
+			return
+		end
+		if data.coins < GameConfig.TrapCost then
+			feedback(player, false, "Not enough coins for a trap.")
+			return
+		end
+		data.coins -= GameConfig.TrapCost
+		data.defenses.trap = true
+		buildTrap(plot)
+		updateLeaderstats(player)
+		feedback(player, true, "Trap set! Raiders who linger get zapped.")
 	end
 end
 

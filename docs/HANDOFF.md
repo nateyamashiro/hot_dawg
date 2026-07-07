@@ -1,16 +1,56 @@
 # HANDOFF — Steal a Glizzy 🌭
 
-**Last updated:** 2026-07-07
+**Last updated:** 2026-07-08 (**Mutations-on-cook SHIPPED** — first scaffolded feature made real:
+composite-key inventory is now fully variant-aware end-to-end and `MutationService.maybeMint` is
+wired into `doCook`. Scaffold context below still applies for the rest of M3-remainder → M7.)
 **For:** the next Claude Code session (and Nate)
+
+## 🏗️ The scaffold (read this before implementing anything new)
+
+The **entire remaining game (M3-remainder → M7) is planned + skeleton-scaffolded** as of 2026-07-07.
+Every new system is a **compiling stub** — architecture in place, real logic marked `TODO(<milestone>)`.
+Implement feature by feature; don't re-architect. Key facts:
+
+- **Inventory is composite-key stacks, and mutations are LIVE.** `data.hotDogs` is still
+  `{ [string]: number }`, but a key MAY encode a mutation: `"Chicago Dog"` = base,
+  `"Chicago Dog#Gold"` = Gold variant. All encode/decode/income-multiplier math lives in
+  **`src/shared/Variants.luau`**; `HotDogDex.getByKey` is the variant-aware lookup and
+  `HotDogDex.sortedUnits` now returns `{Unit}` (each carries the inventory KEY + variant-scaled
+  income + display label). **Mutations-on-cook shipped 2026-07-08:** every read path is variant-aware
+  (income, pedestals/vault, steal transfer, dex-completion collapses composite keys to base names),
+  and `MutationService.maybeMint` is wired into `Main.doCook`. **Pattern to copy:** any future code
+  that touches `data.hotDogs` keys must decode via `Variants`/`getByKey`, never assume a key is a bare
+  dog name. Still TODO: steal-path minting (`GameConfig.MutateOnSteal`, off by default) and a real
+  `luckBonus` into `maybeMint` (needs PrestigeShop to bank a `mutationLuck` field).
+- **DataStore is `_v5`** (`DataManager.luau`) — one migration batching every later field
+  (`vaultPins`, `defenses.trap`, `achievements`, `redeemedCodes`, `eventPoints`, `vip`,
+  `bonus*Slots`, `receiptHistory`, `tradeCooldownUntil`, `cosmetics`, `shopBuys`). All optional +
+  back-filled from defaults, so `_v4`/`_v3` upgrade cleanly. Prefer adding future fields to THIS
+  back-fill over a new `_vN`.
+- **Bottom-row UI is centralized in `src/shared/MenuLayout.luau`.** No more hand-editing `-370`:
+  `primaryPosition(slot)` auto-centres the row; secondary panels use `makeTrayToggle` + `makePanel`
+  and hide behind the "⋯ More" button (`More.client`) via the `GlizzyTrayOpen` player attribute.
+- **`RateLimit`** (`src/server/RateLimit.luau`) guards new remotes; the FULL hardening pass (wrap
+  every `OnServerEvent`) is scheduled **before trading (M6) and before soft launch** — do it then.
+- **Handshake:** new initial-state pushes are already in `Main.pushAllState` (prestige/event/
+  leaderboard/achievement/cosmetic/purchase). Any NEW one must go there too + be `RequestState`-fired.
+- **Build order** (retention before content): M3-remainder (~~mutations✅~~ → prestige spend → fusion →
+  manual vault → traps) → M4 (events/leaderboards/achievements/codes) → hardening pass → M5
+  (passes/products/cosmetics) → M6 (trading/parties/emotes/clips) → M7 (art/audio/onboarding/launch).
 
 ---
 
 ## 👉 What the NEXT session should do
 
-**Playtest & tune Milestones 2 + 3 in a real 2-player Studio session.** Everything through M3 is
-BUILT and passes static checks (rojo build + selene + stylua all clean) but has **not been
-playtested with two live players** — that's the outstanding validation for M2 *and* the whole M3
-progression layer added 2026-07-03.
+**Next CODE feature → Prestige spending** (`PrestigeShopService` + `PrestigeShop.client`). See
+`docs/NEXT_SESSION_PROMPT.md` for the step-by-step — it's the next item in the build order now that
+mutations are done, is self-contained, and implementing its `mutationLuck` effect closes the
+`luckBonus` loop the mutations feature left stubbed.
+
+**Still owed (needs a human): playtest & tune Milestones 2 + 3 in a real 2-player Studio session.**
+Everything through M3 (plus mutations) is BUILT and passes static checks (rojo build + selene +
+stylua all clean) but has **not been playtested with two live players** — that's the outstanding
+validation for M2 *and* the M3 progression layer.
 
 1. **Two-player Studio playtest** (Test → **Clients and Servers**, 2 players; enable
    **Game Settings → Security → API Services** for DataStore). Confirm the M2 loop (plots assign,
@@ -23,6 +63,8 @@ progression layer added 2026-07-03.
    - Rejoin after time away → capped offline coins + "welcome back" popup.
    - 📖 Dex fills as you collect (completion reward once); 🍳 Cook ×10 + pity + odds shown.
    - 📅 Daily streak claim + 3 missions track and pay out.
+   - 🛒 Shop shows 6 dogs (same set for both players), buy adds the dog + charges coins, countdown
+     ticks; rejoin/new day rotates the set. **NEW 2026-07-07** — added since the last handoff.
 2. **Tune** the reasoned numbers in `GAME_DESIGN §6` (`GameConfig.luau` / `HotDogDex.luau`) to feel —
    none are playtest-confirmed yet.
 3. Then pick up the **M3 remainder / M4** (rotating shop, prestige spending, events, leaderboards,
@@ -33,9 +75,10 @@ Do NOT re-ask what's already locked (see below / CLAUDE.md / `GAME_DESIGN.md §2
 
 ## ⚠️ M3-specific gotchas / notes
 
-- **DataStore is now `_v4`** (`DataManager.luau`). `_v3` saves back-fill cleanly. If you add
-  PlayerData fields, bump to `_v5` and back-fill from defaults (keep `defaultData()` building fresh
-  tables).
+- **DataStore is `_v5`** (`DataManager.luau`); `_v4`/`_v3` saves back-fill cleanly. Prefer adding
+  new PlayerData fields to the existing `_v5` back-fill over bumping `_vN` again (keep `defaultData()`
+  building fresh tables). Mutations added **no** new field — they ride the existing `hotDogs` map as
+  composite keys.
 - **Join-race handshake:** the server pushes per-player state on join, but every client script also
   fires a `RequestState` remote after its handlers connect, and the server re-sends all state (see
   `Main.pushAllState`). Offline earnings are stashed in `pendingWelcome` and delivered via that path

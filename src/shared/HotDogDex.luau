@@ -5,6 +5,7 @@
 -- the same data.
 
 local GameConfig = require(script.Parent.GameConfig)
+local Variants = require(script.Parent.Variants)
 
 local HotDogDex = {}
 
@@ -86,6 +87,24 @@ end
 -- Look up a hot dog by name.
 function HotDogDex.get(name: string): HotDog?
 	return byName[name]
+end
+
+-- Variant-aware lookup by an inventory KEY (may encode a mutation, e.g.
+-- "Chicago Dog#Gold"). Returns the base dog with its income scaled by the
+-- variant multiplier, so income/sort math works on composite keys. Plain names
+-- decode to the base variant, so this is a safe superset of get(). Used by
+-- Main.incomePerSecond, sortedUnits, and StealService's carry visuals.
+function HotDogDex.getByKey(key: string): HotDog?
+	local name, variant = Variants.decode(key)
+	local base = byName[name]
+	if not base then
+		return nil
+	end
+	return {
+		name = base.name,
+		rarity = base.rarity,
+		income = base.income * Variants.mult(variant),
+	}
 end
 
 -- The display colour for a rarity (used by the reveal UI and stealable pedestals).
@@ -174,17 +193,39 @@ function HotDogDex.all(): { HotDog }
 	return out
 end
 
--- Expand a `{name -> count}` inventory into a flat list of individual dog units,
--- sorted by income DESCENDING (tie-broken by name for stable ordering). Used by
--- PlotManager to decide which units go in the safe vault (the top ones) vs. the
--- stealable display pedestals (the overflow).
-function HotDogDex.sortedUnits(hotDogs: { [string]: number }): { HotDog }
-	local units: { HotDog } = {}
-	for name, count in hotDogs do
-		local dog = byName[name]
-		if dog then
+-- One displayed dog unit on a stand. Carries the inventory KEY (so a stolen or
+-- re-synced unit maps back to the right stack, variant included), the variant-scaled
+-- income used for sorting, and the label/colour the pedestal shows.
+export type Unit = {
+	key: string, -- inventory key, may encode a mutation ("Chicago Dog#Gold")
+	name: string, -- base dog name (roster identity)
+	displayName: string, -- variant-aware label ("Gold Chicago Dog")
+	rarity: Rarity,
+	income: number, -- base income × the variant multiplier
+	variant: Variants.Variant,
+}
+
+-- Expand a `{key -> count}` inventory into a flat list of individual dog units,
+-- sorted by income DESCENDING (tie-broken by name for stable ordering). Composite
+-- keys decode to their base dog with variant-scaled income, so a Gold dog correctly
+-- outranks its plain twin. Used by PlotManager to decide which units go in the safe
+-- vault (the top ones) vs. the stealable display pedestals (the overflow).
+function HotDogDex.sortedUnits(hotDogs: { [string]: number }): { Unit }
+	local units: { Unit } = {}
+	for key, count in hotDogs do
+		local name, variant = Variants.decode(key)
+		local base = byName[name]
+		if base then
+			local unit: Unit = {
+				key = key,
+				name = base.name,
+				displayName = Variants.displayName(key),
+				rarity = base.rarity,
+				income = base.income * Variants.mult(variant),
+				variant = variant,
+			}
 			for _ = 1, count do
-				table.insert(units, dog)
+				table.insert(units, unit)
 			end
 		end
 	end
@@ -192,7 +233,7 @@ function HotDogDex.sortedUnits(hotDogs: { [string]: number }): { HotDog }
 		if a.income ~= b.income then
 			return a.income > b.income
 		end
-		return a.name < b.name
+		return a.displayName < b.displayName
 	end)
 	return units
 end

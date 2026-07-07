@@ -1,7 +1,12 @@
 # Roadmap — Steal a Glizzy 🌭
 
 Milestones are ordered by what proves the game out fastest for a **go-big commercial** target.
-Each should be independently testable in Studio. `✅ done · 🔜 next · ⏳ later`.
+Each should be independently testable in Studio. `✅ done · 🔜 next · ⏳ later · 🏗️ scaffolded (stub)`.
+
+> **2026-07-07:** the entire remaining game (M3-remainder → M7) is **planned + scaffolded as
+> compiling stubs** (DataStore `_v5`, `Variants`/`MenuLayout` shared modules, 11 new server services
+> + `RateLimit`, 10 client tray panels, all wired into `Main`; real logic `TODO(<milestone>)`-marked).
+> The `🏗️` items below now have skeletons to fill in — see `docs/HANDOFF.md` for the build order.
 
 ---
 
@@ -47,25 +52,36 @@ Built 2026-07-03 (Top-10 items 5–10; static-clean, needs a Studio playtest to 
   (`DailyService.luau` + `Daily.client.luau`).
 - **UI:** new bottom menu row (🛒 Upgrades · ✨ Rebirth · 📖 Dex · 📅 Daily) + a `RequestState`
   handshake so clients reliably get initial state past the join race.
-- **Still deferred:** rotating shop, duplicates→fusion, mutations/variants.
-- **Data:** DataStore bumped to `_v4` (back-fills all new fields from `_v3`).
+- **Rotating shop** (2026-07-07) — buy specific dogs for coins; daily UTC rotation chosen
+  deterministically server-side (same shop for everyone), per-rarity premium pricing, unlimited
+  buys in v1 (`ShopService.luau` + `Shop.client.luau`). *(needs playtest.)*
+- ✅ **Mutations / variants (2026-07-08)** — composite-key stacks (`Variants` + `MutationService`);
+  `MutationChance` roll on cook mints Gold/Rainbow/Giant with income multipliers. Every read path is
+  variant-aware (income, pedestals/vault, steal transfer, dex credit); the variant rides `CookResult`
+  for a bigger reveal. *(static-clean; steal-path minting + prestige mutation-luck still TODO.)*
+- 🏗️ **Scaffolded (stubs, 2026-07-07):** prestige spending, duplicates→fusion, manual vault
+  selection, traps, shop per-day cap.
+- **Data:** DataStore now `_v5` (2026-07-07 scaffold; batches all later fields, back-fills from
+  `_v4`/`_v3`). Earlier M3 was `_v4`; shop itself added no fields.
 
-## ⏳ Milestone 4 — Retention systems ⭐
+## 🏗️ Milestone 4 — Retention systems ⭐ (scaffolded — stubs to fill in)
 - Daily login + daily missions. *(shipped early in M3 — see above.)*
-- Weekly limited-time events + event-only dogs (FOMO).
-- Quests/achievements, milestone rewards.
-- Leaderboards (coins / rarest / most steals).
-- Codes system (creator marketing lever).
+- 🏗️ Weekly limited-time events + event-only dogs (FOMO) — `EventService`/`Events.client`.
+- 🏗️ Achievements / milestone rewards — `AchievementService`/`Achievements.client`.
+- 🏗️ Leaderboards (coins / rarest / most steals) via OrderedDataStore — `LeaderboardService`/`Leaderboards.client`.
+- 🏗️ Codes system (creator marketing lever) — `CodesService`/`Codes.client` (mostly complete).
 
-## ⏳ Milestone 5 — Monetization
-- Game passes (e.g. 2× coins, extra slots, auto-collect, VIP) — keep non-pay-to-win.
-- Dev products (coin packs, refills). **No paid gacha.**
-- Cosmetics (stand skins, trails, titles).
-- *Ref: `docs/roblox-reference/monetization/`.*
+## 🏗️ Milestone 5 — Monetization (scaffolded — stubs to fill in)
+- 🏗️ Game passes — **Extra slots + VIP first**, then 2× coins / auto-collect (non-pay-to-win).
+- 🏗️ Dev products (coin packs, refills, extra charges) via `ProcessReceipt`. **No paid gacha.**
+  Both in `PurchaseService`/`Passes.client`.
+- 🏗️ Cosmetics (stand skins, trails, titles) — `CosmeticService`/`Cosmetics.client`.
+- **Do the anti-exploit hardening pass here (before M6 + launch).** *Ref: `docs/roblox-reference/monetization/`.*
 
-## ⏳ Milestone 6 — Social & virality
-- Friends/parties, trading (with dupe/scam safeguards), chat/emotes/taunts.
-- Shareable "big steal / rare pull" moments engineered for clips.
+## 🏗️ Milestone 6 — Social & virality (scaffolded — stubs to fill in)
+- 🏗️ Trading (baseline safeguards: confirm + cooldown + log) — `TradeService`/`Trade.client`.
+- 🏗️ Emotes/taunts (preset, no free text) — `EmoteService`. · Parties (join-friend) — later.
+- Shareable "big steal / rare pull" moments engineered for clips (client juice on existing events).
 
 ## ⏳ Milestone 7 — Polish & soft launch
 - AI-generated art pass, audio/SFX, UI polish, onboarding/first-60-seconds.

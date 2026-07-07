@@ -8,6 +8,7 @@ local Players = game:GetService("Players")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 
 local GameConfig = require(ReplicatedStorage.Shared.GameConfig)
+local MenuLayout = require(ReplicatedStorage.Shared.MenuLayout)
 
 local player = Players.LocalPlayer
 
@@ -33,15 +34,12 @@ gui.Name = "GlizzyMenu"
 gui.ResetOnSpawn = false
 gui.IgnoreGuiInset = true
 
--- === Bottom menu row: buttons at fixed slots (Dex + Daily own their own slots) ===
-local BUTTON_W = 140
-local SPACING = 150
-local ROW_START_X = -295 -- centers a 4-slot row (Upgrades, Rebirth, Dex, Daily)
-
+-- === Bottom menu row: slots + centring live in the shared MenuLayout module
+-- (Dex/Daily/Shop own their own slots; the row auto-centres for its length). ===
 local function makeMenuButton(slot: number, text: string): TextButton
 	local btn = Instance.new("TextButton")
-	btn.Size = UDim2.fromOffset(BUTTON_W, 40)
-	btn.Position = UDim2.new(0.5, ROW_START_X + slot * SPACING, 1, -150)
+	btn.Size = UDim2.fromOffset(MenuLayout.BUTTON_W, MenuLayout.BUTTON_H)
+	btn.Position = MenuLayout.primaryPosition(slot)
 	btn.BackgroundColor3 = Color3.fromRGB(70, 70, 90)
 	btn.TextColor3 = Color3.fromRGB(255, 255, 255)
 	btn.TextScaled = true

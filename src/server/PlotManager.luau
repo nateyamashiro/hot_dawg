@@ -15,6 +15,7 @@ local ServerScriptService = game:GetService("ServerScriptService")
 
 local GameConfig = require(ReplicatedStorage.Shared.GameConfig)
 local HotDogDex = require(ReplicatedStorage.Shared.HotDogDex)
+local Variants = require(ReplicatedStorage.Shared.Variants)
 local DataManager = require(ServerScriptService.Server.DataManager)
 
 export type Plot = {
@@ -30,6 +31,7 @@ export type Plot = {
 	holdBonus: number,
 	guardModel: Model?,
 	wallModel: Model?,
+	trapModel: Model?,
 }
 
 local PlotManager = {}
@@ -214,6 +216,7 @@ local function buildPlot(index: number): Plot
 		holdBonus = 0,
 		guardModel = nil,
 		wallModel = nil,
+		trapModel = nil,
 	}
 end
 
@@ -257,8 +260,10 @@ local function clearUnits(anchors: { BasePart })
 end
 
 -- Build a visible dog "unit" on top of an anchor. `stealable` controls whether it
--- gets a Steal prompt (front pedestals) or is safe (vault shelf).
-local function spawnUnit(plot: Plot, anchor: BasePart, dog: HotDogDex.HotDog, stealable: boolean)
+-- gets a Steal prompt (front pedestals) or is safe (vault shelf). The unit carries
+-- its inventory KEY so the steal handler removes the exact stack (variant included);
+-- a mutation tints the label with its variant colour.
+local function spawnUnit(plot: Plot, anchor: BasePart, dog: HotDogDex.Unit, stealable: boolean)
 	local color = HotDogDex.colorFor(dog.rarity)
 	local unit = makePart({
 		Name = "DogUnit",
@@ -268,13 +273,16 @@ local function spawnUnit(plot: Plot, anchor: BasePart, dog: HotDogDex.HotDog, st
 		CFrame = anchor.CFrame * CFrame.new(0, 1.5, 0),
 	})
 	unit:SetAttribute("DogName", dog.name)
-	makeBillboard(unit, dog.name, color, 44)
+	unit:SetAttribute("DogKey", dog.key)
+	local vdef = Variants.def(dog.variant)
+	local labelColor = if vdef and dog.variant ~= "base" then vdef.color else color
+	makeBillboard(unit, dog.displayName, labelColor, 44)
 	unit.Parent = anchor
 
 	if stealable then
 		local prompt = Instance.new("ProximityPrompt")
 		prompt.ActionText = "Steal"
-		prompt.ObjectText = dog.name
+		prompt.ObjectText = dog.displayName
 		prompt.HoldDuration = GameConfig.StealHoldSeconds + plot.holdBonus
 		prompt.MaxActivationDistance = 8
 		prompt.RequiresLineOfSight = false
@@ -282,7 +290,7 @@ local function spawnUnit(plot: Plot, anchor: BasePart, dog: HotDogDex.HotDog, st
 		prompt.Triggered:Connect(function(thief: Player)
 			local victim = plot.owner
 			if victim and stealHandler then
-				stealHandler(thief, victim.UserId, dog.name, unit)
+				stealHandler(thief, victim.UserId, dog.key, unit)
 			end
 		end)
 	end
@@ -317,15 +325,19 @@ function PlotManager.syncDisplay(player: Player)
 	clearUnits(plot.pedestalAnchors)
 	clearUnits(plot.vaultAnchors)
 
+	-- TODO(M5-mon): add data.bonusDisplaySlots / data.bonusVaultSlots (extra-slots
+	-- pass + prestige) on top of the coin-upgrade capacity here.
 	local vaultCap = vaultCapacity(data)
 	local displayCap = displayCapacity(data)
+	-- TODO(M2-vault): honor data.vaultPins first — pinned keys fill the vault before
+	-- the auto-top-by-value overflow below.
 	local units = HotDogDex.sortedUnits(data.hotDogs)
 	-- Top `vaultCap` units -> safe vault; the next `displayCap` -> stealable pedestals.
-	for i, dog in units do
+	for i, unit in units do
 		if i <= vaultCap then
 			local anchor = plot.vaultAnchors[i]
 			if anchor then
-				spawnUnit(plot, anchor, dog, false)
+				spawnUnit(plot, anchor, unit, false)
 			end
 		else
 			local pedIndex = i - vaultCap
@@ -334,7 +346,7 @@ function PlotManager.syncDisplay(player: Player)
 			end
 			local anchor = plot.pedestalAnchors[pedIndex]
 			if anchor then
-				spawnUnit(plot, anchor, dog, true)
+				spawnUnit(plot, anchor, unit, true)
 			else
 				break
 			end
@@ -382,6 +394,10 @@ function PlotManager.release(player: Player)
 	if plot.wallModel then
 		plot.wallModel:Destroy()
 		plot.wallModel = nil
+	end
+	if plot.trapModel then
+		plot.trapModel:Destroy()
+		plot.trapModel = nil
 	end
 	plot.holdBonus = 0
 	plot.depositPrompt.Enabled = false
