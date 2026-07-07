@@ -1,8 +1,10 @@
 # Discovery Questions — Steal a Glizzy 🌭
 
-> **Purpose:** the question bank the next session works through with Nate to define exactly what
-> game we're building. Ask conversationally in small batches (2–4 at a time), not all at once.
-> Record answers in `GAME_DESIGN.md`. Skip anything already locked (see top of that file).
+> ✅ **COMPLETED 2026-07-03.** The full bank was worked through with Nate; all answers are
+> recorded in **`GAME_DESIGN.md` §4** (the source of truth). This file is kept as the historical
+> question bank / reference — do NOT re-ask these unless revisiting a decision.
+>
+> **Purpose (original):** the question bank to define exactly what game we're building.
 >
 > Legend: 🎯 = high-priority (answer early, it unblocks Milestone 2). ⭐ = shapes retention/virality.
 

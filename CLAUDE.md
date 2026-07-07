@@ -44,20 +44,36 @@ it in an ownable hot-dog theme (deliberately NOT cloning brainrot IP — saturat
 ## Where things are
 
 ```
-src/shared/GameConfig.luau     Tunables (tick rate, starting coins, cook cost)
-src/shared/HotDogDex.luau      The hot dog roster + weighted rarity roll
-src/server/Main.server.luau    Entry point: income loop, cook handler, leaderstats, remotes
-src/server/DataManager.luau    DataStore load/save + in-memory cache
-src/client/UI.client.luau      Coins/dogs HUD, cook button, rarity reveal
+src/shared/GameConfig.luau     Tunables (economy + plots/steal/defense + M3 progression knobs)
+src/shared/HotDogDex.luau      Roster (~30) + roll(grillLvl, guaranteeRare) + odds() + all() + sortedUnits
+src/server/Main.server.luau    Orchestrator: remotes, leaderstats, income×rebirth, cook/cook-10,
+                               offline earnings, dex reward, RequestState handshake, wires services
+src/server/DataManager.luau    DataStore load/save + cache (PlayerData incl. M3 fields, _v4)
+src/server/PlotManager.luau    Plots/stands, upgrade-derived pedestal/vault capacity, spawn CFrame, OwnerUserId attr
+src/server/StealService.luau   Grab/carry/deposit/abort, charges, cooldowns, shield, alerts
+src/server/DefenseService.luau Net tool, buyable wall + NPC guard
+src/server/UpgradeService.luau Buy grill / display slots / vault slots
+src/server/RebirthService.luau Rebirth: reset coins, keep dogs+upgrades, income multiplier + prestige
+src/server/DailyService.luau   Daily login streak + rotating cook/steal/earn missions
+src/client/UI.client.luau      Coins/dogs HUD, cook + cook-10, reveal, disclosed odds+pity, welcome-back
+src/client/StealHud.client.luau  Carry banner, charge/shield meter, robbed alert + arrow, buy buttons
+src/client/PlotPresentation.client.luau  Owner highlight/"YOUR STAND", rival label + own-prompt hiding
+src/client/Menu.client.luau    Bottom menu row + Upgrades & Rebirth panels
+src/client/Dex.client.luau     Collection grid (owned vs locked silhouettes)
+src/client/Daily.client.luau   Streak + missions panel
 docs/HANDOFF.md                Start-here handoff for a new session
-docs/design/GAME_DESIGN.md     Living game design doc (GDD)
-docs/design/DISCOVERY_QUESTIONS.md  Question bank for the design deep-dive
+docs/design/GAME_DESIGN.md     Living game design doc (GDD) — decisions in §4
+docs/design/DISCOVERY_QUESTIONS.md  Question bank (COMPLETED; answers live in GDD §4)
 docs/ROADMAP.md                Milestones
 docs/roblox-reference/         Offline Roblox docs (see its README.md)
 ```
 
 ## Current status
 
-**Milestone 1 done:** cook-and-collect core (idle income, coin-only gacha roll, rarity reveal,
-DataStore persistence). **Next up is the design deep-dive interview** (see HANDOFF), THEN
-Milestone 2 = the base-plot stealing layer.
+**Milestones 1–3 built:** cook-and-collect core + steal-and-defend layer + the M3 progression
+layer (buyable grill/display/vault upgrades, rebirth/prestige with an income multiplier, capped
+offline earnings, dex UI, cook-10 + pity + disclosed odds, daily streak/missions), plus M2 clarity
+polish (spawn-at-stand, owner-only presentation). DataStore is `_v4`. Static checks clean
+(stylua/selene/rojo); **still needs a 2-player Studio playtest to validate feel + tune the reasoned
+numbers in `GAME_DESIGN §6`.** Next up: playtest, then M3 remainder / M4 (rotating shop, prestige
+spending, events, leaderboards, achievements). See HANDOFF.

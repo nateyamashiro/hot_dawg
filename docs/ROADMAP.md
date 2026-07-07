@@ -11,27 +11,47 @@ VS Code + Rojo + Git + Rokit toolchain; server-authoritative project skeleton. *
 ## ✅ Milestone 1 — Cook & collect core
 Coin-only gacha cook, 7 rarity tiers, idle income, DataStore persistence, HUD. *(Done, commit `4928f7c`.)*
 
-## 🔜 Design deep-dive (interview)
-Work through `docs/design/DISCOVERY_QUESTIONS.md`; fill in `GAME_DESIGN.md`. **Blocks Milestone 2.**
-*(This is the next session's job.)*
+## ✅ Design deep-dive (interview)
+Worked through `docs/design/DISCOVERY_QUESTIONS.md`; answers recorded in `GAME_DESIGN.md §4`.
+*(Done 2026-07-03.)*
 
-## 🔜 Milestone 2 — Steal & defend (THE hook)
-The retention engine. Depends on deep-dive answers to §2/§3.
-- Per-player base/plot with dogs displayed as stealable objects (pedestals/grills).
-- Raid mechanic: approach → grab (ProximityPrompt) → carry back to your base.
-- Carry risk: slowed + marked + owner alerted; taggable by others.
-- Ownership transfer on successful steal; defense options.
-- Anti-grief: cooldowns, newbie protection.
+## ✅ Milestone 2 — Steal & defend (THE hook)
+The retention engine. Built 2026-07-03 (needs a 2-player Studio playtest to validate feel).
+- Code-generated plots in a ring; dogs displayed as stealable pedestal units + safe vault
+  (`PlotManager.luau`).
+- Raid mechanic: approach → hold "Steal" ProximityPrompt → carry back to your own deposit pad
+  (`StealService.luau`).
+- Carry risk: slowed + red Highlight/glow + "🚨 THIEF!" marker; owner alerted with a directional
+  arrow (`StealHud.client.luau`).
+- Permanent ownership transfer on deposit; abort paths (death/leave/net) return the dog to the victim.
+- Defense: default Net tool (tag a carrier → drop), buyable wall (adds steal hold-time), buyable
+  NPC guard (auto-nets raiders even while away) (`DefenseService.luau`).
+- Anti-grief: steal charges (recharge over time), per-target cooldown + diminishing returns,
+  timed newbie shield.
+- **Fast-follows (deferred within M2):** traps, manual vault selection.
 - *Ref: `docs/roblox-reference/gameplay/` (ProximityPrompt, Humanoid, CollectionService).*
 
-## ⏳ Milestone 3 — Progression & economy depth
-- Base/slot upgrades, better grills, cost curves and deliberate walls.
-- **Rebirth/prestige** loop (permanent multipliers).
-- Offline earnings (capped).
-- Collection "dex" UI; possibly duplicates→fusion and mutations.
+## ✅ Milestone 3 — Progression & economy depth
+Built 2026-07-03 (Top-10 items 5–10; static-clean, needs a Studio playtest to validate feel).
+- **Buyable upgrades** — grill tiers (better roll odds), display slots (more stealable pedestals),
+  vault slots (more safe storage). Cost curves + effect tables in `GameConfig`; capacity is now
+  upgrade-derived and PlotManager pre-builds the max anchors (`UpgradeService.luau`).
+- **Rebirth/prestige** — reset coins, keep dogs + upgrades, +25%/rebirth permanent income multiplier,
+  bank prestige currency; `Rebirths` leaderstat (`RebirthService.luau`).
+- **Capped offline earnings** — up to 8h of idle income granted on rejoin with a "welcome back" popup.
+- **Dex UI** — grid of all dogs, locked silhouettes for undiscovered, one-time completion reward
+  (`Dex.client.luau` + `InventoryUpdate` snapshot).
+- **Cook-10 + pity + disclosed odds** — multi-roll, guaranteed Rare+ by `PityCooks`, full odds shown
+  in the cook UI.
+- **Daily streak + missions** — escalating login reward + 3 rotating missions (cook/steal/earn)
+  (`DailyService.luau` + `Daily.client.luau`).
+- **UI:** new bottom menu row (🛒 Upgrades · ✨ Rebirth · 📖 Dex · 📅 Daily) + a `RequestState`
+  handshake so clients reliably get initial state past the join race.
+- **Still deferred:** rotating shop, duplicates→fusion, mutations/variants.
+- **Data:** DataStore bumped to `_v4` (back-fills all new fields from `_v3`).
 
 ## ⏳ Milestone 4 — Retention systems ⭐
-- Daily login + daily missions.
+- Daily login + daily missions. *(shipped early in M3 — see above.)*
 - Weekly limited-time events + event-only dogs (FOMO).
 - Quests/achievements, milestone rewards.
 - Leaderboards (coins / rarest / most steals).

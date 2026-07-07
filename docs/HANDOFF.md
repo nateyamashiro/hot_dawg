@@ -1,25 +1,51 @@
 # HANDOFF — Steal a Glizzy 🌭
 
-**Last updated:** 2026-07-02
+**Last updated:** 2026-07-07
 **For:** the next Claude Code session (and Nate)
 
 ---
 
 ## 👉 What the NEXT session should do
 
-**Run the game-design deep-dive interview.** The user explicitly wants the next session to
-ask **a large number of questions** to pin down exactly what game we're making before writing
-more gameplay code.
+**Playtest & tune Milestones 2 + 3 in a real 2-player Studio session.** Everything through M3 is
+BUILT and passes static checks (rojo build + selene + stylua all clean) but has **not been
+playtested with two live players** — that's the outstanding validation for M2 *and* the whole M3
+progression layer added 2026-07-03.
 
-1. Open **`docs/design/DISCOVERY_QUESTIONS.md`** — it's a categorized question bank.
-2. Work through it **conversationally**, a few questions at a time (use the `AskUserQuestion`
-   tool for batches of 2–4 related choices; go free-form for open-ended ones). Don't dump all
-   ~70 questions at once.
-3. As answers come in, **record them in `docs/design/GAME_DESIGN.md`** (the living GDD), moving
-   items from "❓ TBD" to decided.
-4. Only after the design is meaningfully filled in, start **Milestone 2** (see `docs/ROADMAP.md`).
+1. **Two-player Studio playtest** (Test → **Clients and Servers**, 2 players; enable
+   **Game Settings → Security → API Services** for DataStore). Confirm the M2 loop (plots assign,
+   cook fills pedestals with top dogs vaulted, steal-carry-deposit transfers permanently, Net/guard
+   drop carriers, newbie shield blocks steals) **and** the new M3 systems:
+   - Spawn beside your own stand; it's highlighted + "🏠 YOUR STAND"; rival stands hide
+     Vault/Deposit labels; no Steal prompt on your own dogs.
+   - Buy grill/display/vault upgrades (🛒 Upgrades) → odds improve, more pedestals/vault fill.
+   - Rebirth (✨) resets coins, keeps dogs + upgrades, bumps income & the `Rebirths` leaderstat.
+   - Rejoin after time away → capped offline coins + "welcome back" popup.
+   - 📖 Dex fills as you collect (completion reward once); 🍳 Cook ×10 + pity + odds shown.
+   - 📅 Daily streak claim + 3 missions track and pay out.
+2. **Tune** the reasoned numbers in `GAME_DESIGN §6` (`GameConfig.luau` / `HotDogDex.luau`) to feel —
+   none are playtest-confirmed yet.
+3. Then pick up the **M3 remainder / M4** (rotating shop, prestige spending, events, leaderboards,
+   achievements). See `docs/ROADMAP.md` and `docs/BACKLOG.md`.
 
-Do NOT re-ask what's already locked (see below / CLAUDE.md).
+**Fast-follows still open inside M2:** traps, manual vault selection.
+Do NOT re-ask what's already locked (see below / CLAUDE.md / `GAME_DESIGN.md §2, §4`).
+
+## ⚠️ M3-specific gotchas / notes
+
+- **DataStore is now `_v4`** (`DataManager.luau`). `_v3` saves back-fill cleanly. If you add
+  PlayerData fields, bump to `_v5` and back-fill from defaults (keep `defaultData()` building fresh
+  tables).
+- **Join-race handshake:** the server pushes per-player state on join, but every client script also
+  fires a `RequestState` remote after its handlers connect, and the server re-sends all state (see
+  `Main.pushAllState`). Offline earnings are stashed in `pendingWelcome` and delivered via that path
+  so the popup can't be lost. Any new server→client "initial state" push should be added to
+  `pushAllState` and requested the same way.
+- **Slot capacity is upgrade-derived.** `PlotManager.buildPlot` pre-builds `MaxDisplaySlots` /
+  `MaxVaultSlots` anchors; `syncDisplay` only fills up to the player's current level. Empty extra
+  pedestals are intentional "buy to unlock" slots.
+- **Grill feeds the roll:** `HotDogDex.roll(grillLvl, guaranteeRare)` — pity passes `guaranteeRare`.
+  `HotDogDex.odds(grillLvl)` and `HotDogDex.all()` back the cook-odds UI and the dex.
 
 ## ✅ Already locked (don't re-litigate)
 
