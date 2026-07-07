@@ -3,10 +3,10 @@
 > **Living doc.** Update as decisions get made. `✅` = locked. Keep this the single source of
 > truth for *what* we're building; `CLAUDE.md` covers *how* (tech/workflow).
 
-**Last updated:** 2026-07-08 · **Status:** Milestones 1–3 BUILT & static-clean (incl. rotating shop
-+ **mutations-on-cook**, shipped 2026-07-08). **M3-remainder → M7 planned + SCAFFOLDED as compiling
-stubs** (see §5 scaffold note, §7 decision log). Awaiting a 2-player Studio playtest to validate
-M2/M3 feel/tuning. Next: the remaining M3-remainder stubs (prestige spend → fusion → manual vault →
+**Last updated:** 2026-07-08 · **Status:** Milestones 1–3 BUILT & static-clean (incl. rotating shop,
+**mutations-on-cook**, and **prestige spending**, all shipped 2026-07-08). **M3-remainder → M7 planned
++ SCAFFOLDED as compiling stubs** (see §5 scaffold note, §7 decision log). Awaiting a 2-player Studio
+playtest to validate M2/M3 feel/tuning. Next: the remaining M3-remainder stubs (fusion → manual vault →
 traps), then M4.
 
 ---
@@ -199,7 +199,21 @@ Cooking and stealing are **co-equal** paths to rare dogs — players can lean ei
   steal transfer, dex-completion collapses keys to base names).
 - **Reveal** — the variant rides `CookResult`; the client plays a bigger, variant-coloured reveal and
   a "✨ N mutations!" note on cook-10.
-- *Still open:* steal-path minting (`MutateOnSteal`, off by default) + prestige mutation-luck bonus.
+- *Still open:* steal-path minting (`MutateOnSteal`, off by default). *(Mutation-luck now wired via prestige.)*
+
+**Milestone 3-remainder — prestige spending** (2026-07-08; `PrestigeShopService`/`PrestigeShop.client`)
+- **First `prestige` sink** — rebirths (+1 each) and the dex reward (+3) bank prestige; this is the
+  first thing to spend it on. Catalog is `GameConfig.PrestigeShopItems` (one-time premium unlocks,
+  **coin/prestige only, never Robux**): +10% permanent income, +1 display slot, +1 vault slot,
+  +50% mutation luck.
+- **One-time unlocks** — tracked in the new `prestigeUnlocks` set; the server validates the item +
+  balance, charges prestige, marks it owned, and applies the persistent effect. Client greys out
+  owned rows and shows the live prestige balance + afford state (tray panel).
+- **Effects bank into `_v5` fields** — `prestigeIncomeMult` (folded additively into
+  `Main.incomeMultiplier` alongside the rebirth bonus), `bonusDisplaySlots`/`bonusVaultSlots` (now
+  honoured by `PlotManager` capacity, re-synced on buy), and `mutationLuck` (passed as the `luckBonus`
+  arg of `MutationService.maybeMint` — **closing the loop the mutations feature stubbed**).
+- No DataStore `_vN` bump — the three new fields batch into the existing `_v5` back-fill.
 
 **Scaffolded 2026-07-07 (compiling STUBS — architecture only, real logic is `TODO`-marked)**
 The full M3-remainder → M7 build is planned + skeleton-laid: `Variants` (composite-key mutation
@@ -258,7 +272,8 @@ Static-clean; each stub names where real logic goes. See `docs/HANDOFF.md` for t
 **New scaffold config (all reasoned placeholders, `GameConfig.luau`) — tune when each feature lands**
 - Mutations: `MutationChance` 0.04 · variant income mults Gold ×2 / Rainbow ×3.5 / Giant ×5
   (mint weights 100/30/8 in `Variants.luau`) · `MutateOnSteal` false
-- Prestige shop: 4 unlocks 5–15 prestige (income +10% / +1 display / +1 vault / +50% mut-luck)
+- Prestige shop (**shipped 2026-07-08**): 4 one-time unlocks 5–15 prestige (income +10% / +1 display /
+  +1 vault / +50% mut-luck). Effects are permanent + additive; income folds into the rebirth multiplier.
 - Fusion: `FusionInputs` 5, forces a mutation · Trap: 450 coins, 4s stun, 10-stud range
 - Events: weekly rotation, 3 modifiers, reward tiers 100/300/700/1500 · Leaderboards: top-25, 60s refresh
 - Achievements: 5 goals (collect 10/30, steal 25/100, rebirth 3) · Codes: LAUNCH 1000, GLIZZY 500
@@ -280,6 +295,8 @@ Static-clean; each stub names where real logic goes. See `docs/HANDOFF.md` for t
 | 2026-07-03 | MVP = core loop + steal + basics | Prove retention before piling on content |
 | 2026-07-03 | M3 built: upgrades, rebirth (keeps upgrades too), offline cap, dex, cook-10+pity, dailies | Progression depth + retention loops; DataStore → `_v4` |
 | 2026-07-03 | Prestige currency banked but not yet spendable | Premium unlocks are a later milestone; field exists so rebirth already feels rewarding |
+| 2026-07-08 | **Prestige unlocks are ONE-TIME** (not repeatable/stacking) | Matches "owned/afforded" UI; bounded bonuses (esp. slots stay within the pre-built anchor cap); simplest correct first sink — deeper/repeatable sinks can be added to the catalog later |
+| 2026-07-08 | **Prestige income unlock = new additive `prestigeIncomeMult` field** folded into `Main.incomeMultiplier` | No existing knob fit (rebirth mult is derived from the rebirth count); a dedicated field is cheap in the income loop and keeps a player's purchased bonus stable if config changes |
 | 2026-07-07 | Rotating shop: daily, deterministic-by-UTC-day offers, coin-only, premium priced, unlimited buys v1 | Targeted goal that dampens pure-cook RNG; same shop for everyone = fair + shareable; premium prices keep cooking the coin-efficient path; unlimited-buy avoided a DataStore migration (cap is a fast-follow) |
 | 2026-07-07 | **Mutations = composite-key stacks** (`"Name#Gold"` inside the existing `{name→count}` map) | Lowest-risk model: `hotDogs` type unchanged, old saves valid as base dogs, tested steal/shop/dex/income keep working on strings — interpretation isolated in `Variants.luau`. Serves mutations + fusion + manual-vault + stack-trading without per-unit IDs |
 | 2026-07-07 | **Mutations minted randomly on cook** (small weighted chance; steal opt-in via `MutateOnSteal`) | Slot-machine excitement folded into the existing roll; no new currency. Gold/Rainbow/Giant chosen by `Variants` mint weights |

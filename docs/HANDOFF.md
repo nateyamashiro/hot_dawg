@@ -1,8 +1,10 @@
 # HANDOFF — Steal a Glizzy 🌭
 
-**Last updated:** 2026-07-08 (**Mutations-on-cook SHIPPED** — first scaffolded feature made real:
-composite-key inventory is now fully variant-aware end-to-end and `MutationService.maybeMint` is
-wired into `doCook`. Scaffold context below still applies for the rest of M3-remainder → M7.)
+**Last updated:** 2026-07-08 (**Prestige spending SHIPPED** — second scaffolded feature made real:
+`PrestigeShopService` sells one-time premium unlocks for banked `prestige`; effects bank into three
+new `_v5` fields — `prestigeIncomeMult` (income loop), `bonus*Slots` (PlotManager capacity, now wired),
+`mutationLuck` (**closed the mutations `luckBonus` loop**). Mutations-on-cook shipped just before.
+Scaffold context below still applies for the rest of M3-remainder → M7.)
 **For:** the next Claude Code session (and Nate)
 
 ## 🏗️ The scaffold (read this before implementing anything new)
@@ -20,8 +22,8 @@ Implement feature by feature; don't re-architect. Key facts:
   (income, pedestals/vault, steal transfer, dex-completion collapses composite keys to base names),
   and `MutationService.maybeMint` is wired into `Main.doCook`. **Pattern to copy:** any future code
   that touches `data.hotDogs` keys must decode via `Variants`/`getByKey`, never assume a key is a bare
-  dog name. Still TODO: steal-path minting (`GameConfig.MutateOnSteal`, off by default) and a real
-  `luckBonus` into `maybeMint` (needs PrestigeShop to bank a `mutationLuck` field).
+  dog name. Still TODO: steal-path minting (`GameConfig.MutateOnSteal`, off by default). *(The
+  `luckBonus` loop is now CLOSED — prestige banks `data.mutationLuck`, fed to `maybeMint`.)*
 - **DataStore is `_v5`** (`DataManager.luau`) — one migration batching every later field
   (`vaultPins`, `defenses.trap`, `achievements`, `redeemedCodes`, `eventPoints`, `vip`,
   `bonus*Slots`, `receiptHistory`, `tradeCooldownUntil`, `cosmetics`, `shopBuys`). All optional +
@@ -34,18 +36,19 @@ Implement feature by feature; don't re-architect. Key facts:
   every `OnServerEvent`) is scheduled **before trading (M6) and before soft launch** — do it then.
 - **Handshake:** new initial-state pushes are already in `Main.pushAllState` (prestige/event/
   leaderboard/achievement/cosmetic/purchase). Any NEW one must go there too + be `RequestState`-fired.
-- **Build order** (retention before content): M3-remainder (~~mutations✅~~ → prestige spend → fusion →
-  manual vault → traps) → M4 (events/leaderboards/achievements/codes) → hardening pass → M5
+- **Build order** (retention before content): M3-remainder (~~mutations✅~~ → ~~prestige spend✅~~ →
+  fusion → manual vault → traps) → M4 (events/leaderboards/achievements/codes) → hardening pass → M5
   (passes/products/cosmetics) → M6 (trading/parties/emotes/clips) → M7 (art/audio/onboarding/launch).
 
 ---
 
 ## 👉 What the NEXT session should do
 
-**Next CODE feature → Prestige spending** (`PrestigeShopService` + `PrestigeShop.client`). See
+**Next CODE feature → Duplicates → fusion** (`FusionService` + `Fusion.client`). See
 `docs/NEXT_SESSION_PROMPT.md` for the step-by-step — it's the next item in the build order now that
-mutations are done, is self-contained, and implementing its `mutationLuck` effect closes the
-`luckBonus` loop the mutations feature left stubbed.
+mutations + prestige are done. Combine N dupes of an inventory key into a better outcome;
+`GameConfig.FusionInputs` / `FusionForcesMutation` exist, and `Variants.pickMint` /
+`MutationService` can be reused to force a mutation on the fused result.
 
 **Still owed (needs a human): playtest & tune Milestones 2 + 3 in a real 2-player Studio session.**
 Everything through M3 (plus mutations) is BUILT and passes static checks (rojo build + selene +

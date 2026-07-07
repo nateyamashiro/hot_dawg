@@ -30,18 +30,25 @@ New files: `src/client/PlotPresentation.client.luau`, `src/client/Menu.client.lu
 
 ## 🔜 Top of the list now
 
-- **Spend prestige currency** — next code feature; first premium-unlock sink (banked but unused today).
-  Also closes the `mutationLuck` `luckBonus` loop the mutations feature stubbed.
-- **2-player Studio playtest** of M2 + M3 + mutations (validate feel; tune the numbers in `GAME_DESIGN §6`).
+- **Duplicates → fusion** — next code feature (`FusionService`/`Fusion.client`); combine N dupes of a
+  key into a better outcome. `GameConfig.FusionForcesMutation` can reuse `Variants.pickMint`/`MutationService`.
+- **2-player Studio playtest** of M2 + M3 + mutations + prestige (validate feel; tune `GAME_DESIGN §6`).
 
 ## ✅ Shipped since the Top 10 (static-clean; playtest owed)
 
+- **Prestige spending** (2026-07-08) — first `prestige`-currency sink (`PrestigeShopService`/`PrestigeShop.client`).
+  One-time premium unlocks bought with banked prestige (never Robux): +10% permanent income, +1 display
+  slot, +1 vault slot, +50% mutation luck. Effects bank into new `_v5` fields — `prestigeUnlocks`
+  (owned set), `prestigeIncomeMult` (folded into `Main.incomeMultiplier`), `mutationLuck` (fed to
+  `MutationService.maybeMint`, **closing the mutations `luckBonus` loop**); slot effects bump the
+  existing `bonus*Slots` fields, now honoured by `PlotManager` capacity. Client renders the catalog +
+  live prestige balance + owned/afforded state (tray panel). No `_vN` bump (fields batch into `_v5`).
 - **Mutations / variants** (2026-07-08) — random Gold/Rainbow/Giant mint on cook (`GameConfig.MutationChance`),
   composite-key inventory (`"Name#Gold"` in the existing `hotDogs` map). Made every read path
   variant-aware: `HotDogDex.getByKey`, `sortedUnits→{Unit}` (carries the key), `Main.incomePerSecond`,
   dex-completion (collapses keys to base names), `PlotManager`/`StealService` (key-based transfer +
   variant labels/tint), and a variant-coloured `CookResult` reveal. No DataStore bump.
-  **Still open:** steal-path minting (`MutateOnSteal`, off) + real `luckBonus` (needs a `mutationLuck` field).
+  **Still open:** steal-path minting (`MutateOnSteal`, off). *(Real `luckBonus` now wired — prestige banks `mutationLuck`.)*
 - **Rotating shop** (2026-07-07) — buy specific dogs for coins (targeted goal, dampens pure-cook RNG).
   Daily UTC-rotating offer set chosen deterministically server-side (same shop for everyone),
   per-rarity premium pricing, unlimited buys in v1. New: `src/server/ShopService.luau`,
@@ -63,9 +70,8 @@ feature by feature, don't re-architect.
 - 🏗️ Manual vault selection (`Main` `SetVaultPin` handler + `PlotManager.syncDisplay` TODO; needs a
   Dex pin UI + honoring `vaultPins` in the vault fill).
 
-**M3 remainder** (rotating shop + mutations shipped; per-day cap scaffolded via `shopBuys`/`ShopDailyBuyCap`)
-- 🏗️ Prestige-currency spending (`PrestigeShopService`/`PrestigeShop.client`) — **next up.**
-- 🏗️ Duplicates → fusion (`FusionService`/`Fusion.client`) — note `GameConfig.FusionForcesMutation`
+**M3 remainder** (rotating shop + mutations + prestige spending shipped; per-day cap scaffolded via `shopBuys`/`ShopDailyBuyCap`)
+- 🏗️ Duplicates → fusion (`FusionService`/`Fusion.client`) — **next up.** Note `GameConfig.FusionForcesMutation`
   can reuse `Variants.pickMint`/`MutationService` now that the variant layer is live.
 
 **M4 retention** (daily streak/missions already shipped in M3)

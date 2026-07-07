@@ -58,9 +58,14 @@ Built 2026-07-03 (Top-10 items 5–10; static-clean, needs a Studio playtest to 
 - ✅ **Mutations / variants (2026-07-08)** — composite-key stacks (`Variants` + `MutationService`);
   `MutationChance` roll on cook mints Gold/Rainbow/Giant with income multipliers. Every read path is
   variant-aware (income, pedestals/vault, steal transfer, dex credit); the variant rides `CookResult`
-  for a bigger reveal. *(static-clean; steal-path minting + prestige mutation-luck still TODO.)*
-- 🏗️ **Scaffolded (stubs, 2026-07-07):** prestige spending, duplicates→fusion, manual vault
-  selection, traps, shop per-day cap.
+  for a bigger reveal. *(static-clean; steal-path minting still TODO — mutation-luck now wired.)*
+- ✅ **Prestige spending (2026-07-08)** — first `prestige` sink (`PrestigeShopService`/`PrestigeShop.client`).
+  One-time premium unlocks bought with banked prestige (never Robux): +10% permanent income, +1
+  display slot, +1 vault slot, +50% mutation luck. Effects bank into `_v5` fields
+  (`prestigeIncomeMult` → income loop, `bonus*Slots` → PlotManager capacity, `mutationLuck` →
+  `maybeMint` — **closing the mutations `luckBonus` loop**). *(static-clean; needs playtest.)*
+- 🏗️ **Scaffolded (stubs, 2026-07-07):** duplicates→fusion, manual vault selection, traps,
+  shop per-day cap.
 - **Data:** DataStore now `_v5` (2026-07-07 scaffold; batches all later fields, back-fills from
   `_v4`/`_v3`). Earlier M3 was `_v4`; shop itself added no fields.
 

@@ -158,9 +158,10 @@ local function setupLeaderstats(player: Player, data: DataManager.PlayerData)
 	leaderstats.Parent = player
 end
 
--- Permanent income multiplier earned from rebirths (item 6).
+-- Permanent income multiplier: rebirths (item 6) + prestige-shop income unlocks
+-- (data.prestigeIncomeMult, banked by PrestigeShopService). Both are additive bonuses.
 local function incomeMultiplier(data: DataManager.PlayerData): number
-	return 1 + data.rebirths * GameConfig.RebirthIncomeBonus
+	return 1 + data.rebirths * GameConfig.RebirthIncomeBonus + data.prestigeIncomeMult
 end
 
 -- === Client state pushes (server -> client snapshots) ===
@@ -238,7 +239,8 @@ local function doCook(player: Player, data: DataManager.PlayerData): (HotDogDex.
 	-- bank — a composite "Name#Variant" when it mutates, or the plain name otherwise.
 	-- Income, pedestals/vault, and dex credit are all variant-aware, so a minted key
 	-- is fully live. Returns the base dog (for the reveal) plus the banked key.
-	local key = MutationService.maybeMint(dog.name)
+	-- data.mutationLuck (banked by the prestige "+mutation luck" unlock) raises the odds.
+	local key = MutationService.maybeMint(dog.name, data.mutationLuck)
 	data.hotDogs[key] = (data.hotDogs[key] or 0) + 1
 	DailyService.progress(player, "cook", 1)
 	return dog, key

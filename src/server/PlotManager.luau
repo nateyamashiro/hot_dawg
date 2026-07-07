@@ -296,18 +296,20 @@ local function spawnUnit(plot: Plot, anchor: BasePart, dog: HotDogDex.Unit, stea
 	end
 end
 
--- Current safe-vault / stealable-display capacity, derived from the player's
--- upgrade levels (item 5) rather than the flat starting config.
+-- Current safe-vault / stealable-display capacity: the player's coin-upgrade level
+-- (item 5) PLUS bonus slots banked by prestige unlocks / the extra-slots pass
+-- (data.bonus*Slots). Capacity beyond the pre-built anchor maximum (Max*Slots) just
+-- goes unshown — spawnUnit only fills anchors that exist.
 local function vaultCapacity(data: DataManager.PlayerData): number
 	local levels = GameConfig.VaultSlotLevels
 	local def = levels[data.vaultSlotsLvl] or levels[#levels]
-	return def.slots
+	return def.slots + data.bonusVaultSlots
 end
 
 local function displayCapacity(data: DataManager.PlayerData): number
 	local levels = GameConfig.DisplaySlotLevels
 	local def = levels[data.displaySlotsLvl] or levels[#levels]
-	return def.slots
+	return def.slots + data.bonusDisplaySlots
 end
 
 -- Rebuild a player's pedestals + vault from their current inventory. Cheap enough
@@ -325,8 +327,8 @@ function PlotManager.syncDisplay(player: Player)
 	clearUnits(plot.pedestalAnchors)
 	clearUnits(plot.vaultAnchors)
 
-	-- TODO(M5-mon): add data.bonusDisplaySlots / data.bonusVaultSlots (extra-slots
-	-- pass + prestige) on top of the coin-upgrade capacity here.
+	-- Capacity includes bonus slots from prestige unlocks / the extra-slots pass
+	-- (folded into vaultCapacity/displayCapacity).
 	local vaultCap = vaultCapacity(data)
 	local displayCap = displayCapacity(data)
 	-- TODO(M2-vault): honor data.vaultPins first — pinned keys fill the vault before

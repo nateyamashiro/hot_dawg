@@ -63,8 +63,8 @@ src/shared/Variants.luau       Mutations: composite-key encode/decode + income m
 src/shared/MenuLayout.luau     Bottom-row slot math + "⋯ More" tray + makeTrayToggle/makePanel client helpers
 src/server/Main.server.luau    Orchestrator: remotes, leaderstats, income×rebirth, cook/cook-10,
                                offline earnings, dex reward, RequestState handshake, SetVaultPin, wires ALL services
-src/server/DataManager.luau    DataStore load/save + cache (PlayerData incl. M3 + v5 fields, _v5)
-src/server/PlotManager.luau    Plots/stands, upgrade-derived pedestal/vault capacity, spawn CFrame, OwnerUserId attr, trapModel
+src/server/DataManager.luau    DataStore load/save + cache (PlayerData incl. M3 + v5 fields incl. prestigeUnlocks/prestigeIncomeMult/mutationLuck, _v5)
+src/server/PlotManager.luau    Plots/stands, capacity = upgrade level + bonus*Slots (prestige/pass), spawn CFrame, OwnerUserId attr, trapModel
 src/server/StealService.luau   Grab/carry/deposit/abort, charges, cooldowns, shield, alerts
 src/server/DefenseService.luau Net tool, buyable wall + NPC guard + trap (4th defense)
 src/server/UpgradeService.luau Buy grill / display slots / vault slots
@@ -72,8 +72,8 @@ src/server/RebirthService.luau Rebirth: reset coins, keep dogs+upgrades, income 
 src/server/DailyService.luau   Daily login streak + rotating cook/steal/earn missions
 src/server/ShopService.luau    Rotating shop: deterministic daily offers, buy validation + coin charge
 src/server/RateLimit.luau      Anti-exploit spine: per-player rate limiter + arg guards (used by new remotes)
-src/server/MutationService.luau  maybeMint(name)→inventory key — random mutation on cook (WIRED into doCook; steal path gated by MutateOnSteal, TODO)
-src/server/PrestigeShopService.luau  Spend prestige on premium unlocks (STUB)
+src/server/MutationService.luau  maybeMint(name, luckBonus)→inventory key — random mutation on cook (WIRED into doCook; luckBonus fed from data.mutationLuck; steal path gated by MutateOnSteal, TODO)
+src/server/PrestigeShopService.luau  Spend prestige on one-time premium unlocks (income%/±slots/mut-luck) — validate+charge, bank effects into _v5 fields
 src/server/FusionService.luau  Combine N dupes → better dog (STUB)
 src/server/EventService.luau   Weekly deterministic event + modifier + reward track (STUB)
 src/server/LeaderboardService.luau  OrderedDataStore top-N (coins/steals/rarest) (STUB)
@@ -91,7 +91,7 @@ src/client/Dex.client.luau     Collection grid (owned vs locked silhouettes)
 src/client/Daily.client.luau   Streak + missions panel
 src/client/Shop.client.luau    Rotating-shop panel: 6 offers, buy buttons, refresh countdown
 src/client/More.client.luau    "⋯ More" primary button — toggles the secondary-panel tray
-src/client/PrestigeShop.client.luau  Prestige-spend panel (tray; STUB)
+src/client/PrestigeShop.client.luau  Prestige-spend panel (tray): catalog + live balance + owned/afforded rows
 src/client/Fusion.client.luau  Fuse-duplicates panel (tray; STUB)
 src/client/Events.client.luau  Weekly-event panel (tray; STUB)
 src/client/Leaderboards.client.luau  Top-N ranks panel (tray; STUB)
@@ -129,8 +129,16 @@ read path is now variant-aware (`HotDogDex.getByKey`/`sortedUnits→{Unit}`, `Ma
 dex ownership collapses composite keys to base names, `PlotManager`/`StealService` carry the key +
 show variant labels), and `MutationService.maybeMint` is wired into `doCook` so a `GameConfig.MutationChance`
 roll mints Gold/Rainbow/Giant; the variant rides `CookResult` for a bigger reveal. Steal-path minting
-(`MutateOnSteal`, off) + a real `luckBonus` (needs PrestigeShop's `mutationLuck` field) remain TODO.
+(`MutateOnSteal`, off) remains TODO.
+
+**Prestige spending SHIPPED 2026-07-08** (next scaffolded feature made real): `PrestigeShopService`
+validates + charges banked `prestige` for one-time premium unlocks (`GameConfig.PrestigeShopItems`:
++10% income / +1 display / +1 vault / +50% mutation luck), banking effects into three new `_v5`
+fields — `prestigeUnlocks` (owned set), `prestigeIncomeMult` (folded additively into
+`Main.incomeMultiplier`), `mutationLuck` (now fed as `maybeMint`'s `luckBonus`, **closing the
+mutations loop**); slot unlocks bump `bonus*Slots`, now honoured by `PlotManager` capacity. The client
+tray panel renders catalog + live balance + owned/afforded rows. No `_vN` bump.
 
 Static checks clean (stylua/selene/rojo). **Still owes the 2-player Studio playtest** for M2/M3
-feel + `GAME_DESIGN §6` tuning. Next up: the remaining M3-remainder stubs (prestige spend → fusion →
-manual vault → traps), then M4. See HANDOFF.
+feel + `GAME_DESIGN §6` tuning. Next up: the remaining M3-remainder stubs (fusion → manual vault →
+traps), then M4. See HANDOFF.

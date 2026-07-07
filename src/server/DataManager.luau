@@ -107,6 +107,12 @@ export type PlayerData = {
 	bonusVaultSlots: number,
 	-- Processed dev-product receipt ids, so a re-processed receipt can't double-grant.
 	receiptHistory: { [string]: boolean },
+	-- Prestige-shop unlocks already bought (one-time each), plus the persistent
+	-- bonuses they bank: a permanent income-multiplier fraction folded into the
+	-- income loop, and a mutation-luck bonus fed to MutationService.maybeMint.
+	prestigeUnlocks: { [string]: boolean },
+	prestigeIncomeMult: number,
+	mutationLuck: number,
 	-- os.time until which this player can't start another trade (post-trade cooldown).
 	tradeCooldownUntil: number,
 	-- Owned + equipped cosmetics (CosmeticService).
@@ -151,6 +157,9 @@ local function defaultData(): PlayerData
 		vip = false,
 		bonusDisplaySlots = 0,
 		bonusVaultSlots = 0,
+		prestigeUnlocks = {},
+		prestigeIncomeMult = 0,
+		mutationLuck = 0,
 		receiptHistory = {},
 		tradeCooldownUntil = 0,
 		cosmetics = { equipped = nil, owned = {} },
@@ -265,6 +274,7 @@ function DataManager.load(player: Player): PlayerData
 			copyBoolMap(result.achievements, data.achievements)
 			copyBoolMap(result.redeemedCodes, data.redeemedCodes)
 			copyBoolMap(result.receiptHistory, data.receiptHistory)
+			copyBoolMap(result.prestigeUnlocks, data.prestigeUnlocks)
 			if type(result.eventPoints) == "table" then
 				for k, v in result.eventPoints do
 					if type(k) == "string" and type(v) == "number" then
@@ -278,6 +288,12 @@ function DataManager.load(player: Player): PlayerData
 			end
 			if type(result.bonusVaultSlots) == "number" then
 				data.bonusVaultSlots = math.max(0, math.floor(result.bonusVaultSlots))
+			end
+			if type(result.prestigeIncomeMult) == "number" then
+				data.prestigeIncomeMult = math.max(0, result.prestigeIncomeMult)
+			end
+			if type(result.mutationLuck) == "number" then
+				data.mutationLuck = math.max(0, result.mutationLuck)
 			end
 			if type(result.tradeCooldownUntil) == "number" then
 				data.tradeCooldownUntil = result.tradeCooldownUntil
