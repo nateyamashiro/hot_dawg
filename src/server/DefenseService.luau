@@ -1,9 +1,11 @@
 --!strict
 -- Defense side of the loop. Three pieces (GDD §4.1):
 --   * Net tool  — everyone gets one; activate near a carrying thief to stun + drop.
---   * Wall      — buyable; lengthens the steal hold-time on your stand.
 --   * NPC guard — buyable; auto-nets carrying thieves on your plot even while away.
+--   * Trap      — buyable; stuns a carrier who lingers on the plot.
 -- Purchases mutate coins server-side; StealService owns the actual carry/drop.
+-- (The old buyable wall moved to the BuildCatalog perimeter wall — BuildService owns
+-- it now; old wall owners are grandfathered `built.wall` in DataManager.load.)
 
 local Players = game:GetService("Players")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
@@ -111,23 +113,6 @@ local function giveNet(player: Player, char: Model)
 	tool.Parent = player:FindFirstChildOfClass("Backpack") or char
 end
 
--- === Wall ===
-local function buildWall(plot: PlotManager.Plot)
-	local wall = Instance.new("Model")
-	wall.Name = "Wall"
-	-- A low fence across the front of the pedestals.
-	local fence = Instance.new("Part")
-	fence.Anchored = true
-	fence.CanCollide = true
-	fence.Size = Vector3.new(24, 4, 1)
-	fence.Color = Color3.fromRGB(90, 90, 110)
-	fence.Material = Enum.Material.Metal
-	fence.CFrame = plot.facing * CFrame.new(0, 2, 5)
-	fence.Parent = wall
-	wall.Parent = plot.model
-	plot.wallModel = wall
-end
-
 -- === Guard ===
 local function buildGuard(plot: PlotManager.Plot)
 	local guard = Instance.new("Model")
@@ -219,10 +204,6 @@ function DefenseService.applyLoadedDefenses(player: Player)
 	if not (data and plot) then
 		return
 	end
-	if data.defenses.wall then
-		buildWall(plot)
-		PlotManager.setStealHoldBonus(player, GameConfig.WallHoldBonusSeconds)
-	end
 	if data.defenses.guard then
 		buildGuard(plot)
 	end
@@ -239,22 +220,7 @@ local function onBuyDefense(player: Player, which: string)
 		return
 	end
 
-	if which == "wall" then
-		if data.defenses.wall then
-			feedback(player, false, "You already have a wall.")
-			return
-		end
-		if data.coins < GameConfig.WallCost then
-			feedback(player, false, "Not enough coins for a wall.")
-			return
-		end
-		data.coins -= GameConfig.WallCost
-		data.defenses.wall = true
-		buildWall(plot)
-		PlotManager.setStealHoldBonus(player, GameConfig.WallHoldBonusSeconds)
-		updateLeaderstats(player)
-		feedback(player, true, "Wall built! Thieves take longer to steal.")
-	elseif which == "guard" then
+	if which == "guard" then
 		if data.defenses.guard then
 			feedback(player, false, "You already have a guard.")
 			return

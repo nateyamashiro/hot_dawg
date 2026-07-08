@@ -7,6 +7,22 @@ Living list of remaining work, most-impactful first. Milestones 1 & 2 are built 
 
 ---
 
+## 🔨 VISUAL OVERHAUL + CLASSIC-TYCOON LAYER (current focus, 2026-07-09)
+
+Approved plan: `~/.claude/plans/inherited-hugging-alpaca.md` · phase order in `docs/NEXT_SESSION_PROMPT.md`.
+- ✅ Enlarged plots · ✅ starting Common glizzy · ✅ Phase-0 scaffold (config + `_v5` fields + 6 stub
+  services + `makeWindow`).
+- ✅ Walk-on **pad framework** + **🌭 cook station** + **🔥 stove (passive income)** + grill/display/vault
+  **upgrade pads** (green/red by affordability).
+- ✅ Cook **gated**: free single cook on a 5-min cooldown; cook-10 = paid bypass.
+- 🔜 **Building shell (`BuildService`, Phase 3):** build pads grow the plot INTO a stand
+  (floors/stairs/elevator → walls/gate). **← NEXT.**
+- ⏳ Phase 2 UI migration (panels → `makeWindow` + toolbar) · Phase 4 conveyor + upgraders · Phase 5
+  non-damaging weapons + zone expansion.
+- ❓ Old on-screen upgrade menu is now redundant with pads (fallback) — ask Nate if it should be removed.
+
+---
+
 ## ✅ Done — the 2026-07-03 Top 10 (M2 clarity + M3 progression)
 
 All ten shipped and pass `stylua`/`selene`/`rojo build`. Still owe a live 2-player Studio playtest.

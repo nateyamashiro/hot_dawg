@@ -1,10 +1,18 @@
 # HANDOFF — Steal a Glizzy 🌭
 
-**Last updated:** 2026-07-08 (**Prestige spending SHIPPED** — second scaffolded feature made real:
-`PrestigeShopService` sells one-time premium unlocks for banked `prestige`; effects bank into three
-new `_v5` fields — `prestigeIncomeMult` (income loop), `bonus*Slots` (PlotManager capacity, now wired),
-`mutationLuck` (**closed the mutations `luckBonus` loop**). Mutations-on-cook shipped just before.
-Scaffold context below still applies for the rest of M3-remainder → M7.)
+**Last updated:** 2026-07-09 (**VISUAL OVERHAUL + CLASSIC-TYCOON LAYER in progress** — Nate's post-look
+direction. Since the last handoff: **Fusion shipped**; then a big pivot to make the game look/feel like
+a real tycoon. Done so far: **enlarged plots**; **new players start with 1 random Common glizzy**;
+**Phase 0 scaffold** (all overhaul config + `_v5` data fields + 6 compiling stub services
+[AutoCooker/Build/Weapon/Conveyor/Upgrader/Zone] wired into `Main` + `MenuLayout.makeWindow`
+drag/minimize/close skeleton); and the **physical tycoon stations** — a reusable **walk-on pad
+framework** in `PlotManager`, a **🌭 Cook Station**, a **🔥 Stove** (passive un-stealable coins, starts
+UNBUILT, built/upgraded via a pad, folded into tick + offline income), and **walk-on upgrade pads**
+(grill/display/vault) that are **GREEN affordable / RED too-expensive** live. **Cook is now gated**:
+single cook is FREE but on a 5-min cooldown (`CookCooldownSeconds`/`data.cookReadyAt`); cook-10 is the
+paid bypass. **See `docs/NEXT_SESSION_PROMPT.md` + the plan at
+`~/.claude/plans/inherited-hugging-alpaca.md`.** NEXT: the building shell — walk-on build pads that
+grow the bare plot INTO a stand [`BuildService`/Phase 3]. **NOT pushed; NOT yet 2-player-playtested.**)
 **For:** the next Claude Code session (and Nate)
 
 ## 🏗️ The scaffold (read this before implementing anything new)
@@ -37,18 +45,20 @@ Implement feature by feature; don't re-architect. Key facts:
 - **Handshake:** new initial-state pushes are already in `Main.pushAllState` (prestige/event/
   leaderboard/achievement/cosmetic/purchase). Any NEW one must go there too + be `RequestState`-fired.
 - **Build order** (retention before content): M3-remainder (~~mutations✅~~ → ~~prestige spend✅~~ →
-  fusion → manual vault → traps) → M4 (events/leaderboards/achievements/codes) → hardening pass → M5
-  (passes/products/cosmetics) → M6 (trading/parties/emotes/clips) → M7 (art/audio/onboarding/launch).
+  ~~fusion✅~~ → manual vault → traps) → M4 (events/leaderboards/achievements/codes) → hardening pass →
+  M5 (passes/products/cosmetics) → M6 (trading/parties/emotes/clips) → M7 (art/audio/onboarding/launch).
 
 ---
 
 ## 👉 What the NEXT session should do
 
-**Next CODE feature → Duplicates → fusion** (`FusionService` + `Fusion.client`). See
-`docs/NEXT_SESSION_PROMPT.md` for the step-by-step — it's the next item in the build order now that
-mutations + prestige are done. Combine N dupes of an inventory key into a better outcome;
-`GameConfig.FusionInputs` / `FusionForcesMutation` exist, and `Variants.pickMint` /
-`MutationService` can be reused to force a mutation on the fused result.
+**Next CODE feature → the building shell (Phase 3 of the overhaul plan).** Flesh out `BuildService`
+(stub) so walk-on **build pads** raise the actual stand structure — the bare plot visibly **grows into
+a stand** (floors/stairs/elevator → walls/gate). `GameConfig.BuildCatalog` + `data.built` already
+exist; add `PlotManager.spawnStructure`/`rebuildStructures` + build pads (extend `PlotManager.PAD_LAYOUT`
+or a second pad group), routing ids through `Main.setPadHandler`. See `docs/NEXT_SESSION_PROMPT.md` +
+the approved plan `~/.claude/plans/inherited-hugging-alpaca.md` for the full phase order. *(Manual vault
+selection — `data.vaultPins`, `SetVaultPin` handler exists — is now deferred behind the overhaul.)*
 
 **Still owed (needs a human): playtest & tune Milestones 2 + 3 in a real 2-player Studio session.**
 Everything through M3 (plus mutations) is BUILT and passes static checks (rojo build + selene +
@@ -75,6 +85,25 @@ validation for M2 *and* the M3 progression layer.
 
 **Fast-follows still open inside M2:** traps, manual vault selection.
 Do NOT re-ask what's already locked (see below / CLAUDE.md / `GAME_DESIGN.md §2, §4`).
+
+## ⚠️ Tycoon-layer gotchas / notes (overhaul)
+
+- **Walk-on pads:** `PlotManager` owns pad *instances* + owner-only debounced Touched; `Main` owns the
+  *rules*. To add a pad: append `{ id, offset }` to `PlotManager.PAD_LAYOUT`, route the id in
+  `Main.setPadHandler`, and emit its label/affordability from `Main.syncPads`. `updatePads` colours
+  pads green/red and hides maxed ones. `syncPads` runs on join AND every income tick (keeps colours
+  live) — keep it cheap.
+- **Stove income is COINS, not dogs** — it lives in `data.autoCookerLvl` (0 = unbuilt) and is added to
+  income via `AutoCookerService.coinsPerSecond` in BOTH `Main`'s tick loop and the offline calc. It is
+  un-stealable by construction. `PlotManager.setStove` renders the physical model.
+- **Cook is cooldown-gated:** `Main.cookOne` (shared by the Cook button + the physical station) is FREE
+  but blocked until `os.time() >= data.cookReadyAt` (`GameConfig.CookCooldownSeconds`). **Cook-10 is
+  deliberately still PAID + ungated** (the bypass) — if you rebalance cook, revisit that pairing.
+- **`makeBillboard`/pads use `.CanTouch`/`.Transparency`/BillboardGui `.Enabled` to hide** — BaseParts
+  have NO `.Visible` property (setting it errors). Follow `updatePads`/`makeBuyPad` for the pattern.
+- The old on-screen **upgrade menu is redundant** with the pads now (kept as a fallback). Its labels
+  can go briefly stale after a *menu* buy (pads re-sync on the next tick / pad touch). Ask Nate if he
+  wants the menu removed.
 
 ## ⚠️ M3-specific gotchas / notes
 

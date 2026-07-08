@@ -7,6 +7,13 @@ Each should be independently testable in Studio. `✅ done · 🔜 next · ⏳ l
 > compiling stubs** (DataStore `_v5`, `Variants`/`MenuLayout` shared modules, 11 new server services
 > + `RateLimit`, 10 client tray panels, all wired into `Main`; real logic `TODO(<milestone>)`-marked).
 > The `🏗️` items below now have skeletons to fill in — see `docs/HANDOFF.md` for the build order.
+>
+> **2026-07-08/09 shipped:** mutations-on-cook · prestige spending · fusion · then a **VISUAL OVERHAUL +
+> CLASSIC-TYCOON pivot** (Nate, post-Studio look): bigger plots, walk-on-pad tycoon loop (cook station,
+> passive stove, green/red upgrade pads), cook now gated (free single cook / 5-min cooldown; cook-10 =
+> paid bypass), starting Common glizzy. **NEXT: the building shell (`BuildService`, Phase 3) — build
+> pads that grow the plot INTO a stand.** Approved plan: `~/.claude/plans/inherited-hugging-alpaca.md`;
+> phases in `docs/NEXT_SESSION_PROMPT.md`.
 
 ---
 

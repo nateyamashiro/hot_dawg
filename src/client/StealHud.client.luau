@@ -106,7 +106,8 @@ local function makeBuyButton(text: string, yOffset: number, which: string): Text
 	end)
 	return btn
 end
-makeBuyButton(string.format("🧱 Wall (%d)", GameConfig.WallCost), -110, "wall")
+-- (The 🧱 Wall button is gone — the perimeter wall is a BuildCatalog structure now,
+-- bought on the 🏗️ build pad at your stand.)
 makeBuyButton(string.format("🛡️ Guard (%d)", GameConfig.GuardCost), -60, "guard")
 
 gui.Parent = player:WaitForChild("PlayerGui")

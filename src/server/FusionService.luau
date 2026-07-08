@@ -9,6 +9,7 @@ local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local ServerScriptService = game:GetService("ServerScriptService")
 
 local GameConfig = require(ReplicatedStorage.Shared.GameConfig)
+local Variants = require(ReplicatedStorage.Shared.Variants)
 local DataManager = require(ServerScriptService.Server.DataManager)
 local PlotManager = require(ServerScriptService.Server.PlotManager)
 local RateLimit = require(ServerScriptService.Server.RateLimit)
@@ -30,12 +31,38 @@ local function onFuse(player: Player, key: string)
 		remFeedback:FireClient(player, false, "Need " .. GameConfig.FusionInputs .. " to fuse.")
 		return
 	end
-	-- TODO(M3-fusion): consume GameConfig.FusionInputs of `key`, then grant the
-	-- result per a FusionRules mapping (upgrade one rarity tier, or force a mutation
-	-- via Variants when GameConfig.FusionForcesMutation). Then sync + push below.
+
+	-- Force-mutation ladder (GDD §7 fork): fusing N dupes of a key yields ONE of the
+	-- same base dog, one variant up (base → Gold → Rainbow → Giant). Reuses the live
+	-- Variants layer so Gold/Rainbow dupes fuse too; Giant is the top and can't fuse
+	-- higher. (GameConfig.FusionForcesMutation flags this mode; a rarity-tier-upgrade
+	-- alternative is the future fork, needing a HotDogDex "next dog up" helper.)
+	local baseName, variant = Variants.decode(key)
+	local nextVariant = Variants.nextVariant(variant)
+	if not nextVariant then
+		remFeedback:FireClient(
+			player,
+			false,
+			"That's already the top mutation — can't fuse higher."
+		)
+		return
+	end
+	local resultKey = Variants.encode(baseName, nextVariant)
+
+	-- Consume the inputs (clear the stack when it empties so a 0-count key doesn't
+	-- linger), then grant the fused result.
+	local remaining = have - GameConfig.FusionInputs
+	data.hotDogs[key] = remaining > 0 and remaining or nil
+	data.hotDogs[resultKey] = (data.hotDogs[resultKey] or 0) + 1
+
 	updateLeaderstats(player)
 	PlotManager.syncDisplay(player)
 	onInventoryChanged(player)
+	remFeedback:FireClient(
+		player,
+		true,
+		"⚗️ Fused into " .. Variants.displayName(resultKey) .. "!"
+	)
 end
 
 function FusionService.init(deps: {

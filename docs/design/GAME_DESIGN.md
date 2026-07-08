@@ -3,11 +3,14 @@
 > **Living doc.** Update as decisions get made. `✅` = locked. Keep this the single source of
 > truth for *what* we're building; `CLAUDE.md` covers *how* (tech/workflow).
 
-**Last updated:** 2026-07-08 · **Status:** Milestones 1–3 BUILT & static-clean (incl. rotating shop,
-**mutations-on-cook**, and **prestige spending**, all shipped 2026-07-08). **M3-remainder → M7 planned
-+ SCAFFOLDED as compiling stubs** (see §5 scaffold note, §7 decision log). Awaiting a 2-player Studio
-playtest to validate M2/M3 feel/tuning. Next: the remaining M3-remainder stubs (fusion → manual vault →
-traps), then M4.
+**Last updated:** 2026-07-09 · **Status:** Milestones 1–3 + M3-remainder (rotating shop,
+**mutations-on-cook**, **prestige spending**, **fusion**) BUILT & static-clean. Now mid **VISUAL
+OVERHAUL + CLASSIC-TYCOON LAYER** (Nate's post-Studio direction; approved plan at
+`~/.claude/plans/inherited-hugging-alpaca.md`): bigger plots, a **walk-on-pad tycoon loop** (cook
+station, passive **stove**, upgrade pads coloured green/red by affordability), **cook now gated** (free
+single cook on a 5-min cooldown; cook-10 = paid bypass), starting Common glizzy. **M4–M7 still
+scaffolded as compiling stubs.** Awaiting a 2-player Studio playtest. NEXT: the building shell —
+build pads that grow the plot INTO a stand (`BuildService`/Phase 3).
 
 ---
 
@@ -215,6 +218,22 @@ Cooking and stealing are **co-equal** paths to rare dogs — players can lean ei
   arg of `MutationService.maybeMint` — **closing the loop the mutations feature stubbed**).
 - No DataStore `_vN` bump — the three new fields batch into the existing `_v5` back-fill.
 
+**Milestone 3-remainder — fusion** (2026-07-08; `FusionService`/`Fusion.client`)
+- **Duplicate sink** — `Fuse(key)` consumes `GameConfig.FusionInputs` (5) of one inventory key and
+  grants ONE of the same base dog **one variant up the mutation ladder**: `base → Gold → Rainbow →
+  Giant`. So 5 plain → 1 Gold, 5 Gold → 1 Rainbow, etc. Gives spare dupes a purpose + a second path
+  to mutations besides the cook roll.
+- **Composite-key aware** — operates on keys via the live `Variants` layer, so already-mutated stacks
+  fuse too. The ladder step is a new shared helper `Variants.nextVariant`; **Giant is the top** (no
+  higher variant → server refuses, client hides the row).
+- **Server-authoritative** — validates the player owns ≥`FusionInputs` of the key, consumes them
+  (clearing an emptied stack to nil), grants the result, then `updateLeaderstats` + `syncDisplay` +
+  `pushInventory`. Rate-limited (`RateLimit.check`, 5/win). Client previews the result per fusable key
+  in the "⋯ More" tray panel; single-click fuses.
+- No DataStore change at all — fusion only moves counts inside the existing `hotDogs` map.
+- **Design fork (see §7):** shipped the *force-mutation ladder*; the alternative (upgrade one rarity
+  tier) is deferred — it needs a `HotDogDex` "next dog up a tier" helper that doesn't exist yet.
+
 **Scaffolded 2026-07-07 (compiling STUBS — architecture only, real logic is `TODO`-marked)**
 The full M3-remainder → M7 build is planned + skeleton-laid: `Variants` (composite-key mutation
 layer) + `MenuLayout` (shared bottom-row/"⋯ More" tray) shared modules; `RateLimit` anti-exploit
@@ -223,6 +242,29 @@ achievements, codes, purchases (passes+products), cosmetics, trading, emotes; ma
 panels; `defenses.trap` (4th defense, ~complete) + `vaultPins` (manual vault, handler in `Main`).
 DataStore bumped `_v4` → `_v5` (one migration batching every later field; `hotDogs` unchanged).
 Static-clean; each stub names where real logic goes. See `docs/HANDOFF.md` for the build order.
+
+**Visual overhaul + classic-tycoon layer — IN PROGRESS 2026-07-09** (approved plan at
+`~/.claude/plans/inherited-hugging-alpaca.md`; Nate's direction after a Studio look). The game is
+being reshaped from menu-driven into a **physical walk-on-pad tycoon**:
+- **Bigger plots** (60×46 pad) with a front apron of walk-on pads; **new players start with 1 random
+  Common glizzy** (granted only on first join in `DataManager.load`, so a dog-less returning player is
+  never re-granted).
+- **Walk-on pad framework** (`PlotManager.makeBuyPad`/`PAD_LAYOUT`/`updatePads`): owner-only, debounced
+  Touched pads that show a cost and are **GREEN when affordable / RED when too expensive** (live each
+  tick). `Main.syncPads` computes labels/affordability; `setPadHandler` routes the purchase.
+- **🌭 Cook Station** — a ProximityPrompt grill on the stand; cooking is now a *place*, not just a
+  button (both share `Main.cookOne`).
+- **🔥 Stove (passive income)** — a SEPARATE machine from the gacha cook that emits **un-stealable
+  coins** (never dogs). Starts UNBUILT (`autoCookerLvl 0`); built + upgraded via a walk-on pad
+  (`AutoCookerService.tryUpgrade`); income folded into the tick loop AND offline earnings.
+- **Grill/display/vault upgrades are now walk-on pads too** (reuse `UpgradeService.tryBuy`; the old
+  on-screen menu stays as a redundant fallback).
+- **Cook gated:** the single cook is FREE but on a **5-min cooldown** (`CookCooldownSeconds` /
+  `data.cookReadyAt`) — the "wall" that slows glizzy acquisition and rewards longer/returning play.
+  **Cook-10 stays PAID** (`CookCost`×10) as the "pay to skip the wait / bulk" bypass.
+- Scaffolded-but-stubbed for the remaining phases: `BuildService` (the building shell — floors/stairs/
+  elevator/walls/gate via build pads, **NEXT**), `ConveyorService`, `UpgraderService`, `WeaponService`
+  (non-damaging), `ZoneService`, and `MenuLayout.makeWindow` (drag/minimize/close, for the UI migration).
 
 ## 6. Current tuning values (from `GameConfig.luau` / `HotDogDex.luau`)
 
@@ -280,6 +322,15 @@ Static-clean; each stub names where real logic goes. See `docs/HANDOFF.md` for t
 - Passes/products: ids 0 (unconfigured) · extra-slots +2 display/+1 vault · VIP +10% income · 2× coins
 - Cosmetics: 3 items (10–25 prestige) · Trade: 30s cooldown, ≤6 items · Emotes: 5 presets
 
+**Tycoon layer (overhaul, all reasoned placeholders — tune in playtest)**
+- Plot pad: 60×46 · row spacing 96 · row separation (street) 124
+- Cook cooldown: **300s (5 min)** free single cook · cook-10 stays `CookCost`×10 = 100 coins
+- Auto-cooker stove tiers (cost / coins-sec): **0/1**, 400/3, 2000/8, 9000/20, 35000/50
+- Cooker upgrader tiers (cost / output×): 0/1.0, 2500/1.25, 12000/1.6, 60000/2.0
+- Build catalog: floor2 1500, stairs 400, floor3 6000, elevator 8000, wall 1200, gate 3000
+- Weapons (non-damaging): mustard-slow 800, ketchup-knockback 4000, relish-stun 15000
+- Conveyor: spawn every 6s, ≤8 on belt · Zones (prestige): 0, 5, 15
+
 ## 7. Decision log
 
 | Date | Decision | Rationale |
@@ -304,3 +355,10 @@ Static-clean; each stub names where real logic goes. See `docs/HANDOFF.md` for t
 | 2026-07-07 | **Trading safeguards = baseline** (two-sided confirm + post-trade cooldown + server trade log) | Solid anti-scam floor; value-diff warning / escrow deferred as later hardening |
 | 2026-07-07 | **One `_v5` migration batches ALL later fields** (M3-remainder → M6) | Single migration beats five; empty defaults are harmless; keeps `defaultData()` authoritative |
 | 2026-07-07 | Whole M3-remainder → M7 **scaffolded as compiling stubs** (no full logic) | Establishes the architecture so later sessions implement feature-by-feature against a stable, static-clean skeleton |
+| 2026-07-08 | **Fusion = force-mutation ladder** (5 dupes of a key → 1 same base dog one variant up: base→Gold→Rainbow→Giant) over "upgrade a rarity tier" | Self-contained, reuses the live `Variants` layer, deterministic (enables a client result preview), handles already-mutated stacks; tier-upgrade needs a `HotDogDex` "next dog up" helper that doesn't exist yet |
+| 2026-07-09 | **Pivot to a physical walk-on-pad TYCOON** (Nate, after a Studio look): plot starts bare → walk-on pads build/upgrade → it grows into a stand; cook/upgrades become physical stations | The game "looked bad" + lacked genre-standard tycoon dopamine (droppers, base-building). Matches Steal-a-Brainrot/classic-tycoon leaders; pads are more legible + satisfying than menus |
+| 2026-07-09 | **Auto-cooker stove = COINS only, un-stealable, SEPARATE from the gacha cook**; starts unbuilt | Gives a passive income FLOOR without touching the steal-defend loop (only display dogs are stealable); building it via a pad is the first satisfying tycoon purchase |
+| 2026-07-09 | **Single cook FREE but on a 5-min cooldown** (the "wall"); **cook-10 stays PAID + ungated** (the bypass) | Slows glizzy spam → rewards return visits / long sessions (Nate's ask); cook-10 gives impatient/rich players a coin-priced skip, so coins still matter. Open: revisit cook-10 if cook is rebalanced |
+| 2026-07-09 | **Walk-on pads coloured green (affordable) / red (too expensive)**, refreshed each income tick | Immediate legibility of what you can buy; server-authoritative (affordability computed in `Main.syncPads`), cheap for ~4 pads |
+| 2026-07-09 | **Weapons will be NON-DAMAGING** (slow/knockback/stun), never HP/damage | All-ages / Gen-Alpha tone + lower moderation risk; still adds defense-loop counterplay |
+| 2026-07-09 | **UI overhaul = shared-window upgrade** (`makeWindow` drag/minimize/close + toolbar), NOT a full rebuild | Reuses working panels; incremental + lower regression risk than retiring all 16 GUIs at once |

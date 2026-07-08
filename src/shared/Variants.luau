@@ -101,6 +101,21 @@ function Variants.def(variant: Variant): VariantDef?
 	return byVariant[variant]
 end
 
+-- The next variant "up" the mutation ladder (DEFS order = base < Gold < Rainbow <
+-- Giant), or nil if already at the top. Fusion uses this: N dupes of a key fuse into
+-- one of the same base dog at the next variant up (5 plain → 1 Gold → 1 Rainbow → …).
+-- Both sides read it (server grants the result, client previews it), so the ladder
+-- stays a single source of truth.
+function Variants.nextVariant(variant: Variant): Variant?
+	for i, def in DEFS do
+		if def.variant == variant then
+			local nextDef = DEFS[i + 1]
+			return nextDef and nextDef.variant or nil
+		end
+	end
+	return nil
+end
+
 -- Human label like "Gold Chicago Dog" (or just the name for base).
 function Variants.displayName(key: string): string
 	local name, variant = Variants.decode(key)

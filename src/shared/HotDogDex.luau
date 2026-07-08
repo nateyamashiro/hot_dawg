@@ -107,6 +107,17 @@ function HotDogDex.getByKey(key: string): HotDog?
 	}
 end
 
+-- Pick a random dog of a specific rarity tier, or nil if the tier is empty/unknown.
+-- Used for the brand-new-player starting-glizzy grant (DataManager). `rarity` is a
+-- plain string so callers needn't cast into the Rarity union.
+function HotDogDex.randomOfRarity(rarity: string): HotDog?
+	local names = DOGS_BY_RARITY[rarity]
+	if not names or #names == 0 then
+		return nil
+	end
+	return byName[names[math.random(1, #names)]]
+end
+
 -- The display colour for a rarity (used by the reveal UI and stealable pedestals).
 function HotDogDex.colorFor(rarity: Rarity): Color3
 	for _, def in RARITY do

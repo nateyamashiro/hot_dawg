@@ -57,22 +57,26 @@ local function setLevel(data: DataManager.PlayerData, which: string, value: numb
 	end
 end
 
-local function onBuyUpgrade(player: Player, which: string)
+-- Validate + charge + apply one upgrade step for `which` ("grill"/"display"/"vault").
+-- Public so both the BuyUpgrade remote (menu) and the walk-on upgrade pads (via Main's
+-- pad handler) drive the exact same server-authoritative path. Returns true on a
+-- successful purchase (the pad handler pops a celebration on it).
+function UpgradeService.tryBuy(player: Player, which: string): boolean
 	local data = DataManager.get(player)
 	local levels = levelsFor(which)
 	if not (data and levels) then
-		return
+		return false
 	end
 
 	local nextLvl = getLevel(data, which) + 1
 	local nextDef = levels[nextLvl]
 	if not nextDef then
 		feedback(player, false, "That's already maxed out!")
-		return
+		return false
 	end
 	if data.coins < nextDef.cost then
 		feedback(player, false, "Not enough coins — need " .. nextDef.cost .. ".")
-		return
+		return false
 	end
 
 	data.coins -= nextDef.cost
@@ -90,6 +94,7 @@ local function onBuyUpgrade(player: Player, which: string)
 		PlotManager.syncDisplay(player)
 		feedback(player, true, "🔒 Vault slots upgraded to level " .. nextLvl .. "!")
 	end
+	return true
 end
 
 function UpgradeService.init(deps: {
@@ -106,7 +111,7 @@ function UpgradeService.init(deps: {
 
 	remBuyUpgrade.OnServerEvent:Connect(function(player, which)
 		if type(which) == "string" then
-			onBuyUpgrade(player, which)
+			UpgradeService.tryBuy(player, which)
 		end
 	end)
 end

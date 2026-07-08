@@ -10,7 +10,9 @@ local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local ServerScriptService = game:GetService("ServerScriptService")
 
 local GameConfig = require(ReplicatedStorage.Shared.GameConfig)
+local GlizzyModel = require(ReplicatedStorage.Shared.GlizzyModel)
 local HotDogDex = require(ReplicatedStorage.Shared.HotDogDex)
+local Sfx = require(ReplicatedStorage.Shared.Sfx)
 local Variants = require(ReplicatedStorage.Shared.Variants)
 local DataManager = require(ServerScriptService.Server.DataManager)
 local PlotManager = require(ServerScriptService.Server.PlotManager)
@@ -44,6 +46,7 @@ local remFeedback: RemoteEvent
 local remStats: RemoteEvent
 local remCarryUpdate: RemoteEvent
 local remStealAlert: RemoteEvent
+local remCelebrate: RemoteEvent
 
 -- === Helpers ===
 local function feedback(player: Player, ok: boolean, message: string)
@@ -72,26 +75,31 @@ local function attachCarry(thief: Player, dogName: string): CarryVisuals?
 		return nil
 	end
 
-	local dog = HotDogDex.getByKey(dogName)
-	local color = dog and HotDogDex.colorFor(dog.rarity) or Color3.fromRGB(255, 255, 255)
+	-- Carry rig: a real glizzy at 0.85× (Giant carries big at 1.28×), welded above the
+	-- thief's head. Rarity fx stay ON for carries — the aura is a thief beacon.
+	local baseName, variant = Variants.decode(dogName)
+	local dog = HotDogDex.get(baseName)
+	local rarity: HotDogDex.Rarity = if dog then dog.rarity else "Common"
 
 	local folder = Instance.new("Folder")
 	folder.Name = "CarriedDog"
 
-	local part = Instance.new("Part")
-	part.Name = "Dog"
-	part.Size = Vector3.new(1.6, 0.7, 3)
-	part.Color = color
-	part.Material = Enum.Material.SmoothPlastic
-	part.CanCollide = false
-	part.Massless = true
-	part.CFrame = hrp.CFrame * CFrame.new(0, 3, 0)
-	part.Parent = folder
+	local unit = GlizzyModel.build(baseName, {
+		rarity = rarity,
+		variant = variant,
+		scale = if variant == "Giant" then 1.28 else 0.85,
+		anchored = false,
+	})
+	unit:SetAttribute("DogName", baseName)
+	unit:SetAttribute("DogKey", dogName)
+	unit:PivotTo(hrp.CFrame * CFrame.new(0, 3, 0))
+	local part = unit.PrimaryPart :: BasePart
 
 	local weld = Instance.new("WeldConstraint")
 	weld.Part0 = part
 	weld.Part1 = hrp
 	weld.Parent = part
+	unit.Parent = folder
 
 	-- Visible marker for everyone chasing (GDD §4.1: "visible marker/glow").
 	local bb = Instance.new("BillboardGui")
@@ -205,6 +213,8 @@ local function onStealTriggered(
 	if not unitPart.Parent then
 		return -- unit was destroyed mid-attempt
 	end
+	-- Captured before syncDisplay destroys the unit (the Giant shake needs it below).
+	local unitPos = unitPart.Position
 
 	-- Commit: remove from victim NOW; the dog belongs to nobody until deposit/abort.
 	victimData.hotDogs[dogName] -= 1
@@ -233,6 +243,17 @@ local function onStealTriggered(
 	PlotManager.setDepositEnabled(thief, true)
 	remCarryUpdate:FireClient(thief, true, dogLabel)
 	remStealAlert:FireClient(victim, thief.UserId, thief.DisplayName, dogLabel)
+
+	-- Juice (P-C): alarm flashes on the victim's sign post for everyone watching;
+	-- grabbing a Giant shakes nearby cameras (it's a GIANT).
+	local signPost = PlotManager.signPostOf(victim)
+	if signPost then
+		remCelebrate:FireAllClients("stealAlarm", signPost)
+	end
+	local _, variant = Variants.decode(dogName)
+	if variant == "Giant" then
+		remCelebrate:FireAllClients("giantShake", unitPos)
+	end
 end
 
 -- === Public: deposit at own stand (registered with PlotManager) ===
@@ -245,6 +266,11 @@ local function onDeposit(thief: Player)
 	clearCarryVisuals(thief, carry)
 
 	grantDog(thief, carry.dogName)
+	-- 3D "banked it!" sting at the thief's stand (silence-safe until ids land).
+	local depositPart = PlotManager.signPostOf(thief)
+	if depositPart then
+		Sfx.play("Deposit", depositPart)
+	end
 
 	local thiefData = DataManager.get(thief)
 	if thiefData then
@@ -305,6 +331,7 @@ function StealService.init(deps: {
 	remStats = deps.remotes:WaitForChild("StatsUpdate") :: RemoteEvent
 	remCarryUpdate = deps.remotes:WaitForChild("CarryUpdate") :: RemoteEvent
 	remStealAlert = deps.remotes:WaitForChild("StealAlert") :: RemoteEvent
+	remCelebrate = deps.remotes:WaitForChild("Celebrate") :: RemoteEvent
 
 	PlotManager.setStealHandler(onStealTriggered)
 	PlotManager.setDepositHandler(onDeposit)

@@ -37,19 +37,30 @@ inventoryUpdate.OnClientEvent:Connect(function(hotDogs)
 	if type(hotDogs) ~= "table" then
 		return
 	end
-	-- TODO(M3-fusion): preview the fusion RESULT per key + confirm dialog.
+	-- Show one row per key you own ≥FusionInputs of, previewing the fused RESULT
+	-- (base → Gold → Rainbow → Giant). Keys already at the top variant (Giant) can't
+	-- fuse higher, so we skip them — the server refuses too. Result colour comes from
+	-- the target variant so the reward reads at a glance.
 	local i = 0
 	for key, count in hotDogs do
-		if count >= GameConfig.FusionInputs then
+		local _, variant = Variants.decode(key)
+		local nextVariant = Variants.nextVariant(variant)
+		if count >= GameConfig.FusionInputs and nextVariant then
 			i += 1
+			local resultKey = Variants.encode(Variants.baseName(key), nextVariant)
+			local resultDef = Variants.def(nextVariant)
 			local row = Instance.new("TextButton")
 			row.Size = UDim2.new(1, 0, 0, 40)
 			row.LayoutOrder = i
 			row.BackgroundColor3 = Color3.fromRGB(60, 55, 75)
-			row.TextColor3 = Color3.fromRGB(255, 255, 255)
+			row.TextColor3 = resultDef and resultDef.color or Color3.fromRGB(255, 255, 255)
 			row.TextScaled = true
 			row.Font = Enum.Font.GothamBold
-			row.Text = "Fuse " .. GameConfig.FusionInputs .. "× " .. Variants.displayName(key)
+			row.Text = GameConfig.FusionInputs
+				.. "× "
+				.. Variants.displayName(key)
+				.. "  →  "
+				.. Variants.displayName(resultKey)
 			row.Parent = content
 			row.Activated:Connect(function()
 				fuse:FireServer(key)

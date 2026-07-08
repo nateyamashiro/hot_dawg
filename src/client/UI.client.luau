@@ -9,6 +9,7 @@ local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local TweenService = game:GetService("TweenService")
 
 local GameConfig = require(ReplicatedStorage.Shared.GameConfig)
+local GlizzyModel = require(ReplicatedStorage.Shared.GlizzyModel)
 local HotDogDex = require(ReplicatedStorage.Shared.HotDogDex)
 local Variants = require(ReplicatedStorage.Shared.Variants)
 
@@ -136,6 +137,51 @@ local function showReveal(text: string, color: Color3)
 	):Play()
 end
 
+-- Cook-reveal viewport (P-C): the freshly rolled glizzy spins under the odds panel
+-- for a couple of seconds. Client-side only — GlizzyModel is shared, so the preview
+-- is built locally from the same recipe as the real pedestal unit.
+local viewport = Instance.new("ViewportFrame")
+viewport.Size = UDim2.fromOffset(260, 140)
+viewport.Position = UDim2.fromOffset(20, 392)
+viewport.BackgroundColor3 = Color3.fromRGB(0, 0, 0)
+viewport.BackgroundTransparency = 0.35
+viewport.Visible = false
+viewport.Parent = gui
+local vpCamera = Instance.new("Camera")
+vpCamera.Parent = viewport
+viewport.CurrentCamera = vpCamera
+vpCamera.CFrame = CFrame.new(Vector3.new(0, 1.4, 5), Vector3.new(0, 0, 0))
+
+local spinToken = 0
+local function showRevealModel(name: string, rarity: HotDogDex.Rarity, variant: string)
+	spinToken += 1
+	local myToken = spinToken
+	for _, child in viewport:GetChildren() do
+		if child:IsA("Model") then
+			child:Destroy()
+		end
+	end
+	local model = GlizzyModel.build(name, {
+		rarity = rarity,
+		variant = variant,
+		anchored = true,
+		fx = false, -- emitters don't read in a tiny viewport; the model is the star
+	})
+	model.Name = "RevealDog" -- not "DogUnit": keep GlizzyFx/steal code away from it
+	model.Parent = viewport
+	viewport.Visible = true
+	task.spawn(function()
+		local t0 = os.clock()
+		while spinToken == myToken and os.clock() - t0 < 2.2 do
+			model:PivotTo(CFrame.Angles(0, (os.clock() - t0) * 2.5, 0))
+			task.wait()
+		end
+		if spinToken == myToken then
+			viewport.Visible = false
+		end
+	end)
+end
+
 cookResult.OnClientEvent:Connect(
 	function(name: string, rarity: HotDogDex.Rarity, variant: Variants.Variant?)
 		local v = variant or "base"
@@ -146,6 +192,7 @@ cookResult.OnClientEvent:Connect(
 		else
 			showReveal(string.format("%s  [%s]", name, rarity), HotDogDex.colorFor(rarity))
 		end
+		showRevealModel(name, rarity, v)
 	end
 )
 

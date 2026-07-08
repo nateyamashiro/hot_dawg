@@ -34,67 +34,10 @@ gui.Name = "GlizzyMenu"
 gui.ResetOnSpawn = false
 gui.IgnoreGuiInset = true
 
--- === Bottom menu row: slots + centring live in the shared MenuLayout module
--- (Dex/Daily/Shop own their own slots; the row auto-centres for its length). ===
-local function makeMenuButton(slot: number, text: string): TextButton
-	local btn = Instance.new("TextButton")
-	btn.Size = UDim2.fromOffset(MenuLayout.BUTTON_W, MenuLayout.BUTTON_H)
-	btn.Position = MenuLayout.primaryPosition(slot)
-	btn.BackgroundColor3 = Color3.fromRGB(70, 70, 90)
-	btn.TextColor3 = Color3.fromRGB(255, 255, 255)
-	btn.TextScaled = true
-	btn.Font = Enum.Font.GothamBold
-	btn.Text = text
-	btn.Parent = gui
-	return btn
-end
-
--- Simple centered panel with a title + a content area, hidden by default.
-local function makePanel(title: string): (Frame, Frame)
-	local frame = Instance.new("Frame")
-	frame.Size = UDim2.fromOffset(440, 320)
-	frame.Position = UDim2.new(0.5, -220, 0.5, -160)
-	frame.BackgroundColor3 = Color3.fromRGB(25, 25, 35)
-	frame.BackgroundTransparency = 0.05
-	frame.Visible = false
-	frame.Parent = gui
-
-	local titleLabel = Instance.new("TextLabel")
-	titleLabel.Size = UDim2.new(1, -50, 0, 44)
-	titleLabel.Position = UDim2.fromOffset(12, 8)
-	titleLabel.BackgroundTransparency = 1
-	titleLabel.TextColor3 = Color3.fromRGB(255, 230, 150)
-	titleLabel.TextXAlignment = Enum.TextXAlignment.Left
-	titleLabel.TextScaled = true
-	titleLabel.Font = Enum.Font.GothamBlack
-	titleLabel.Text = title
-	titleLabel.Parent = frame
-
-	local close = Instance.new("TextButton")
-	close.Size = UDim2.fromOffset(36, 36)
-	close.Position = UDim2.new(1, -42, 0, 10)
-	close.BackgroundColor3 = Color3.fromRGB(180, 50, 50)
-	close.TextColor3 = Color3.fromRGB(255, 255, 255)
-	close.TextScaled = true
-	close.Font = Enum.Font.GothamBold
-	close.Text = "✕"
-	close.Parent = frame
-	close.Activated:Connect(function()
-		frame.Visible = false
-	end)
-
-	local content = Instance.new("Frame")
-	content.Size = UDim2.new(1, -24, 1, -64)
-	content.Position = UDim2.fromOffset(12, 56)
-	content.BackgroundTransparency = 1
-	content.Parent = frame
-
-	return frame, content
-end
-
--- === Upgrades panel ===
-local upgradesBtn = makeMenuButton(0, "🛒 Upgrades")
-local upgradesPanel, upgradesContent = makePanel("🛒 Upgrades")
+-- === Upgrades window (P-D: themed MenuLayout window; the old dark-slate panel is
+-- gone — this menu stays as the fallback beside the walk-on pads). ===
+local upgradesBtn = MenuLayout.makePrimaryButton(gui, "Upgrades", "🛒 Upgrades")
+local upgradesPanel, upgradesContent = MenuLayout.makeWindow(gui, "🛒 Upgrades")
 
 type UpgradeRow = { which: string, label: string, levels: { { cost: number } } }
 local UPGRADE_ROWS: { UpgradeRow } = {
@@ -115,29 +58,32 @@ end
 
 local upgradeLabels: { [string]: TextLabel } = {}
 for i, row in UPGRADE_ROWS do
-	local y = (i - 1) * 84
+	-- One row card per upgrade track (the window content is a UIListLayout column).
+	local card = Instance.new("Frame")
+	card.Size = UDim2.new(1, -8, 0, 88)
+	card.LayoutOrder = i
+	card.BackgroundColor3 = MenuLayout.RowBg
+	card.Parent = upgradesContent
+	MenuLayout.addChrome(card, 8)
 
 	local info = Instance.new("TextLabel")
-	info.Size = UDim2.new(1, 0, 0, 40)
-	info.Position = UDim2.fromOffset(0, y)
+	info.Size = UDim2.new(1, -16, 0, 40)
+	info.Position = UDim2.fromOffset(8, 4)
 	info.BackgroundTransparency = 1
-	info.TextColor3 = Color3.fromRGB(240, 240, 240)
+	info.TextColor3 = MenuLayout.BodyText
 	info.TextXAlignment = Enum.TextXAlignment.Left
 	info.TextScaled = true
 	info.Font = Enum.Font.GothamBold
 	info.Text = row.label
-	info.Parent = upgradesContent
+	info.Parent = card
 	upgradeLabels[row.which] = info
 
 	local buy = Instance.new("TextButton")
 	buy.Size = UDim2.fromOffset(180, 36)
-	buy.Position = UDim2.fromOffset(0, y + 40)
-	buy.BackgroundColor3 = Color3.fromRGB(60, 140, 80)
-	buy.TextColor3 = Color3.fromRGB(255, 255, 255)
-	buy.TextScaled = true
-	buy.Font = Enum.Font.GothamBold
+	buy.Position = UDim2.fromOffset(8, 46)
 	buy.Text = "Buy"
-	buy.Parent = upgradesContent
+	buy.Parent = card
+	MenuLayout.styleButton(buy, "success")
 	buy.Activated:Connect(function()
 		buyUpgrade:FireServer(row.which)
 	end)
@@ -162,18 +108,19 @@ upgradesBtn.Activated:Connect(function()
 	refreshUpgrades()
 end)
 
--- === Rebirth panel ===
-local rebirthBtn = makeMenuButton(1, "✨ Rebirth")
-local rebirthPanel, rebirthContent = makePanel("✨ Rebirth")
+-- === Rebirth window ===
+local rebirthBtn = MenuLayout.makePrimaryButton(gui, "Rebirth", "✨ Rebirth")
+local rebirthPanel, rebirthContent = MenuLayout.makeWindow(gui, "✨ Rebirth")
 
 local function rebirthCost(rebirths: number): number
 	return math.floor(GameConfig.RebirthBaseCost * GameConfig.RebirthCostGrowth ^ rebirths)
 end
 
 local rebirthInfo = Instance.new("TextLabel")
-rebirthInfo.Size = UDim2.new(1, 0, 0, 140)
+rebirthInfo.Size = UDim2.new(1, -8, 0, 150)
+rebirthInfo.LayoutOrder = 1
 rebirthInfo.BackgroundTransparency = 1
-rebirthInfo.TextColor3 = Color3.fromRGB(240, 240, 240)
+rebirthInfo.TextColor3 = MenuLayout.BodyText
 rebirthInfo.TextXAlignment = Enum.TextXAlignment.Left
 rebirthInfo.TextYAlignment = Enum.TextYAlignment.Top
 rebirthInfo.TextSize = 18
@@ -183,13 +130,10 @@ rebirthInfo.Parent = rebirthContent
 
 local rebirthDo = Instance.new("TextButton")
 rebirthDo.Size = UDim2.fromOffset(220, 44)
-rebirthDo.Position = UDim2.fromOffset(0, 150)
-rebirthDo.BackgroundColor3 = Color3.fromRGB(150, 90, 200)
-rebirthDo.TextColor3 = Color3.fromRGB(255, 255, 255)
-rebirthDo.TextScaled = true
-rebirthDo.Font = Enum.Font.GothamBold
+rebirthDo.LayoutOrder = 2
 rebirthDo.Text = "✨ Rebirth"
 rebirthDo.Parent = rebirthContent
+MenuLayout.styleButton(rebirthDo, "danger") -- resets coins: signal the weight
 rebirthDo.Activated:Connect(function()
 	rebirth:FireServer()
 end)

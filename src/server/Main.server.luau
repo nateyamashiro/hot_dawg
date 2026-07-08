@@ -13,10 +13,12 @@ local Players = game:GetService("Players")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local ServerScriptService = game:GetService("ServerScriptService")
 
+local BuildGrants = require(ReplicatedStorage.Shared.BuildGrants)
 local GameConfig = require(ReplicatedStorage.Shared.GameConfig)
 local HotDogDex = require(ReplicatedStorage.Shared.HotDogDex)
 local Variants = require(ReplicatedStorage.Shared.Variants)
 local DataManager = require(ServerScriptService.Server.DataManager)
+local EnvironmentService = require(ServerScriptService.Server.EnvironmentService)
 local PlotManager = require(ServerScriptService.Server.PlotManager)
 local StealService = require(ServerScriptService.Server.StealService)
 local DefenseService = require(ServerScriptService.Server.DefenseService)
@@ -36,6 +38,13 @@ local PurchaseService = require(ServerScriptService.Server.PurchaseService)
 local CosmeticService = require(ServerScriptService.Server.CosmeticService)
 local TradeService = require(ServerScriptService.Server.TradeService)
 local EmoteService = require(ServerScriptService.Server.EmoteService)
+-- Visual-overhaul / tycoon-layer systems (scaffold stubs; see each service for TODOs).
+local AutoCookerService = require(ServerScriptService.Server.AutoCookerService)
+local BuildService = require(ServerScriptService.Server.BuildService)
+local WeaponService = require(ServerScriptService.Server.WeaponService)
+local ConveyorService = require(ServerScriptService.Server.ConveyorService)
+local UpgraderService = require(ServerScriptService.Server.UpgraderService)
+local ZoneService = require(ServerScriptService.Server.ZoneService)
 
 -- === Set up remotes ===
 -- Created in code so there's nothing to wire up by hand in Studio. The client
@@ -94,6 +103,25 @@ makeRemote("TradeUpdate") -- both: set offer / broadcast session state
 makeRemote("TradeConfirm") -- c -> s: confirm your side
 makeRemote("TradeCancel") -- c -> s: cancel the trade
 makeRemote("PlayEmote") -- both: request an emote / broadcast to others (EmoteService)
+-- === Visual-overhaul / tycoon-layer remotes (scaffold) ===
+makeRemote("BuyAutoCooker") -- c -> s: upgrade the passive auto-cooker (AutoCookerService)
+makeRemote("AutoCookerUpdate") -- s -> c: auto-cooker tiers + level + balance
+makeRemote("Build") -- c -> s: construct a base structure (BuildService)
+makeRemote("BuildUpdate") -- s -> c: build catalog + constructed set + balance
+makeRemote("BuyWeapon") -- c -> s: buy a non-damaging blaster (WeaponService)
+makeRemote("EquipWeapon") -- c -> s: equip a blaster
+makeRemote("FireWeapon") -- c -> s: fire the equipped blaster at a carrying thief
+makeRemote("WeaponUpdate") -- s -> c: blaster catalog + owned/equipped + balance
+makeRemote("BuyUpgrader") -- c -> s: upgrade the cooker upgrader (UpgraderService)
+makeRemote("UpgraderUpdate") -- s -> c: upgrader tiers + level + balance
+makeRemote("BuyZone") -- c -> s: expand plot zone with prestige (ZoneService)
+makeRemote("ZoneUpdate") -- s -> c: zone tiers + level + prestige balance
+-- === Juice (P-C) ===
+-- s -> c one-shot celebration: (kind, target: BasePart|Vector3, extra?). Kinds:
+-- "cook" (burst at the station, extra=rarity), "purchase" (pad flash + label pop),
+-- "build" (dust puff at the plot), "stealAlarm" (red flashes on the victim's sign),
+-- "giantShake" (camera shake near a Giant grab). Rendered by Celebrate.client.
+local celebrate = makeRemote("Celebrate")
 remotes.Parent = ReplicatedStorage
 
 -- === Pure helpers ===
@@ -159,9 +187,15 @@ local function setupLeaderstats(player: Player, data: DataManager.PlayerData)
 end
 
 -- Permanent income multiplier: rebirths (item 6) + prestige-shop income unlocks
--- (data.prestigeIncomeMult, banked by PrestigeShopService). Both are additive bonuses.
+-- (data.prestigeIncomeMult, banked by PrestigeShopService) + built decor
+-- (BuildGrants.incomeBonus — derived from data.built at read time, never banked).
+-- All additive. Offline earnings and the live tick both call this, so decor income
+-- applies everywhere automatically.
 local function incomeMultiplier(data: DataManager.PlayerData): number
-	return 1 + data.rebirths * GameConfig.RebirthIncomeBonus + data.prestigeIncomeMult
+	return 1
+		+ data.rebirths * GameConfig.RebirthIncomeBonus
+		+ data.prestigeIncomeMult
+		+ BuildGrants.incomeBonus(data.built)
 end
 
 -- === Client state pushes (server -> client snapshots) ===
@@ -247,6 +281,7 @@ local function doCook(player: Player, data: DataManager.PlayerData): (HotDogDex.
 end
 
 -- === Build the world & init services ===
+EnvironmentService.init() -- lighting + street/ground FIRST so plots land on a real place
 PlotManager.build()
 StealService.init({
 	remotes = remotes,
@@ -293,6 +328,120 @@ PurchaseService.init({ remotes = remotes, updateLeaderstats = updateLeaderstats 
 CosmeticService.init({ remotes = remotes })
 TradeService.init({ remotes = remotes })
 EmoteService.init({ remotes = remotes })
+-- === Visual-overhaul / tycoon-layer services (scaffold stubs) ===
+AutoCookerService.init({ remotes = remotes, updateLeaderstats = updateLeaderstats })
+BuildService.init({ remotes = remotes, updateLeaderstats = updateLeaderstats })
+WeaponService.init({ remotes = remotes, updateLeaderstats = updateLeaderstats })
+ConveyorService.init({ updateLeaderstats = updateLeaderstats, onInventoryChanged = pushInventory })
+UpgraderService.init({ remotes = remotes, updateLeaderstats = updateLeaderstats })
+ZoneService.init({ remotes = remotes, updateLeaderstats = updateLeaderstats })
+
+-- === Physical tycoon stations (walk-on pads + cook grill) ===
+-- Cook one glizzy for `player` (charge + roll + reveal). Shared by the on-screen Cook
+-- button (CookHotDog remote) and the physical cook-station ProximityPrompt.
+local function cookOne(player: Player)
+	local data = DataManager.get(player)
+	if not data then
+		return
+	end
+	-- Free, but gated behind a cooldown (the glizzy "wall"). Cook-10 is the paid bypass.
+	local now = os.time()
+	if now < data.cookReadyAt then
+		local remaining = data.cookReadyAt - now
+		stealFeedback:FireClient(player, false, "⏳ Next free glizzy in " .. remaining .. "s")
+		return
+	end
+	data.cookReadyAt = now + GameConfig.CookCooldownSeconds
+	local dog, key = doCook(player, data)
+	local _, variant = Variants.decode(key)
+	updateLeaderstats(player)
+	PlotManager.syncDisplay(player)
+	pushInventory(player)
+	pushCookStats(player)
+	cookResult:FireClient(player, dog.name, dog.rarity, variant)
+	local station = PlotManager.cookStationOf(player)
+	if station then
+		celebrate:FireAllClients("cook", station, dog.rarity)
+	end
+end
+
+-- Compute which walk-on pads are available (+ their cost labels) for the player and push
+-- that to PlotManager, plus (re)render the physical stove for the current level.
+local function syncPads(player: Player)
+	local data = DataManager.get(player)
+	if not data then
+		return
+	end
+	local info: { [string]: { text: string, affordable: boolean } } = {}
+	local stoveNext = GameConfig.AutoCookerTiers[data.autoCookerLvl + 1]
+	if stoveNext then
+		local verb = if data.autoCookerLvl == 0
+			then "🔥 Build Stove"
+			else "🔥 Stove Lv " .. (data.autoCookerLvl + 1)
+		local cost = if stoveNext.cost > 0 then "$" .. stoveNext.cost else "FREE"
+		info.stove = { text = verb .. "\n" .. cost, affordable = data.coins >= stoveNext.cost }
+	end
+	local grillNext = GameConfig.GrillLevels[data.grillLvl + 1]
+	if grillNext then
+		info.grill = {
+			text = "🔥 Grill Lv " .. (data.grillLvl + 1) .. "\n$" .. grillNext.cost,
+			affordable = data.coins >= grillNext.cost,
+		}
+	end
+	local displayNext = GameConfig.DisplaySlotLevels[data.displaySlotsLvl + 1]
+	if displayNext then
+		info.display = {
+			text = "🅿️ +Display\n$" .. displayNext.cost,
+			affordable = data.coins >= displayNext.cost,
+		}
+	end
+	local vaultNext = GameConfig.VaultSlotLevels[data.vaultSlotsLvl + 1]
+	if vaultNext then
+		info.vault = {
+			text = "🔒 +Vault\n$" .. vaultNext.cost,
+			affordable = data.coins >= vaultNext.cost,
+		}
+	end
+	-- Building pads: each offers exactly ONE item — the next structural / decor
+	-- catalog entry (BuildService re-derives on step; the label is advisory only).
+	-- Omitting the key hides the pad once its category is exhausted.
+	local buildNext = BuildService.nextEntry(data, "build")
+	if buildNext then
+		info.build = {
+			text = "🏗️ " .. buildNext.label .. "\n$" .. buildNext.cost,
+			affordable = data.coins >= buildNext.cost,
+		}
+	end
+	local decorNext = BuildService.nextEntry(data, "decor")
+	if decorNext then
+		info.decor = {
+			text = "🎪 " .. decorNext.label .. "\n$" .. decorNext.cost,
+			affordable = data.coins >= decorNext.cost,
+		}
+	end
+	PlotManager.updatePads(player, info)
+	PlotManager.setStove(player, data.autoCookerLvl, AutoCookerService.coinsPerSecond(data))
+end
+
+PlotManager.setCookHandler(cookOne)
+PlotManager.setPadHandler(function(player: Player, padId: string)
+	local bought = false
+	if padId == "stove" then
+		bought = AutoCookerService.tryUpgrade(player)
+	elseif padId == "grill" or padId == "display" or padId == "vault" then
+		bought = UpgradeService.tryBuy(player, padId)
+	elseif padId == "build" or padId == "decor" then
+		bought = BuildService.tryBuildNext(player, padId)
+	end
+	if bought then
+		-- Purchase pop (P-C): flash the pad + pop its label on every watching client.
+		local padPart = PlotManager.padPartOf(player, padId)
+		if padPart then
+			celebrate:FireAllClients("purchase", padPart)
+		end
+	end
+	syncPads(player) -- refresh labels/visibility after any purchase
+end)
 
 -- Manual vault selection (M2 fast-follow): toggle whether a dog key is pinned safe.
 -- PlotManager.syncDisplay honours data.vaultPins (see its TODO). Kept here as a tiny
@@ -337,6 +486,12 @@ local function pushAllState(player: Player)
 	AchievementService.pushAchievements(player)
 	CosmeticService.pushCosmetics(player)
 	PurchaseService.pushStatus(player)
+	AutoCookerService.pushState(player)
+	BuildService.pushState(player)
+	WeaponService.pushState(player)
+	UpgraderService.pushState(player)
+	ZoneService.pushState(player)
+	syncPads(player) -- reveal the walk-on pads + render the stove for this player
 	local welcome = pendingWelcome[player.UserId]
 	if welcome then
 		pendingWelcome[player.UserId] = nil
@@ -351,11 +506,13 @@ local function onPlayerAdded(player: Player)
 	setupLeaderstats(player, data)
 	PlotManager.assign(player)
 	DefenseService.applyLoadedDefenses(player)
+	BuildService.applyLoaded(player) -- re-raise built structures (+ wall hold bonus)
 	StealService.pushStats(player)
 
 	-- Capped offline earnings (item 7): pay out income for time away since last save.
+	-- Includes the passive stove (un-stealable coin floor) alongside owned-dog income.
 	local elapsed = math.clamp(os.time() - data.lastSeen, 0, GameConfig.OfflineCapSeconds)
-	local perSec = incomePerSecond(data)
+	local perSec = incomePerSecond(data) + AutoCookerService.coinsPerSecond(data)
 	if elapsed > 0 and perSec > 0 then
 		local earned = math.floor(perSec * elapsed * incomeMultiplier(data))
 		if earned > 0 then
@@ -390,7 +547,9 @@ local function onPlayerAdded(player: Player)
 			task.wait(GameConfig.TickInterval)
 			local live = DataManager.get(player)
 			if live then
-				local income = incomePerSecond(live)
+				-- Keep the walk-on pads' green/red affordability colours live as coins tick.
+				syncPads(player)
+				local income = incomePerSecond(live) + AutoCookerService.coinsPerSecond(live)
 				if income > 0 then
 					local gain = math.floor(income * incomeMultiplier(live))
 					live.coins += gain
@@ -409,24 +568,9 @@ for _, player in Players:GetPlayers() do
 end
 
 -- === Cook handlers ===
+-- The on-screen Cook button and the physical cook station share cookOne (defined above).
 cookHotDog.OnServerEvent:Connect(function(player: Player)
-	local data = DataManager.get(player)
-	if not data then
-		return
-	end
-	if data.coins < GameConfig.CookCost then
-		return -- Not enough coins; silently ignore.
-	end
-
-	data.coins -= GameConfig.CookCost
-	local dog, key = doCook(player, data)
-	local _, variant = Variants.decode(key)
-
-	updateLeaderstats(player)
-	PlotManager.syncDisplay(player)
-	pushInventory(player)
-	pushCookStats(player)
-	cookResult:FireClient(player, dog.name, dog.rarity, variant)
+	cookOne(player)
 end)
 
 -- Cook-ten (item 9): pay 10× cost up front, roll 10, send a summary of the results.
@@ -448,10 +592,14 @@ cookTen.OnServerEvent:Connect(function(player: Player)
 
 	data.coins -= totalCost
 	local results: { { name: string, rarity: HotDogDex.Rarity, variant: Variants.Variant } } = {}
+	local bestRarity: HotDogDex.Rarity = "Common"
 	for _ = 1, n do
 		local dog, key = doCook(player, data)
 		local _, variant = Variants.decode(key)
 		table.insert(results, { name = dog.name, rarity = dog.rarity, variant = variant })
+		if HotDogDex.rarityRank(dog.rarity) > HotDogDex.rarityRank(bestRarity) then
+			bestRarity = dog.rarity
+		end
 	end
 
 	updateLeaderstats(player)
@@ -459,6 +607,11 @@ cookTen.OnServerEvent:Connect(function(player: Player)
 	pushInventory(player)
 	pushCookStats(player)
 	cookTenResult:FireClient(player, results)
+	-- One burst for the whole batch, colored by the best pull.
+	local station = PlotManager.cookStationOf(player)
+	if station then
+		celebrate:FireAllClients("cook", station, bestRarity)
+	end
 end)
 
 Players.PlayerRemoving:Connect(function(player)

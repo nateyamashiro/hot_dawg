@@ -10,6 +10,7 @@ local DataStoreService = game:GetService("DataStoreService")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 
 local GameConfig = require(ReplicatedStorage.Shared.GameConfig)
+local HotDogDex = require(ReplicatedStorage.Shared.HotDogDex)
 
 -- Bump the "_vN" suffix if you ever change the data shape in a breaking way.
 -- v4 adds M3 progression fields (grill/slot levels, rebirth/prestige, offline
@@ -80,6 +81,8 @@ export type PlayerData = {
 	lastSeen: number,
 	-- Cooks since the last Rare-or-better (pity guarantee).
 	cooksSinceRare: number,
+	-- os.time before which the free single-cook is on cooldown (the glizzy "wall").
+	cookReadyAt: number,
 	-- One-time dex-completion reward already granted?
 	dexRewarded: boolean,
 	-- Daily streak: UTC day index of the last streak claim + current streak length.
@@ -119,6 +122,19 @@ export type PlayerData = {
 	cosmetics: Cosmetics,
 	-- Rotating-shop per-day purchase tracking (ShopService cap enforcement).
 	shopBuys: ShopBuys,
+	-- === Visual-overhaul / tycoon-layer fields (Phase 0 scaffold; all default-safe) ===
+	-- Passive auto-cooker level (1-based index into GameConfig.AutoCookerTiers). This
+	-- machine emits COINS only — never stealable dogs — so it lives outside hotDogs.
+	autoCookerLvl: number,
+	-- Which GameConfig.BuildCatalog structure ids the player has constructed.
+	built: { [string]: boolean },
+	-- Owned + equipped non-damaging weapons (WeaponService).
+	weaponsOwned: { [string]: boolean },
+	weaponEquipped: string?,
+	-- Cooker-upgrader level (index into GameConfig.UpgraderTiers) — multiplies output.
+	upgraderLvl: number,
+	-- Plot zone/expansion tier (index into GameConfig.ZoneTiers).
+	zoneLvl: number,
 }
 
 local function keyFor(player: Player): string
@@ -144,6 +160,7 @@ local function defaultData(): PlayerData
 		prestige = 0,
 		lastSeen = now,
 		cooksSinceRare = 0,
+		cookReadyAt = 0,
 		dexRewarded = false,
 		lastDailyDay = 0,
 		streak = 0,
@@ -164,6 +181,15 @@ local function defaultData(): PlayerData
 		tradeCooldownUntil = 0,
 		cosmetics = { equipped = nil, owned = {} },
 		shopBuys = { day = 0, counts = {} },
+		-- Visual-overhaul / tycoon-layer defaults (fresh tables per call).
+		-- autoCookerLvl 0 = no stove built yet; the player builds it via a walk-on pad,
+		-- then upgrades it. Level N (>=1) indexes GameConfig.AutoCookerTiers.
+		autoCookerLvl = 0,
+		built = {},
+		weaponsOwned = {},
+		weaponEquipped = nil,
+		upgraderLvl = 1,
+		zoneLvl = 1,
 	}
 end
 
@@ -232,6 +258,9 @@ function DataManager.load(player: Player): PlayerData
 		end
 		if type(result.cooksSinceRare) == "number" then
 			data.cooksSinceRare = math.max(0, math.floor(result.cooksSinceRare))
+		end
+		if type(result.cookReadyAt) == "number" then
+			data.cookReadyAt = result.cookReadyAt
 		end
 		data.dexRewarded = result.dexRewarded == true
 		if type(result.lastDailyDay) == "number" then
@@ -304,6 +333,21 @@ function DataManager.load(player: Player): PlayerData
 				end
 				copyBoolMap(result.cosmetics.owned, data.cosmetics.owned)
 			end
+			-- Visual-overhaul / tycoon-layer fields (Phase 0; all optional).
+			copyBoolMap(result.built, data.built)
+			copyBoolMap(result.weaponsOwned, data.weaponsOwned)
+			if type(result.weaponEquipped) == "string" then
+				data.weaponEquipped = result.weaponEquipped
+			end
+			if type(result.autoCookerLvl) == "number" then
+				data.autoCookerLvl = math.max(0, math.floor(result.autoCookerLvl))
+			end
+			if type(result.upgraderLvl) == "number" then
+				data.upgraderLvl = math.max(1, math.floor(result.upgraderLvl))
+			end
+			if type(result.zoneLvl) == "number" then
+				data.zoneLvl = math.max(1, math.floor(result.zoneLvl))
+			end
 			if type(result.shopBuys) == "table" then
 				if type(result.shopBuys.day) == "number" then
 					data.shopBuys.day = math.floor(result.shopBuys.day)
@@ -319,6 +363,25 @@ function DataManager.load(player: Player): PlayerData
 		end
 	elseif not ok then
 		warn("[DataManager] Load failed for " .. player.Name .. ": " .. tostring(result))
+	end
+
+	-- Wall grandfather (P-B, locked decision #5): the old $250 DefenseService wall is
+	-- retired; the BuildCatalog perimeter wall is the only physical wall now. Anyone
+	-- who owned the old wall gets the build free. Idempotent — runs every load;
+	-- `defenses.wall` stays in the save shape for compat but is never set again.
+	-- (Deliberately OUTSIDE the nested back-fill blocks so it always runs.)
+	if data.defenses.wall then
+		data.built.wall = true
+	end
+
+	-- Starting glizzy (Phase 0): a brand-new profile (successful load, but no saved
+	-- record yet) spawns owning one random Common. Gated on result == nil so a
+	-- returning player who lost all their dogs is NOT re-granted one every join.
+	if ok and result == nil then
+		local starter = HotDogDex.randomOfRarity(GameConfig.StartingGlizzyRarity)
+		if starter then
+			data.hotDogs[starter.name] = (data.hotDogs[starter.name] or 0) + 1
+		end
 	end
 
 	cache[player.UserId] = data

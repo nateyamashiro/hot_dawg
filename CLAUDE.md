@@ -57,24 +57,30 @@ game in a **working, validated state** (or you're low on context), before ending
 ## Where things are
 
 ```
-src/shared/GameConfig.luau     Tunables (economy + plots/steal/defense + M3 progression knobs)
+src/shared/GameConfig.luau     Tunables (economy + plots/steal/defense + M3 progression + tycoon-layer: PlotPad*, AutoCookerTiers, BuildCatalog, WeaponTiers, Conveyor*, UpgraderTiers, ZoneTiers, CookCooldownSeconds)
 src/shared/HotDogDex.luau      Roster (~30) + roll(grillLvl, guaranteeRare) + odds() + all() + getByKey (variant-aware) + sortedUnits→{Unit} (key+variant income; drives pedestals/vault)
 src/shared/Variants.luau       Mutations: composite-key encode/decode + income mult + pickMint (Gold/Rainbow/Giant)
-src/shared/MenuLayout.luau     Bottom-row slot math + "⋯ More" tray + makeTrayToggle/makePanel client helpers
-src/server/Main.server.luau    Orchestrator: remotes, leaderstats, income×rebirth, cook/cook-10,
-                               offline earnings, dex reward, RequestState handshake, SetVaultPin, wires ALL services
-src/server/DataManager.luau    DataStore load/save + cache (PlayerData incl. M3 + v5 fields incl. prestigeUnlocks/prestigeIncomeMult/mutationLuck, _v5)
-src/server/PlotManager.luau    Plots/stands, capacity = upgrade level + bonus*Slots (prestige/pass), spawn CFrame, OwnerUserId attr, trapModel
+src/shared/MenuLayout.luau     Bottom-row slot math + "⋯ More" tray + makeTrayToggle/makePanel + makeWindow (drag/minimize/close) client helpers
+src/server/Main.server.luau    Orchestrator: remotes, leaderstats, income×rebirth (+stove), cook (cookOne=cooldown-gated FREE)/cook-10 (paid),
+                               offline earnings, dex reward, RequestState handshake, SetVaultPin, syncPads/setPadHandler/setCookHandler, wires ALL services
+src/server/DataManager.luau    DataStore load/save + cache (PlayerData incl. M3 + _v5 fields incl. autoCookerLvl/built/weapons/upgraderLvl/zoneLvl/cookReadyAt; first-join starting-glizzy grant)
+src/server/PlotManager.luau    Plots/stands (config-sized), capacity = upgrade level + bonus*Slots; walk-on PAD framework (makeBuyPad/PAD_LAYOUT/updatePads green-red), cook station, setStove, spawn CFrame, OwnerUserId attr
 src/server/StealService.luau   Grab/carry/deposit/abort, charges, cooldowns, shield, alerts
 src/server/DefenseService.luau Net tool, buyable wall + NPC guard + trap (4th defense)
-src/server/UpgradeService.luau Buy grill / display slots / vault slots
+src/server/UpgradeService.luau Buy grill / display / vault slots — tryBuy() public (menu remote + walk-on pads share it)
 src/server/RebirthService.luau Rebirth: reset coins, keep dogs+upgrades, income multiplier + prestige
 src/server/DailyService.luau   Daily login streak + rotating cook/steal/earn missions
 src/server/ShopService.luau    Rotating shop: deterministic daily offers, buy validation + coin charge
 src/server/RateLimit.luau      Anti-exploit spine: per-player rate limiter + arg guards (used by new remotes)
 src/server/MutationService.luau  maybeMint(name, luckBonus)→inventory key — random mutation on cook (WIRED into doCook; luckBonus fed from data.mutationLuck; steal path gated by MutateOnSteal, TODO)
 src/server/PrestigeShopService.luau  Spend prestige on one-time premium unlocks (income%/±slots/mut-luck) — validate+charge, bank effects into _v5 fields
-src/server/FusionService.luau  Combine N dupes → better dog (STUB)
+src/server/FusionService.luau  Combine N dupes → same dog one variant up the ladder (SHIPPED; Giant=top)
+src/server/AutoCookerService.luau  Passive stove: coinsPerSecond + tryUpgrade (build 0→1 / upgrade); COINS only, never dogs (Phase 1 SHIPPED)
+src/server/BuildService.luau   Base-building structures via walk-on pads (floors/stairs/elevator/walls/gate) (STUB — Phase 3, NEXT)
+src/server/WeaponService.luau  Non-damaging condiment blasters (slow/knockback/stun a carrying thief) (STUB — Phase 5)
+src/server/ConveyorService.luau  Street buy-lane: hot dogs ride a belt, step to buy (STUB — Phase 4)
+src/server/UpgraderService.luau  Cooker upgrader: outputMultiplier on stove output (STUB — Phase 4)
+src/server/ZoneService.luau    Prestige-gated plot/zone expansion (STUB — Phase 5)
 src/server/EventService.luau   Weekly deterministic event + modifier + reward track (STUB)
 src/server/LeaderboardService.luau  OrderedDataStore top-N (coins/steals/rarest) (STUB)
 src/server/AchievementService.luau  Milestone goals + one-time rewards (STUB)
@@ -139,6 +145,24 @@ fields — `prestigeUnlocks` (owned set), `prestigeIncomeMult` (folded additivel
 mutations loop**); slot unlocks bump `bonus*Slots`, now honoured by `PlotManager` capacity. The client
 tray panel renders catalog + live balance + owned/afforded rows. No `_vN` bump.
 
-Static checks clean (stylua/selene/rojo). **Still owes the 2-player Studio playtest** for M2/M3
-feel + `GAME_DESIGN §6` tuning. Next up: the remaining M3-remainder stubs (fusion → manual vault →
-traps), then M4. See HANDOFF.
+**Fusion SHIPPED 2026-07-08** (5 dupes of a key → 1 of the same base dog one variant up the ladder,
+via `Variants.nextVariant`; Giant is the top; `Fusion.client` previews the result).
+
+**VISUAL OVERHAUL + CLASSIC-TYCOON LAYER — IN PROGRESS 2026-07-09** (Nate's direction after a Studio
+look; approved plan at `~/.claude/plans/inherited-hugging-alpaca.md`). Done so far: **enlarged plots**;
+**new players start with 1 random Common glizzy** (first-join grant in `DataManager.load`); **Phase 0
+scaffold** — overhaul `GameConfig` blocks + `_v5` fields (`autoCookerLvl`, `built`, `weaponsOwned`,
+`weaponEquipped`, `upgraderLvl`, `zoneLvl`, `cookReadyAt`) + 6 compiling stub services
+(AutoCooker/Build/Weapon/Conveyor/Upgrader/Zone) wired into `Main` + `MenuLayout.makeWindow`
+(drag/minimize/close) skeleton; and the **physical tycoon stations** — a reusable **walk-on pad
+framework** in `PlotManager` (`makeBuyPad`/`updatePads`/`setStove`/`setPadHandler`/`setCookHandler`),
+a **🌭 Cook Station**, a **🔥 Stove** (passive un-stealable coins; starts unbuilt at `autoCookerLvl 0`;
+built/upgraded via a pad; folded into tick + offline income), **walk-on grill/display/vault upgrade
+pads** (reuse `UpgradeService.tryBuy`) coloured **green affordable / red too-expensive** live via
+`Main.syncPads`. **Cook is now cooldown-gated:** single cook (button + station via `Main.cookOne`) is
+FREE but 5-min-gated (`CookCooldownSeconds`/`cookReadyAt`); cook-10 stays the PAID bypass.
+
+Static checks clean (stylua/selene/rojo). **NOT pushed. Still owes the 2-player Studio playtest** for
+M2/M3 + the new tycoon layer + `GAME_DESIGN §6` tuning. **Next up: the building shell — walk-on build
+pads that grow the plot INTO a stand (`BuildService`/Phase 3)**, then UI-window migration (Phase 2),
+conveyor/upgraders (Phase 4), weapons/zones (Phase 5). See `docs/NEXT_SESSION_PROMPT.md` + HANDOFF.

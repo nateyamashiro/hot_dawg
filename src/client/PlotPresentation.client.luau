@@ -10,7 +10,10 @@
 --                     can still see what's worth raiding.
 
 local Players = game:GetService("Players")
+local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local Workspace = game:GetService("Workspace")
+
+local Theme = require(ReplicatedStorage.Shared.Theme)
 
 local player = Players.LocalPlayer
 
@@ -18,10 +21,12 @@ local function isOwned(model: Instance): boolean
 	return model:GetAttribute("OwnerUserId") == player.UserId
 end
 
--- A Steal prompt sits on a "DogUnit" under a pedestal. Hide it on your OWN dogs.
+-- A Steal prompt sits on a glizzy model's PrimaryPart inside a "DogUnit" model on a
+-- pedestal. Hide it on your OWN dogs. (Ancestor check, not parent: the prompt's
+-- parent is the Sausage part, not the model itself.)
 local function applyPromptState(prompt: ProximityPrompt, owned: boolean)
-	local parent = prompt.Parent
-	if parent and parent.Name == "DogUnit" then
+	local model = prompt:FindFirstAncestorWhichIsA("Model")
+	if model and model.Name == "DogUnit" then
 		prompt.Enabled = not owned
 	end
 end
@@ -42,7 +47,7 @@ local function ensureOwnedVisuals(model: Model)
 	end
 
 	local highlight = Instance.new("Highlight")
-	highlight.FillColor = Color3.fromRGB(90, 210, 120)
+	highlight.FillColor = Theme.Semantic.Owner
 	highlight.FillTransparency = 0.7
 	highlight.OutlineColor = Color3.fromRGB(120, 255, 150)
 	highlight.OutlineTransparency = 0
