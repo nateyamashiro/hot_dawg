@@ -332,9 +332,17 @@ EmoteService.init({ remotes = remotes })
 AutoCookerService.init({ remotes = remotes, updateLeaderstats = updateLeaderstats })
 BuildService.init({ remotes = remotes, updateLeaderstats = updateLeaderstats })
 WeaponService.init({ remotes = remotes, updateLeaderstats = updateLeaderstats })
-ConveyorService.init({ updateLeaderstats = updateLeaderstats, onInventoryChanged = pushInventory })
+ConveyorService.init({
+	remotes = remotes,
+	updateLeaderstats = updateLeaderstats,
+	onInventoryChanged = pushInventory,
+})
 UpgraderService.init({ remotes = remotes, updateLeaderstats = updateLeaderstats })
-ZoneService.init({ remotes = remotes, updateLeaderstats = updateLeaderstats })
+ZoneService.init({
+	remotes = remotes,
+	updateLeaderstats = updateLeaderstats,
+	pushProgression = pushProgression,
+})
 
 -- === Physical tycoon stations (walk-on pads + cook grill) ===
 -- Cook one glizzy for `player` (charge + roll + reveal). Shared by the on-screen Cook
@@ -419,6 +427,28 @@ local function syncPads(player: Player)
 			affordable = data.coins >= decorNext.cost,
 		}
 	end
+	-- ⚙️ Upgrader: multiplies stove output, so it only appears once the stove exists.
+	if data.autoCookerLvl >= 1 then
+		local upgraderNext = GameConfig.UpgraderTiers[data.upgraderLvl + 1]
+		if upgraderNext then
+			info.upgrader = {
+				text = "⚙️ Upgrader Lv "
+					.. (data.upgraderLvl + 1)
+					.. "\n$"
+					.. upgraderNext.cost,
+				affordable = data.coins >= upgraderNext.cost,
+			}
+		end
+	end
+	-- 🌍 Zone expansion: priced in PRESTIGE (the framework's affordable flag is just
+	-- a bool, so prestige-affordability drives the green/red exactly like coins).
+	local zoneNext = GameConfig.ZoneTiers[data.zoneLvl + 1]
+	if zoneNext then
+		info.zone = {
+			text = "🌍 Expand Zone\n✨" .. zoneNext.prestigeCost,
+			affordable = data.prestige >= zoneNext.prestigeCost,
+		}
+	end
 	PlotManager.updatePads(player, info)
 	PlotManager.setStove(player, data.autoCookerLvl, AutoCookerService.coinsPerSecond(data))
 end
@@ -432,6 +462,10 @@ PlotManager.setPadHandler(function(player: Player, padId: string)
 		bought = UpgradeService.tryBuy(player, padId)
 	elseif padId == "build" or padId == "decor" then
 		bought = BuildService.tryBuildNext(player, padId)
+	elseif padId == "upgrader" then
+		bought = UpgraderService.tryUpgrade(player)
+	elseif padId == "zone" then
+		bought = ZoneService.tryUpgrade(player)
 	end
 	if bought then
 		-- Purchase pop (P-C): flash the pad + pop its label on every watching client.
@@ -507,6 +541,7 @@ local function onPlayerAdded(player: Player)
 	PlotManager.assign(player)
 	DefenseService.applyLoadedDefenses(player)
 	BuildService.applyLoaded(player) -- re-raise built structures (+ wall hold bonus)
+	ZoneService.applyLoaded(player) -- re-apply the expanded pad size
 	StealService.pushStats(player)
 
 	-- Capped offline earnings (item 7): pay out income for time away since last save.

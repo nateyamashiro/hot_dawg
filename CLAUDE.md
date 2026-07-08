@@ -82,10 +82,10 @@ src/server/PrestigeShopService.luau  Spend prestige on one-time premium unlocks 
 src/server/FusionService.luau  Combine N dupes → same dog one variant up the ladder (SHIPPED; Giant=top)
 src/server/AutoCookerService.luau  Passive stove: coinsPerSecond + tryUpgrade (build 0→1 / upgrade); COINS only, never dogs (Phase 1 SHIPPED)
 src/server/BuildService.luau   Base building SHIPPED (P-B): tryBuild/tryBuildNext (validate→charge→spawn→push), applyLoaded rebuild-on-join, wall hold bonus, gate slow rule
-src/server/WeaponService.luau  Non-damaging condiment blasters (slow/knockback/stun a carrying thief) (STUB — Phase 5)
-src/server/ConveyorService.luau  Street buy-lane: hot dogs ride a belt, step to buy (STUB — Phase 4)
-src/server/UpgraderService.luau  Cooker upgrader: outputMultiplier on stove output (STUB — Phase 4)
-src/server/ZoneService.luau    Prestige-gated plot/zone expansion (STUB — Phase 5)
+src/server/WeaponService.luau  Condiment blasters SHIPPED (Phase 5): buy/equip/fire, physical Tool, server picks nearest carrier near YOUR plot, slow/knockback/stun (never damage), splat celebrate
+src/server/ConveyorService.luau  Street buy-lane SHIPPED (Phase 4): belt strip + glizzies ride the aisle, prompt-to-buy (shop weights/prices, base dogs, no mint), Heartbeat mover (≤8 units)
+src/server/UpgraderService.luau  Cooker upgrader SHIPPED (Phase 4): tryUpgrade (⚙️ pad + remote), outputMultiplier folded into AutoCookerService.coinsPerSecond
+src/server/ZoneService.luau    Zone expansion SHIPPED (Phase 5): prestige-priced tryUpgrade (🌍 pad + remote), PlotManager.applyZone pad resize, extraSlots derived in displayCapacity
 src/server/EventService.luau   Weekly deterministic event + modifier + reward track (STUB)
 src/server/LeaderboardService.luau  OrderedDataStore top-N (coins/steals/rarest) (STUB)
 src/server/AchievementService.luau  Milestone goals + one-time rewards (STUB)
@@ -98,6 +98,7 @@ src/client/UI.client.luau      Coins/dogs HUD, cook + cook-10, reveal (variant-c
 src/client/GlizzyFx.client.luau  Rainbow hue-cycle (10 Hz, ≤80 studs) + rarity-emitter culling (≤60 studs @ 1 Hz) for every DogUnit
 src/client/Celebrate.client.luau Juice renderer (P-C): cook burst / purchase pop / build dust / steal alarm / Giant shake + coin-milestone 💰 sparkle + ambient bed
 src/client/Build.client.luau   Build window (tray): catalog owned ✅ / buildable 🏗️ / locked 🔒 on BuildUpdate
+src/client/Weapons.client.luau Blaster window (tray): Buy → Equip → equipped ✓ on WeaponUpdate (firing = the Tool)
 src/client/StealHud.client.luau  Carry banner, charge/shield meter, robbed alert + arrow, guard buy button (wall button removed — the wall is a build now)
 src/client/PlotPresentation.client.luau  Owner highlight/"YOUR STAND", rival label + own-prompt hiding
 src/client/Menu.client.luau    Bottom menu row + Upgrades & Rebirth panels
@@ -187,7 +188,25 @@ stays the PAID bypass.
   `Build.client` window; `MenuLayout.TRAY` gains "Build".
 - **P-E:** bun-hill horizon, mustard river, ketchup geyser (EnvironmentService).
 
-Static checks clean (stylua/selene/rojo). **NOT pushed (Nate said don't push). Still owes the
-2-player Studio playtest** for M2/M3 + tycoon layer + full build chain + `GAME_DESIGN §6` tuning —
-that's the #1 next action, then conveyor/upgraders (Phase 4) and weapons/zones (Phase 5). See
-`docs/NEXT_SESSION_PROMPT.md` + HANDOFF.
+**OVERHAUL PHASES 4+5 SHIPPED 2026-07-09** (the last scaffolded tycoon-layer stubs made real; Nate
+WAIVED the 2-player playtest and told us to proceed):
+- **Conveyor lane (Phase 4):** a belt strip down the street centre; glizzies ride it spinning with
+  price tags, prompt-to-buy (0.35s hold — a prompt, not Touch, so street-crossers can't misbuy).
+  Offers roll from `ShopRarityWeights`/`ShopRarityPrices`; buys grant BASE dogs (no mutation mint,
+  shop parity). ≤8 units, Heartbeat-moved (the one bounded per-frame server exception).
+- **Cooker upgrader (Phase 4):** `UpgraderService.tryUpgrade` via the ⚙️ pad (appears once the stove
+  is built) or BuyUpgrader; `outputMult` folded into `AutoCookerService.coinsPerSecond` so tick +
+  offline + the stove label inherit it.
+- **Weapons (Phase 5):** buy/equip via the 🔫 Blasters tray window; equip hands a colored Neon
+  blaster Tool (re-given each spawn). Firing is fully server-authoritative: nearest CARRYING thief
+  within 24 studs, and only within 45 studs of the firer's own plot (defense, not street griefing).
+  Effects slow (2s) / knockback / stun — NEVER damage. Splat burst rides Celebrate ("splat").
+- **Zones (Phase 5):** `ZoneService.tryUpgrade` via the 🌍 pad (green/red by PRESTIGE balance) or
+  BuyZone; charges prestige, physically swells the pad (`PlotManager.applyZone`, reset on release,
+  re-applied on join), `extraSlots` derived read-time in `displayCapacity`.
+
+Static checks clean (stylua/selene/rojo). **NOT pushed (Nate said don't push).** The 2-player
+playtest was **waived by Nate** (treat systems as accepted; no live validation has actually run —
+tuning in `GAME_DESIGN §6` remains reasoned-not-observed). **Next up (build order):** M4 retention
+systems — events/leaderboards/achievements real logic — plus manual vault selection, then the
+RateLimit hardening pass before trading. See `docs/NEXT_SESSION_PROMPT.md` + HANDOFF.

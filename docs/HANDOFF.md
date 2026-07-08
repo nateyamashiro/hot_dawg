@@ -22,8 +22,15 @@ silence-safe until Nate fills ids), coin-milestone 💰 sparkle, cook-reveal vie
 FredokaOne, corner+stroke chrome, bounce + click/open sounds); `makePanel` now IS `makeWindow`, so
 every tray panel became a draggable themed window for free; all panel clients swept off dark-slate;
 NEW `Build.client` catalog window; TRAY gains "Build". **P-E** — bun-hill horizon, mustard river,
-ketchup geyser. All static checks clean. **NOT pushed (Nate said don't push); NOT 2-player-playtested
-— that playtest is the #1 next action.**)
+ketchup geyser.
+**THEN (same day): OVERHAUL PHASES 4+5 SHIPPED** — conveyor street buy-lane (belt strip, spinning
+priced glizzies, prompt-to-buy at shop weights/prices, base dogs only), cooker upgrader (⚙️ pad,
+outputMult folded into stove income), condiment blasters (🔫 tray window, buy/equip, physical Tool,
+server-picked target near YOUR plot only, slow/knockback/stun never damage, splat fx), and prestige
+zone expansion (🌍 pad, pad physically swells, extraSlots derived read-time). All static checks
+clean. **NOT pushed (Nate said don't push). The 2-player playtest was WAIVED by Nate** ("act like
+it worked") — systems are accepted but no live validation has run; §6 tuning remains
+reasoned-not-observed.)
 **For:** the next Claude Code session (and Nate)
 
 ## 🏗️ The scaffold (read this before implementing anything new)
@@ -63,13 +70,16 @@ Implement feature by feature; don't re-architect. Key facts:
 
 ## 👉 What the NEXT session should do
 
-**#1 — the 2-player Studio playtest (below).** The whole visual overhaul + building shell is now
-BUILT and static-clean but has never been seen live; the playtest gates everything else.
-**Next CODE features after that:** conveyor lane + cooker upgraders (overhaul Phase 4 —
-`ConveyorService`/`UpgraderService` stubs; visuals reuse `Theme` + `GlizzyModel`), then weapons +
-zones (Phase 5). Nate fills asset ids at his leisure: `GameConfig.Sounds` (10 slots) and
-`GameConfig.GlizzyMeshIds` (per-dog AI meshes — zero code changes). *(Manual vault selection —
-`data.vaultPins`, `SetVaultPin` handler exists — is still deferred.)*
+**The entire visual overhaul + tycoon layer (P-A→P-E + Phases 4/5) is code-complete.** Nate waived
+the playtest, so development continues down the build order (retention before content):
+1. **M4 retention systems, real logic:** `EventService` (weekly deterministic event + reward
+   track), `LeaderboardService` (OrderedDataStore top-N), `AchievementService` (metric tracking +
+   claims). All three have stubs, remotes, tray panels, and config already.
+2. **Manual vault selection** — `data.vaultPins` + the `SetVaultPin` handler exist; honour pins in
+   `PlotManager.syncDisplay` (its TODO) + a pin toggle in the Dex.
+3. **Hardening pass** (wrap every legacy `OnServerEvent` with `RateLimit` + arg guards) — REQUIRED
+   before trading (M6) / soft launch.
+4. Nate asset passes (zero code): `GameConfig.Sounds` ids · `GlizzyMeshIds` meshes · `SkyboxAssetId`.
 
 **Still owed (needs a human): playtest & tune Milestones 2 + 3 in a real 2-player Studio session.**
 Everything through M3 (plus mutations) is BUILT and passes static checks (rojo build + selene +

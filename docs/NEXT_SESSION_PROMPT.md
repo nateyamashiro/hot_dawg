@@ -3,50 +3,37 @@
 ---
 
 You are continuing development of **"Steal a Glizzy"**, a server-authoritative Roblox
-steal-and-defend idle **tycoon** (repo `hot_dawg`). Milestones 1–3 + M3-remainder features
-(mutations, prestige spending, fusion) are built, and the **entire visual design system + building
-shell just shipped** (design plan phases P-A→P-E): Theme tokens, procedural glizzy models, world
-lighting/street, the 15-entry build catalog with walk-on 🏗️/🎪 pads, the juice pass (Celebrate
-remote), and the themed window UI. Everything is static-clean but **none of it has been seen live**.
+steal-and-defend idle **tycoon** (repo `hot_dawg`). The ENTIRE visual overhaul + tycoon layer is
+code-complete: design system, procedural glizzies, world/lighting, the 15-entry building shell,
+juice pass, themed window UI, conveyor buy-lane, cooker upgraders, condiment blasters, and
+prestige zones. Nate **waived the 2-player playtest** ("act like it worked") — systems are
+accepted; keep building down the retention-first build order. Note honestly: no live validation
+has run, so `GAME_DESIGN §6` numbers are reasoned, not observed.
 
 ## Step 0 — Read these first (all the context lives here)
 - **`CLAUDE.md`** — architecture rules, workflow, toolchain, full code map + status. READ FULLY.
 - **`docs/HANDOFF.md`** — start-here status, scaffold facts, tycoon-layer gotchas. READ FULLY.
-- **The design plan:** `C:\Users\jwgri\.claude\plans\i-want-you-to-wild-abelson.md` — the executed
-  visual roadmap (palette, builders' exact geometry, balance rules §2.7, phase gates). The earlier
-  overhaul plan is `inherited-hugging-alpaca.md` (Phases 4–5 still pending).
-- **`docs/design/GAME_DESIGN.md`** — §4 locked decisions · §6 tuning numbers (playtest-unconfirmed).
+- **`docs/design/GAME_DESIGN.md`** — §4 locked decisions · §5 built · §6 tuning · §7 decision log.
 - Offline Roblox docs in `docs/roblox-reference/` — use them instead of guessing APIs.
 
-## Step 1 — What's DONE, and what's NEXT
+## Step 1 — What's NEXT (build order: retention before content)
 
-**DONE this stretch (static-clean; NOT playtested, NOT pushed):**
-- **P-A facelift:** `Theme.luau` (single source for world palette/semantic/lighting/UI/VFX budgets);
-  `GlizzyModel.luau` real hot dogs on pedestals/vault/carries (rarity aura ladder, Gold/Rainbow/Giant;
-  AI-mesh swap slot `GameConfig.GlizzyMeshIds` — SpecialMesh on purpose, don't "upgrade" to MeshPart);
-  `EnvironmentService` bright-noon lighting + grass/street/sidewalks/lamps; `GlizzyFx.client`
-  Rainbow hue-cycling + emitter culling.
-- **P-B building shell:** walk onto the 🏗️ pad → the stall grows (floor2→stairs→wall→floor3→gate→
-  elevator); 🎪 pad → income decors (+27% total). `BuildGrants` derives ALL grants from `data.built`
-  at read time (rebuild-on-join can't double-apply). Old DefenseService wall RETIRED + grandfathered.
-  Balance rules are LOCKED (§2.7): ground route always open, gates slow never block, every floor has
-  a free theft route (truss/jumpable rails/everyone-elevator).
-- **P-C juice:** `Celebrate` remote (cook burst/purchase pop/build dust/steal alarm/Giant shake),
-  `Sfx.luau` (silence-safe until `GameConfig.Sounds` ids are filled), coin sparkle, reveal viewport.
-- **P-D UI:** every panel is now a draggable Cream window with a ketchup-gradient title bar via
-  `MenuLayout` (makePanel = makeWindow); NEW `Build.client` window; tray gained "Build".
-- **P-E:** bun hills / mustard river / ketchup geyser horizon props.
-
-**NEXT (in order):**
-1. **2-player Studio playtest** (see "Still owed" below) — Nate drives; everything gates on this.
-   Fix whatever it surfaces (geometry overlaps, pad feel, steal pathing on floors 2/3, contrast).
-2. **Overhaul Phase 4 — conveyor lane + cooker upgraders** (`ConveyorService`/`UpgraderService`
-   stubs): hot dogs ride the central street belt, step to buy; upgraders multiply stove output.
-   Visuals REUSE `Theme` + `GlizzyModel` (that's why they shipped first).
-3. **Overhaul Phase 5 — weapons + zones** (`WeaponService`/`ZoneService` stubs; weapons are
-   slow/knockback/stun only — locked all-ages tone).
-4. **Nate's asset passes (non-blocking, zero code):** fill `GameConfig.Sounds` (10 ids) and
-   `GameConfig.GlizzyMeshIds` (per-dog meshes); optionally `SkyboxAssetId`.
+1. **M4 retention systems — make the stubs real (the top priority):**
+   - **`EventService`** — weekly deterministic event (week-index trick like the shop),
+     apply the active `modifier` (income2x / freeCookBursts / cookHalfPrice) where income/cook
+     math lives, track `data.eventPoints`, pay `EventRewardTiers` claims. Panel exists.
+   - **`LeaderboardService`** — OrderedDataStore top-N for coins/steals/rarest
+     (`LeaderboardTopN`, `LeaderboardRefreshSeconds`); render three boards in the panel.
+   - **`AchievementService`** — track metrics (dogs/steals/rebirths already in PlayerData),
+     validate + pay one-time claims (`data.achievements`). Panel exists.
+2. **Manual vault selection** — honour `data.vaultPins` in `PlotManager.syncDisplay` (its TODO:
+   pinned keys fill the vault before the top-by-value overflow) + a pin toggle in the Dex
+   (`SetVaultPin` remote already handled in `Main`).
+3. **Hardening pass** — wrap every LEGACY `OnServerEvent` (cook/steal-era remotes) with
+   `RateLimit.check` + arg guards. REQUIRED before trading (M6) and soft launch.
+4. **Then M5 monetization** (PurchaseService: Extra-slots + VIP passes first — locked).
+5. Nate asset passes (zero code, whenever): `GameConfig.Sounds` ids · `GlizzyMeshIds` meshes ·
+   `SkyboxAssetId`.
 
 ## Step 2 — Non-negotiable flow (how we work)
 - **Server authoritative, client untrusted.** All economy/inventory/steal/build logic in
@@ -60,20 +47,21 @@ remote), and the themed window UI. Everything is static-clean but **none of it h
   ~/.rokit/bin/selene.exe src/
   ~/.rokit/bin/rojo.exe build default.project.json --output build.rbxlx
   ```
-- **Design-system rules:** world colors come from `Theme.Palette`, gameplay states from
-  `Theme.Semantic`, UI from `MenuLayout`'s tokens/helpers (styleButton/makeWindow/addChrome).
-  Rarity colors stay in `HotDogDex.RARITY`; variant colors in `Variants.DEFS`. VFX must fit a
-  `Theme.VFX` budget row. New structures follow the chunk rules (Theme §1.3 comments) and the
-  §2.7 theft-access rules — never remove access, sell TIME.
-- **Building grants:** always derive from `data.built` via `BuildGrants` at read time. Never bank a
-  building effect into another field.
+- **Design-system rules:** world colors from `Theme.Palette`, gameplay states from
+  `Theme.Semantic`, UI via `MenuLayout` helpers (styleButton/makeWindow/addChrome). Rarity colors
+  live in `HotDogDex.RARITY`; variant colors in `Variants.DEFS`. VFX must fit a `Theme.VFX` budget
+  row; new structures follow the chunk rules + §2.7 theft-access rules (sell TIME, never remove
+  access).
+- **Grants derive at read time** — building/zone effects come from `data.built`/`data.zoneLvl`
+  via `BuildGrants`/`displayCapacity`, never banked into other fields.
 - **Inventory is composite-key stacks** (`"Name#Gold"`); decode via `Variants`/`getByKey`.
 - **PlayerData changes:** add fields to the existing **`_v5`** back-fill in `DataManager.load`.
 - **New server→client initial-state push** goes in `Main.pushAllState` + rides `RequestState`.
 - **New walk-on pads:** `PlotManager.PAD_LAYOUT` + route in `Main.setPadHandler` + label from
   `Main.syncPads`.
-- **Reuse, don't reinvent:** service shape = `BuildService`/`FusionService`; buy paths =
-  `UpgradeService.tryBuy`/`AutoCookerService.tryUpgrade`; world juice = the `Celebrate` remote.
+- **Reuse, don't reinvent:** service shape = `BuildService`/`ZoneService`; buy paths =
+  `UpgradeService.tryBuy`/`UpgraderService.tryUpgrade`; world juice = the `Celebrate` remote;
+  event determinism = `ShopService`'s day-index trick.
 
 ## Step 3 — Handoff ritual (DO THIS at each milestone / when you hand off) ⭐
 **Nate's cadence note:** DON'T run the full doc-update ritual after every feature — only near a real
@@ -81,25 +69,16 @@ context/agent handoff. Batch it. When you do hand off:
 1. **Validate** — stylua + selene + `rojo build` all clean (0/0). Never hand off a red build.
 2. **Update docs** — `docs/HANDOFF.md`, `docs/ROADMAP.md`, `docs/BACKLOG.md`,
    `docs/design/GAME_DESIGN.md` (§5/§6/§7), and `CLAUDE.md`'s code map + status.
-3. **Rewrite THIS file** for the next session (point it at the new top-of-build-order work; keep this
-   Step 3 ritual intact so it self-perpetuates).
-4. **Push only when Nate asks.** Commit locally is fine; Nate's standing instruction this stretch is
+3. **Rewrite THIS file** for the next session (point it at the new top-of-build-order work; keep
+   this Step 3 ritual intact so it self-perpetuates).
+4. **Push only when Nate asks.** Commit locally is fine; Nate's standing instruction is
    **don't push**.
 
 That's the loop: **implement a phase → validate → (at handoff) update docs + rewrite this prompt.**
 
-## Still owed (needs a human) — THE playtest
-**2-player Studio playtest** (Test → Clients and Servers, 2 players; enable Game Settings →
-Security → API Services for DataStore). This now covers M2/M3 **and** the whole new look + shell:
-- World reads: bright noon, clouds, street/sidewalks/lamps, bun-hill horizon; plots are cream/brown
-  stalls with counters + posts; real hot dogs on pedestals (rarity glow ladder visible), vault gold.
-- New player: spawns at their stand with 1 Common glizzy showing; pads green/red; FREE cook 5-min
-  gate works; stove builds + ticks un-stealable coins.
-- **Build chain:** 🏗️ pad offers floor2 first → stairs → wall → floor3 → gate → elevator; 🎪 pad
-  walks the decors; pedestals appear on floors 2/3 and FILL after cooks; income % rises with decor;
-  **rejoin rebuilds everything exactly once** (watch for double income / double structures).
-- **Steal pathing:** player 2 climbs the stairs/truss and steals from floor 2/3; wall gap + gate slow
-  but never block; carry rig is a welded glizzy; alarm flashes on the victim sign; Giant steals shake.
-- UI: bottom row + tray toggles all mustard-styled; windows drag/minimize/pop; Build window lists
-  ✅/🏗️/🔒 correctly; Upgrades/Rebirth windows still work.
-- Then **tune `GAME_DESIGN §6`** numbers (costs, cooldown, catalog prices) to feel.
+## Standing caveats
+- **The 2-player playtest was waived, not passed.** If anything looks off in Studio later
+  (geometry overlaps, steal pathing on floors 2/3, double income on rejoin, contrast), fix on
+  sight — there is no live-validated baseline.
+- All `GAME_DESIGN §6` numbers (costs, cooldowns, catalog prices, conveyor prices) are
+  reasoned-not-observed; tune when real sessions happen.

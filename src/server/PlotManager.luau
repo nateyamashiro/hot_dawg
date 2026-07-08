@@ -149,6 +149,10 @@ local PAD_LAYOUT: { { id: string, offset: Vector3 } } = {
 	-- or decor (🎪) BuildCatalog entry — never 15 pads. Main.syncPads fills the label.
 	{ id = "build", offset = Vector3.new(25, 0.7, 19) },
 	{ id = "decor", offset = Vector3.new(-25, 0.7, 19) },
+	-- Machine row (Phase 4/5): ⚙️ upgrader beside the stove (shown once the stove is
+	-- built), 🌍 zone expansion beside the cook station (priced in PRESTIGE).
+	{ id = "upgrader", offset = Vector3.new(-22, 0.7, 12) },
+	{ id = "zone", offset = Vector3.new(22, 0.7, 12) },
 }
 
 -- Build one walk-on pad for `plot` at a facing-local offset. Owner-only + debounced:
@@ -1102,9 +1106,11 @@ end
 local function displayCapacity(data: DataManager.PlayerData): number
 	local levels = GameConfig.DisplaySlotLevels
 	local def = levels[data.displaySlotsLvl] or levels[#levels]
-	-- Built floors add their pedestal slots (derived from data.built at read time —
-	-- never banked — so rebuild-on-join can't double-apply).
-	return def.slots + data.bonusDisplaySlots + BuildGrants.displaySlotBonus(data.built)
+	-- Built floors + the zone tier add slots (derived at read time from data.built /
+	-- data.zoneLvl — never banked — so rebuild-on-join can't double-apply).
+	local zoneTier = GameConfig.ZoneTiers[data.zoneLvl]
+	local zoneBonus = zoneTier and zoneTier.extraSlots or 0
+	return def.slots + data.bonusDisplaySlots + BuildGrants.displaySlotBonus(data.built) + zoneBonus
 end
 
 -- Rebuild a player's pedestals + vault from their current inventory. Cheap enough
@@ -1242,6 +1248,20 @@ function PlotManager.setStealHoldBonus(player: Player, bonus: number)
 	end
 end
 
+-- Resize the plot's ground pad for a zone tier (Phase 5). Cosmetic footprint flex —
+-- the capacity half of the grant is derived in displayCapacity, never banked here.
+-- At the top tier (×1.5 on a 96-stud pitch) pads keep a ≥6-stud gap to neighbours.
+function PlotManager.applyZone(player: Player, mult: number)
+	local plot = ownerToPlot[player.UserId]
+	if not plot then
+		return
+	end
+	local pad = plot.model:FindFirstChild("Pad")
+	if pad and pad:IsA("BasePart") then
+		pad.Size = Vector3.new(GameConfig.PlotPadWidth * mult, 1, GameConfig.PlotPadDepth * mult)
+	end
+end
+
 -- Toggle the deposit prompt on a player's own stand (shown only while carrying).
 function PlotManager.setDepositEnabled(player: Player, enabled: boolean)
 	local plot = ownerToPlot[player.UserId]
@@ -1279,6 +1299,11 @@ function PlotManager.release(player: Player)
 	plot.holdBonus = 0
 	plot.depositPrompt.Enabled = false
 	plot.cookPrompt.Enabled = false
+	-- Undo any zone expansion for the next tenant.
+	local basePad = plot.model:FindFirstChild("Pad")
+	if basePad and basePad:IsA("BasePart") then
+		basePad.Size = Vector3.new(GameConfig.PlotPadWidth, 1, GameConfig.PlotPadDepth)
+	end
 	plot.signText.Text = "Empty Plot"
 	plot.model:SetAttribute("OwnerUserId", nil)
 	plot.owner = nil

@@ -26,8 +26,12 @@ Approved plan: `~/.claude/plans/inherited-hugging-alpaca.md` · phase order in `
 - ✅ **UI restyle (P-D):** themed `MenuLayout` windows everywhere · `Build.client` window · old
   Upgrades menu restyled + kept as fallback (locked decision #6).
 - ✅ **Glizzy-land horizon (P-E):** bun hills · mustard river · ketchup geyser.
-- 🔜 **2-player Studio playtest** — gates everything (steal pathing on floors, rebuild-on-join, feel).
-- ⏳ Phase 4 conveyor + upgraders · Phase 5 non-damaging weapons + zone expansion.
+- ✅ **Phase 4 conveyor + upgrader:** street belt with prompt-to-buy glizzies (shop weights/prices)
+  · ⚙️ upgrader pad multiplying stove output.
+- ✅ **Phase 5 weapons + zones:** 🔫 blaster tray window + Tool (server-authoritative slow/knockback/
+  stun near your own plot, never damage) · 🌍 prestige zone pad (bigger pad + extra slots).
+- ⚠️ **Playtest WAIVED by Nate 2026-07-09** — no live validation has run; all §6 tuning is
+  reasoned-not-observed. Revisit if anything feels off in Studio later.
 - ⏳ Nate asset passes (zero code): `GameConfig.Sounds` ids · `GlizzyMeshIds` meshes · `SkyboxAssetId`.
 
 ---

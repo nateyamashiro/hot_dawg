@@ -1,12 +1,11 @@
 --!strict
--- Cooker upgraders (Phase 4, visual-overhaul/tycoon plan). The classic dropper→upgrader
--- value chain: an upgrader multiplies the auto-cooker's coin output as it travels the
--- belt. GameConfig.UpgraderTiers holds the multiplier per level (data.upgraderLvl).
--- Server validates + charges the upgrade; the multiplier is read by AutoCookerService /
--- Main's income loop. Untrusted client only requests. Mirrors UpgradeService.
---
--- SCAFFOLD: the buy path is TODO(Phase4). Today this ships the pushState handshake +
--- the outputMultiplier getter (so Phase 4 income wiring is a one-liner).
+-- Cooker upgraders (Phase 4 — SHIPPED). The classic dropper→upgrader value chain: an
+-- upgrader multiplies the auto-cooker stove's coin output. GameConfig.UpgraderTiers
+-- holds the multiplier per level (data.upgraderLvl; level 1 = the free ×1.0 default).
+-- Server validates + charges; AutoCookerService.coinsPerSecond reads outputMultiplier,
+-- so the tick loop, offline earnings, and the stove label all inherit it for free.
+-- Bought via the ⚙️ walk-on pad (Main's pad handler) or the BuyUpgrader remote — both
+-- share tryUpgrade. Mirrors AutoCookerService's validate→charge→apply→push flow.
 
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local ServerScriptService = game:GetService("ServerScriptService")
@@ -18,11 +17,12 @@ local RateLimit = require(ServerScriptService.Server.RateLimit)
 local UpgraderService = {}
 
 local updateLeaderstats: (player: Player) -> ()
+local remFeedback: RemoteEvent
 local remBuyUpgrader: RemoteEvent
 local remUpgraderUpdate: RemoteEvent
 
 -- Multiplier the player's current upgrader tier applies to auto-cooker output (1 if
--- misconfigured). Phase 4 multiplies AutoCookerService.coinsPerSecond by this.
+-- misconfigured). AutoCookerService.coinsPerSecond multiplies by this.
 function UpgraderService.outputMultiplier(data: DataManager.PlayerData): number
 	local tier = GameConfig.UpgraderTiers[data.upgraderLvl]
 	return tier and tier.outputMult or 1
@@ -37,11 +37,37 @@ function UpgraderService.pushState(player: Player)
 	remUpgraderUpdate:FireClient(player, GameConfig.UpgraderTiers, data.upgraderLvl, data.coins)
 end
 
-local function onBuy(player: Player)
-	-- TODO(Phase4): validate a next tier exists + coins >= cost; charge, bump
-	-- data.upgraderLvl, push.
+-- Upgrade to the next tier: validate it exists + affordable, charge, bump, push.
+-- Returns true on success (the pad handler pops a celebration on it).
+function UpgraderService.tryUpgrade(player: Player): boolean
+	local data = DataManager.get(player)
+	if not data then
+		return false
+	end
+	local nextLvl = data.upgraderLvl + 1
+	local nextTier = GameConfig.UpgraderTiers[nextLvl]
+	if not nextTier then
+		remFeedback:FireClient(player, false, "⚙️ Upgrader is fully upgraded!")
+		return false
+	end
+	if data.coins < nextTier.cost then
+		remFeedback:FireClient(
+			player,
+			false,
+			"Need " .. nextTier.cost .. " coins for the upgrader."
+		)
+		return false
+	end
+	data.coins -= nextTier.cost
+	data.upgraderLvl = nextLvl
 	updateLeaderstats(player)
 	UpgraderService.pushState(player)
+	remFeedback:FireClient(
+		player,
+		true,
+		"⚙️ Upgrader Lv " .. nextLvl .. " — stove output ×" .. nextTier.outputMult .. "!"
+	)
+	return true
 end
 
 function UpgraderService.init(deps: {
@@ -49,6 +75,7 @@ function UpgraderService.init(deps: {
 	updateLeaderstats: (player: Player) -> (),
 })
 	updateLeaderstats = deps.updateLeaderstats
+	remFeedback = deps.remotes:WaitForChild("StealFeedback") :: RemoteEvent
 	remBuyUpgrader = deps.remotes:WaitForChild("BuyUpgrader") :: RemoteEvent
 	remUpgraderUpdate = deps.remotes:WaitForChild("UpgraderUpdate") :: RemoteEvent
 
@@ -56,7 +83,7 @@ function UpgraderService.init(deps: {
 		if not RateLimit.check(player, "BuyUpgrader", 5) then
 			return
 		end
-		onBuy(player)
+		UpgraderService.tryUpgrade(player)
 	end)
 end
 

@@ -296,6 +296,22 @@ being reshaped from menu-driven into a **physical walk-on-pad tycoon**:
   window (✅/🏗️/🔒); tray gained "Build"; the old 🛒 Upgrades menu is restyled and kept as the pad
   fallback (locked decision #6).
 
+**Overhaul Phases 4+5 — SHIPPED 2026-07-09** (playtest WAIVED by Nate — accepted without live
+validation; §6 stays reasoned-not-observed):
+- **Conveyor buy-lane** (`ConveyorService`) — a belt strip down the street centre; up to 8
+  glizzies ride it spinning with price tags; prompt-to-buy (0.35s hold, deliberate — raw Touch
+  would misfire on street-crossers). Offers roll from the SHOP's flatter weights + prices; buys
+  grant base dogs (no mutation mint — cook stays the only mint source).
+- **Cooker upgrader** (`UpgraderService`) — ⚙️ pad beside the stove (appears once it's built);
+  `outputMult` multiplies `AutoCookerService.coinsPerSecond`, so tick/offline/label inherit it.
+- **Condiment blasters** (`WeaponService` + `Weapons.client` tray window) — buy/equip; equip hands
+  a colored Neon Tool (re-given each spawn). Fire = server picks the nearest CARRYING thief within
+  24 studs AND within 45 studs of the firer's own plot (defense only). Effects: slow 2s /
+  knockback / stun — NEVER damage (locked all-ages tone). Splat burst via Celebrate.
+- **Zone expansion** (`ZoneService`) — 🌍 pad priced in PRESTIGE (green/red by prestige balance);
+  charging physically swells the plot pad (`PlotManager.applyZone`; reset on release, re-applied
+  on join) and adds display slots derived read-time in `displayCapacity`.
+
 ## 6. Current tuning values (from `GameConfig.luau` / `HotDogDex.luau`)
 
 **Economy**

@@ -19,8 +19,14 @@ Each should be independently testable in Studio. `✅ done · 🔜 next · ⏳ l
 > `EnvironmentService` (noon lighting + street map + glizzy-land horizon) · 15-entry `BuildCatalog`
 > + `BuildGrants` + `BuildService` end-to-end (🏗️/🎪 walk-on pads; DefenseService wall retired +
 > grandfathered) · juice pass (`Celebrate` remote, `Sfx`, sounds config) · themed window UI
-> (`MenuLayout` + `Build.client`). **NEXT: the 2-player Studio playtest, then conveyor/upgraders
-> (Phase 4) and weapons/zones (Phase 5).** See `docs/NEXT_SESSION_PROMPT.md`.
+> (`MenuLayout` + `Build.client`).
+>
+> **2026-07-09 shipped — OVERHAUL PHASES 4+5 (playtest WAIVED by Nate):** conveyor street buy-lane
+> (belt + prompt-to-buy glizzies at shop prices) · cooker upgrader (⚙️ pad → stove output mult) ·
+> condiment blasters (🔫 buy/equip Tool; server-authoritative slow/knockback/stun near your own
+> plot; never damage) · prestige zone expansion (🌍 pad; bigger pad + extra slots). **The whole
+> visual overhaul + tycoon layer is code-complete. NEXT: M4 retention (events/leaderboards/
+> achievements real logic) + manual vault + the hardening pass.** See `docs/NEXT_SESSION_PROMPT.md`.
 
 ---
 

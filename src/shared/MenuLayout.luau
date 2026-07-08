@@ -27,6 +27,7 @@ MenuLayout.PRIMARY = { "Upgrades", "Rebirth", "Dex", "Daily", "Shop", "More" }
 -- Secondary panels reached via the "⋯ More" tray (stacked above the More button).
 MenuLayout.TRAY = {
 	"Build",
+	"Weapons",
 	"PrestigeShop",
 	"Fusion",
 	"Events",

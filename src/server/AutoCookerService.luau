@@ -19,6 +19,7 @@ local BuildGrants = require(ReplicatedStorage.Shared.BuildGrants)
 local GameConfig = require(ReplicatedStorage.Shared.GameConfig)
 local DataManager = require(ServerScriptService.Server.DataManager)
 local RateLimit = require(ServerScriptService.Server.RateLimit)
+local UpgraderService = require(ServerScriptService.Server.UpgraderService)
 
 local AutoCookerService = {}
 
@@ -29,14 +30,17 @@ local remAutoCookerUpdate: RemoteEvent
 
 -- Coins/sec the player's current stove tier emits (0 when unbuilt/misconfigured).
 -- Folded into Main's income loop. Un-stealable by construction — it's coins, not dogs.
--- Built floors each grant a cooker slot = +15% stove output (BuildGrants; derived
--- from data.built at read time, so rebuild-on-join can't double-apply).
+-- Two read-time multipliers stack on the base tier rate:
+--   * built floors: each cooker slot = +15% (BuildGrants; derived from data.built)
+--   * the cooker upgrader: ×UpgraderTiers[upgraderLvl].outputMult (Phase 4)
 function AutoCookerService.coinsPerSecond(data: DataManager.PlayerData): number
 	local tier = GameConfig.AutoCookerTiers[data.autoCookerLvl]
 	if not tier then
 		return 0
 	end
-	return tier.coinsPerSec * (1 + 0.15 * BuildGrants.cookerSlotBonus(data.built))
+	return tier.coinsPerSec
+		* (1 + 0.15 * BuildGrants.cookerSlotBonus(data.built))
+		* UpgraderService.outputMultiplier(data)
 end
 
 -- Send the tier table + the player's level + coin balance so a client panel can render

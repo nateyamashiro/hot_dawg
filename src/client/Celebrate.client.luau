@@ -186,6 +186,16 @@ local function onGiantShake(target: any)
 	end)
 end
 
+-- Condiment splat (Phase 5 weapons): a colored smoke puff on the blasted thief.
+local function onSplat(target: any, extra: any)
+	local part = if typeof(target) == "Instance" and target:IsA("BasePart") then target else nil
+	if not part then
+		return
+	end
+	local color = if typeof(extra) == "Color3" then extra else Theme.Palette.Mustard
+	burst(part, SMOKE, color, 15)
+end
+
 celebrate.OnClientEvent:Connect(function(kind: string, target: any, extra: any)
 	if kind == "cook" then
 		onCook(target, extra)
@@ -197,6 +207,8 @@ celebrate.OnClientEvent:Connect(function(kind: string, target: any, extra: any)
 		onStealAlarm(target)
 	elseif kind == "giantShake" then
 		onGiantShake(target)
+	elseif kind == "splat" then
+		onSplat(target, extra)
 	end
 end)
 
