@@ -33,37 +33,34 @@ local status = Instance.new("TextLabel")
 status.Size = UDim2.new(1, 0, 0, 48)
 status.LayoutOrder = 1
 status.BackgroundTransparency = 1
-status.TextColor3 = Color3.fromRGB(220, 220, 230)
+status.TextColor3 = MenuLayout.BodyText
 status.TextScaled = true
 status.Font = Enum.Font.Gotham
 status.Text = "No active trade."
 status.Parent = content
 
-local function makeBtn(order: number, text: string, color: Color3): TextButton
+local function makeBtn(order: number, text: string, kind: string): TextButton
 	local btn = Instance.new("TextButton")
 	btn.Size = UDim2.new(1, 0, 0, 40)
 	btn.LayoutOrder = order
-	btn.BackgroundColor3 = color
-	btn.TextColor3 = Color3.fromRGB(255, 255, 255)
-	btn.TextScaled = true
-	btn.Font = Enum.Font.GothamBold
 	btn.Text = text
 	btn.Parent = content
+	MenuLayout.styleButton(btn, kind)
 	return btn
 end
 
 -- TODO(M6-trade): replace with a real "trade nearest player" target picker + an
 -- offer editor (drag stacks in). For now these just exercise the remotes.
-makeBtn(2, "Request trade", Color3.fromRGB(60, 60, 85)).Activated:Connect(function()
+makeBtn(2, "Request trade", "primary").Activated:Connect(function()
 	tradeRequest:FireServer(0) -- TODO: pass the chosen target's UserId
 end)
-makeBtn(3, "Update offer", Color3.fromRGB(60, 70, 80)).Activated:Connect(function()
+makeBtn(3, "Update offer", "primary").Activated:Connect(function()
 	tradeUpdate:FireServer({}) -- TODO: send this side's {key = qty} offer
 end)
-makeBtn(4, "Confirm", Color3.fromRGB(70, 90, 55)).Activated:Connect(function()
+makeBtn(4, "Confirm", "success").Activated:Connect(function()
 	tradeConfirm:FireServer()
 end)
-makeBtn(5, "Cancel", Color3.fromRGB(120, 50, 50)).Activated:Connect(function()
+makeBtn(5, "Cancel", "danger").Activated:Connect(function()
 	tradeCancel:FireServer()
 end)
 

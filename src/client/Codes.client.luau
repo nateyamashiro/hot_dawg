@@ -27,24 +27,22 @@ end)
 local box = Instance.new("TextBox")
 box.Size = UDim2.new(1, 0, 0, 44)
 box.LayoutOrder = 1
-box.BackgroundColor3 = Color3.fromRGB(45, 45, 60)
-box.TextColor3 = Color3.fromRGB(255, 255, 255)
+box.BackgroundColor3 = MenuLayout.RowBg
+box.TextColor3 = MenuLayout.BodyText
 box.PlaceholderText = "Enter code…"
 box.TextScaled = true
 box.Font = Enum.Font.Gotham
 box.Text = ""
 box.ClearTextOnFocus = false
 box.Parent = content
+MenuLayout.addChrome(box, 8)
 
 local submit = Instance.new("TextButton")
 submit.Size = UDim2.new(1, 0, 0, 40)
 submit.LayoutOrder = 2
-submit.BackgroundColor3 = Color3.fromRGB(70, 90, 55)
-submit.TextColor3 = Color3.fromRGB(255, 255, 255)
-submit.TextScaled = true
-submit.Font = Enum.Font.GothamBold
 submit.Text = "Redeem"
 submit.Parent = content
+MenuLayout.styleButton(submit, "success")
 submit.Activated:Connect(function()
 	if box.Text ~= "" then
 		redeemCode:FireServer(box.Text)

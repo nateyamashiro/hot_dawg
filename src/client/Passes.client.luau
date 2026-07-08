@@ -31,7 +31,7 @@ local status = Instance.new("TextLabel")
 status.Size = UDim2.new(1, 0, 0, 32)
 status.LayoutOrder = 1
 status.BackgroundTransparency = 1
-status.TextColor3 = Color3.fromRGB(200, 230, 200)
+status.TextColor3 = MenuLayout.BodyText
 status.TextScaled = true
 status.Font = Enum.Font.Gotham
 status.Text = "Owned: —"
@@ -43,12 +43,9 @@ for i, o in offers do
 	local btn = Instance.new("TextButton")
 	btn.Size = UDim2.new(1, 0, 0, 40)
 	btn.LayoutOrder = i + 1
-	btn.BackgroundColor3 = Color3.fromRGB(60, 60, 85)
-	btn.TextColor3 = Color3.fromRGB(255, 255, 255)
-	btn.TextScaled = true
-	btn.Font = Enum.Font.GothamBold
 	btn.Text = o[2]
 	btn.Parent = content
+	MenuLayout.styleButton(btn, "primary")
 	btn.Activated:Connect(function()
 		promptPurchase:FireServer(o[1])
 	end)

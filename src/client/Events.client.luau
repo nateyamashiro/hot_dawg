@@ -30,7 +30,7 @@ local status = Instance.new("TextLabel")
 status.Size = UDim2.new(1, 0, 0, 60)
 status.LayoutOrder = 1
 status.BackgroundTransparency = 1
-status.TextColor3 = Color3.fromRGB(220, 220, 230)
+status.TextColor3 = MenuLayout.BodyText
 status.TextScaled = true
 status.Font = Enum.Font.Gotham
 status.Text = "Loading…"
@@ -39,12 +39,9 @@ status.Parent = content
 local claimBtn = Instance.new("TextButton")
 claimBtn.Size = UDim2.new(1, 0, 0, 40)
 claimBtn.LayoutOrder = 2
-claimBtn.BackgroundColor3 = Color3.fromRGB(70, 90, 55)
-claimBtn.TextColor3 = Color3.fromRGB(255, 255, 255)
-claimBtn.TextScaled = true
-claimBtn.Font = Enum.Font.GothamBold
 claimBtn.Text = "Claim reward"
 claimBtn.Parent = content
+MenuLayout.styleButton(claimBtn, "success")
 claimBtn.Activated:Connect(function()
 	claimEventReward:FireServer()
 end)

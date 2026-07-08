@@ -262,9 +262,39 @@ being reshaped from menu-driven into a **physical walk-on-pad tycoon**:
 - **Cook gated:** the single cook is FREE but on a **5-min cooldown** (`CookCooldownSeconds` /
   `data.cookReadyAt`) — the "wall" that slows glizzy acquisition and rewards longer/returning play.
   **Cook-10 stays PAID** (`CookCost`×10) as the "pay to skip the wait / bulk" bypass.
-- Scaffolded-but-stubbed for the remaining phases: `BuildService` (the building shell — floors/stairs/
-  elevator/walls/gate via build pads, **NEXT**), `ConveyorService`, `UpgraderService`, `WeaponService`
-  (non-damaging), `ZoneService`, and `MenuLayout.makeWindow` (drag/minimize/close, for the UI migration).
+- Scaffolded-but-stubbed for the remaining phases: `ConveyorService`, `UpgraderService`,
+  `WeaponService` (non-damaging), `ZoneService`.
+
+**Design system + building shell — SHIPPED 2026-07-09** (plan
+`~/.claude/plans/i-want-you-to-wild-abelson.md`, all phases P-A→P-E):
+- **`Theme.luau` design tokens** — ketchup-and-mustard world palette (18 colors), semantic state
+  colors, material/chunk rules, the bright-noon lighting recipe, UI tokens (Cream panels /
+  ketchup-gradient bars / FredokaOne / bounce), VFX restraint budgets. Rarity colors stay in
+  `HotDogDex`, variant colors in `Variants` (single sources preserved).
+- **Procedural glizzies** (`GlizzyModel.luau`) — sausage + buns + mustard zigzag on every pedestal /
+  vault slot / carry rig; rarity fx ladder (Neon drizzle → lights → sparkles/embers/smoke, ≤1
+  emitter per dog, pedestals only, culled past 60 studs); Gold/Rainbow/Giant looks (Rainbow is
+  hue-cycled client-side); `GameConfig.GlizzyMeshIds` = the zero-code AI-mesh swap slot
+  (SpecialMesh deliberately — MeshPart.MeshId isn't runtime-scriptable).
+- **World** (`EnvironmentService`) — noon lighting + Atmosphere/Bloom/ColorCorrection/SunRays/
+  Clouds; grass/street/mustard dashes/sidewalks/lamps; glizzy-land horizon (bun hills, mustard
+  river, ketchup geyser). Runs before `PlotManager.build()`.
+- **Building shell** — 15-entry `BuildCatalog` (floor2→stairs2→wall→floor3→gate→elevator + 9 income
+  decors totalling +27% for ~25,050 coins; full catalog ≈ 43,750). `BuildGrants` derives every grant
+  from `data.built` at READ time (rebuild-on-join can't double-apply). Static floor-1 stall shell on
+  every plot; structures rise via 🏗️ structural + 🎪 decor walk-on pads that each offer ONE next
+  item (server re-derives; never trusts the pad). **Locked balance rules:** the ground route stays
+  open (wall keeps a permanent 16-stud gap; the gate slows non-owners to walkspeed 9 for 2s, never
+  blocks), and every display floor keeps a free theft route (jumpable rails, floor-3 climbable
+  truss, elevator prompts work for everyone) — upper floors sell TIME, not immunity. The old $250
+  DefenseService wall is retired; old owners are grandfathered `built.wall` on load.
+- **Juice** — `Celebrate` remote: cook burst colored by rarity (+ stingers), purchase pad pop, build
+  dust, 3-flash steal alarm, camera shake on Giant grabs; client coin-milestone 💰 sparkle; spinning
+  cook-reveal viewport. `Sfx.luau` + `GameConfig.Sounds` are silence-safe until Nate picks ids.
+- **UI restyle** — `MenuLayout` owns the Theme.UI chrome; every panel is now a draggable Cream
+  window with a ketchup-gradient title bar (`makePanel` = `makeWindow`); new `Build.client` catalog
+  window (✅/🏗️/🔒); tray gained "Build"; the old 🛒 Upgrades menu is restyled and kept as the pad
+  fallback (locked decision #6).
 
 ## 6. Current tuning values (from `GameConfig.luau` / `HotDogDex.luau`)
 

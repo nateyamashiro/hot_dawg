@@ -37,45 +37,33 @@ gui.Name = "GlizzyDaily"
 gui.ResetOnSpawn = false
 gui.IgnoreGuiInset = true
 
--- Toggle button — slot owned in the shared MenuLayout row.
-local toggle = Instance.new("TextButton")
-toggle.Size = UDim2.fromOffset(MenuLayout.BUTTON_W, MenuLayout.BUTTON_H)
-toggle.Position = MenuLayout.primaryPosition(MenuLayout.slotOf("Daily") or 3)
-toggle.BackgroundColor3 = Color3.fromRGB(70, 70, 90)
-toggle.TextColor3 = Color3.fromRGB(255, 255, 255)
-toggle.TextScaled = true
-toggle.Font = Enum.Font.GothamBold
-toggle.Text = "📅 Daily"
-toggle.Parent = gui
+-- Toggle button — slot owned in the shared MenuLayout row (P-D themed).
+local toggle = MenuLayout.makePrimaryButton(gui, "Daily", "📅 Daily")
 
 local panel = Instance.new("Frame")
 panel.Size = UDim2.fromOffset(460, 380)
 panel.Position = UDim2.new(0.5, -230, 0.5, -190)
-panel.BackgroundColor3 = Color3.fromRGB(25, 25, 35)
-panel.BackgroundTransparency = 0.05
 panel.Visible = false
 panel.Parent = gui
+MenuLayout.themePanel(panel)
 
 local title = Instance.new("TextLabel")
 title.Size = UDim2.new(1, -60, 0, 40)
 title.Position = UDim2.fromOffset(12, 8)
 title.BackgroundTransparency = 1
-title.TextColor3 = Color3.fromRGB(255, 230, 150)
+title.TextColor3 = MenuLayout.BodyText
 title.TextXAlignment = Enum.TextXAlignment.Left
 title.TextScaled = true
-title.Font = Enum.Font.GothamBlack
+title.Font = MenuLayout.TitleFont
 title.Text = "📅 Daily"
 title.Parent = panel
 
 local close = Instance.new("TextButton")
 close.Size = UDim2.fromOffset(36, 36)
 close.Position = UDim2.new(1, -42, 0, 10)
-close.BackgroundColor3 = Color3.fromRGB(180, 50, 50)
-close.TextColor3 = Color3.fromRGB(255, 255, 255)
-close.TextScaled = true
-close.Font = Enum.Font.GothamBold
 close.Text = "✕"
 close.Parent = panel
+MenuLayout.styleButton(close, "danger")
 close.Activated:Connect(function()
 	panel.Visible = false
 end)
@@ -85,7 +73,7 @@ local streakLabel = Instance.new("TextLabel")
 streakLabel.Size = UDim2.new(1, -24, 0, 34)
 streakLabel.Position = UDim2.fromOffset(12, 52)
 streakLabel.BackgroundTransparency = 1
-streakLabel.TextColor3 = Color3.fromRGB(240, 240, 240)
+streakLabel.TextColor3 = MenuLayout.BodyText
 streakLabel.TextXAlignment = Enum.TextXAlignment.Left
 streakLabel.TextScaled = true
 streakLabel.Font = Enum.Font.GothamBold
@@ -95,12 +83,9 @@ streakLabel.Parent = panel
 local claimStreakBtn = Instance.new("TextButton")
 claimStreakBtn.Size = UDim2.fromOffset(220, 40)
 claimStreakBtn.Position = UDim2.fromOffset(12, 90)
-claimStreakBtn.BackgroundColor3 = Color3.fromRGB(60, 140, 80)
-claimStreakBtn.TextColor3 = Color3.fromRGB(255, 255, 255)
-claimStreakBtn.TextScaled = true
-claimStreakBtn.Font = Enum.Font.GothamBold
 claimStreakBtn.Text = "Claim daily reward"
 claimStreakBtn.Parent = panel
+MenuLayout.styleButton(claimStreakBtn, "success")
 claimStreakBtn.Activated:Connect(function()
 	claimDaily:FireServer()
 end)
@@ -131,14 +116,15 @@ local function renderMissions(missions: { Mission })
 		local row = Instance.new("Frame")
 		row.Size = UDim2.new(1, 0, 0, 44)
 		row.LayoutOrder = i
-		row.BackgroundColor3 = Color3.fromRGB(40, 40, 50)
+		row.BackgroundColor3 = MenuLayout.RowBg
 		row.Parent = missionsFrame
+		MenuLayout.addChrome(row, 8)
 
 		local text = Instance.new("TextLabel")
 		text.Size = UDim2.new(1, -110, 1, 0)
 		text.Position = UDim2.fromOffset(8, 0)
 		text.BackgroundTransparency = 1
-		text.TextColor3 = Color3.fromRGB(235, 235, 235)
+		text.TextColor3 = MenuLayout.BodyText
 		text.TextXAlignment = Enum.TextXAlignment.Left
 		text.TextScaled = true
 		text.Font = Enum.Font.Gotham
@@ -152,20 +138,21 @@ local function renderMissions(missions: { Mission })
 		claim.TextScaled = true
 		claim.Font = Enum.Font.GothamBold
 		claim.Parent = row
+		MenuLayout.addChrome(claim, 8)
 
 		local done = m.progress >= m.target
 		if m.claimed then
 			claim.Text = "✓ Done"
-			claim.BackgroundColor3 = Color3.fromRGB(70, 70, 80)
+			claim.BackgroundColor3 = MenuLayout.Disabled
 		elseif done then
 			claim.Text = "Claim"
-			claim.BackgroundColor3 = Color3.fromRGB(60, 140, 80)
+			claim.BackgroundColor3 = MenuLayout.SuccessBg
 			claim.Activated:Connect(function()
 				claimMission:FireServer(m.id)
 			end)
 		else
 			claim.Text = "…"
-			claim.BackgroundColor3 = Color3.fromRGB(90, 90, 100)
+			claim.BackgroundColor3 = MenuLayout.Disabled
 		end
 	end
 end
@@ -175,12 +162,14 @@ dailyUpdate.OnClientEvent:Connect(function(state: DailyState)
 	if state.canClaimStreak then
 		claimStreakBtn.Text =
 			string.format("Claim +💰%d (Day %d)", state.nextReward, state.streak + 1)
-		claimStreakBtn.BackgroundColor3 = Color3.fromRGB(60, 140, 80)
+		claimStreakBtn.BackgroundColor3 = MenuLayout.SuccessBg
+		claimStreakBtn.TextColor3 = Color3.fromRGB(255, 255, 255)
 		claimStreakBtn.Active = true
 		claimStreakBtn.AutoButtonColor = true
 	else
 		claimStreakBtn.Text = "✓ Claimed today"
-		claimStreakBtn.BackgroundColor3 = Color3.fromRGB(70, 70, 80)
+		claimStreakBtn.BackgroundColor3 = MenuLayout.Disabled
+		claimStreakBtn.TextColor3 = Color3.fromRGB(255, 255, 255)
 		claimStreakBtn.AutoButtonColor = false
 	end
 	renderMissions(state.missions)

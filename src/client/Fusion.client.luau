@@ -52,8 +52,8 @@ inventoryUpdate.OnClientEvent:Connect(function(hotDogs)
 			local row = Instance.new("TextButton")
 			row.Size = UDim2.new(1, 0, 0, 40)
 			row.LayoutOrder = i
-			row.BackgroundColor3 = Color3.fromRGB(60, 55, 75)
-			row.TextColor3 = resultDef and resultDef.color or Color3.fromRGB(255, 255, 255)
+			row.BackgroundColor3 = MenuLayout.RowBg
+			row.TextColor3 = if resultDef then resultDef.color else MenuLayout.BodyText
 			row.TextScaled = true
 			row.Font = Enum.Font.GothamBold
 			row.Text = GameConfig.FusionInputs

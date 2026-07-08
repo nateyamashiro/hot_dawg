@@ -3,61 +3,54 @@
 ---
 
 You are continuing development of **"Steal a Glizzy"**, a server-authoritative Roblox
-steal-and-defend idle **tycoon** (repo `hot_dawg`). Milestones 1–3 + the M3-remainder features
-(**mutations-on-cook, prestige spending, fusion**) are built and static-clean. The project is now
-mid-way through a **VISUAL OVERHAUL + CLASSIC-TYCOON LAYER** (Nate's direction after a Studio look):
-bigger stands, a physical walk-on-pad tycoon loop, passive income, and a de-cluttered UI. Your job:
-**keep implementing that overhaul phase-by-phase** per the plan, don't re-architect.
+steal-and-defend idle **tycoon** (repo `hot_dawg`). Milestones 1–3 + M3-remainder features
+(mutations, prestige spending, fusion) are built, and the **entire visual design system + building
+shell just shipped** (design plan phases P-A→P-E): Theme tokens, procedural glizzy models, world
+lighting/street, the 15-entry build catalog with walk-on 🏗️/🎪 pads, the juice pass (Celebrate
+remote), and the themed window UI. Everything is static-clean but **none of it has been seen live**.
 
 ## Step 0 — Read these first (all the context lives here)
-- **The overhaul PLAN:** `C:\Users\jwgri\.claude\plans\inherited-hugging-alpaca.md` — the phased plan
-  Nate approved (context, locked decisions, phases, key files). READ FIRST.
-- **`CLAUDE.md`** — architecture rules, workflow, toolchain, full code map. READ FULLY.
-- **`docs/HANDOFF.md`** — start-here status + the scaffold section (composite-key/mutation model,
-  `_v5` fields, `MenuLayout`, `RateLimit`, handshake, build order). READ FULLY.
-- **`docs/design/GAME_DESIGN.md`** — §4 locked decisions · §5 what's built · §6 tuning · §7 decision log.
+- **`CLAUDE.md`** — architecture rules, workflow, toolchain, full code map + status. READ FULLY.
+- **`docs/HANDOFF.md`** — start-here status, scaffold facts, tycoon-layer gotchas. READ FULLY.
+- **The design plan:** `C:\Users\jwgri\.claude\plans\i-want-you-to-wild-abelson.md` — the executed
+  visual roadmap (palette, builders' exact geometry, balance rules §2.7, phase gates). The earlier
+  overhaul plan is `inherited-hugging-alpaca.md` (Phases 4–5 still pending).
+- **`docs/design/GAME_DESIGN.md`** — §4 locked decisions · §6 tuning numbers (playtest-unconfirmed).
 - Offline Roblox docs in `docs/roblox-reference/` — use them instead of guessing APIs.
 
-## Step 1 — What's DONE in the overhaul, and what's NEXT
+## Step 1 — What's DONE, and what's NEXT
 
-**DONE this stretch (all static-clean; NOT yet 2-player-playtested):**
-- **Fusion** shipped (5 dupes of a key → 1 of the same base dog one variant up the ladder).
-- **Phase 0 scaffold + quick wins:** enlarged plots; brand-new players spawn with 1 random Common
-  glizzy (gated on first-join in `DataManager.load`); ALL overhaul config blocks + `_v5` data fields
-  added; compiling stubs for 6 new services (`AutoCooker`, `Build`, `Weapon`, `Conveyor`, `Upgrader`,
-  `Zone`) wired into `Main`; `MenuLayout.makeWindow` (drag/minimize/close) skeleton added.
-- **Physical tycoon stations (the big one):** a reusable **walk-on pad framework** in `PlotManager`
-  (`makeBuyPad`/`updatePads`/`setStove`/`setPadHandler`/`setCookHandler`), a **🌭 Cook Station**
-  (ProximityPrompt, reuses the cook roll), a **🔥 Stove** for passive un-stealable coins (starts
-  UNBUILT at `autoCookerLvl 0`; built + upgraded via a walk-on pad; income folded into the tick loop
-  AND offline earnings), and **walk-on upgrade pads** for grill/display/vault (reuse
-  `UpgradeService.tryBuy`). Pads are **GREEN when affordable / RED when too expensive**, refreshed
-  live each tick. `Main.syncPads` computes pad labels/affordability; `Main.cookOne` is the shared cook
-  path for both the button and the station.
-- **Cook is now GATED:** the single Cook (button + station) is **FREE but on a cooldown**
-  (`GameConfig.CookCooldownSeconds`, 300s / 5 min) via `data.cookReadyAt` — the "wall" so glizzies
-  can't be spammed (encourages longer sessions). **Cook-10 stays PAID** (`CookCost`×10) as the "pay
-  coins to skip the wait / bulk" bypass.
+**DONE this stretch (static-clean; NOT playtested, NOT pushed):**
+- **P-A facelift:** `Theme.luau` (single source for world palette/semantic/lighting/UI/VFX budgets);
+  `GlizzyModel.luau` real hot dogs on pedestals/vault/carries (rarity aura ladder, Gold/Rainbow/Giant;
+  AI-mesh swap slot `GameConfig.GlizzyMeshIds` — SpecialMesh on purpose, don't "upgrade" to MeshPart);
+  `EnvironmentService` bright-noon lighting + grass/street/sidewalks/lamps; `GlizzyFx.client`
+  Rainbow hue-cycling + emitter culling.
+- **P-B building shell:** walk onto the 🏗️ pad → the stall grows (floor2→stairs→wall→floor3→gate→
+  elevator); 🎪 pad → income decors (+27% total). `BuildGrants` derives ALL grants from `data.built`
+  at read time (rebuild-on-join can't double-apply). Old DefenseService wall RETIRED + grandfathered.
+  Balance rules are LOCKED (§2.7): ground route always open, gates slow never block, every floor has
+  a free theft route (truss/jumpable rails/everyone-elevator).
+- **P-C juice:** `Celebrate` remote (cook burst/purchase pop/build dust/steal alarm/Giant shake),
+  `Sfx.luau` (silence-safe until `GameConfig.Sounds` ids are filled), coin sparkle, reveal viewport.
+- **P-D UI:** every panel is now a draggable Cream window with a ketchup-gradient title bar via
+  `MenuLayout` (makePanel = makeWindow); NEW `Build.client` window; tray gained "Build".
+- **P-E:** bun hills / mustard river / ketchup geyser horizon props.
 
-**NEXT — finish the tycoon per the plan (in order):**
-1. **Building shell / "plot → stand" (Phase 3, the top priority):** flesh out `BuildService` (stub)
-   so walk-on **build pads** raise the actual structure — the bare plot visibly **grows into a stand**
-   (floors/stairs/elevator, then walls/gate). `GameConfig.BuildCatalog` + `data.built` exist; you'll
-   add `PlotManager.spawnStructure`/`rebuildStructures` hooks + the build pads (extend `PAD_LAYOUT` or
-   add a second pad group). This is exactly what Nate asked to see next.
-2. **Phase 2 — UI overhaul:** migrate the 16 client panels + HUD/steal widgets onto
-   `MenuLayout.makeWindow` (drag/minimize/close) + a consolidated toolbar, so the screen is clean by
-   default. (Approach locked: shared-window upgrade, NOT a full rebuild.)
-3. **Phase 4 — Conveyor lane + cooker upgraders** (`ConveyorService`/`UpgraderService` stubs).
-4. **Phase 5 — Non-damaging weapons + zone expansion** (`WeaponService`/`ZoneService` stubs; weapons
-   are slow/knockback/stun only — locked all-ages tone).
-
-> The **old on-screen upgrade menu is now redundant** with the walk-on pads (kept as a fallback). Nate
-> may want it removed — ask.
+**NEXT (in order):**
+1. **2-player Studio playtest** (see "Still owed" below) — Nate drives; everything gates on this.
+   Fix whatever it surfaces (geometry overlaps, pad feel, steal pathing on floors 2/3, contrast).
+2. **Overhaul Phase 4 — conveyor lane + cooker upgraders** (`ConveyorService`/`UpgraderService`
+   stubs): hot dogs ride the central street belt, step to buy; upgraders multiply stove output.
+   Visuals REUSE `Theme` + `GlizzyModel` (that's why they shipped first).
+3. **Overhaul Phase 5 — weapons + zones** (`WeaponService`/`ZoneService` stubs; weapons are
+   slow/knockback/stun only — locked all-ages tone).
+4. **Nate's asset passes (non-blocking, zero code):** fill `GameConfig.Sounds` (10 ids) and
+   `GameConfig.GlizzyMeshIds` (per-dog meshes); optionally `SkyboxAssetId`.
 
 ## Step 2 — Non-negotiable flow (how we work)
-- **Server authoritative, client untrusted.** All economy/inventory/steal/upgrade/tycoon logic in
-  `src/server`; `src/client` only displays + fires RemoteEvents; shared config/data in `src/shared`.
+- **Server authoritative, client untrusted.** All economy/inventory/steal/build logic in
+  `src/server`; `src/client` displays + fires RemoteEvents; shared config/tokens in `src/shared`.
   Guard new remotes with `RateLimit.check` + type checks.
 - `--!strict` atop every file; StyLua (tabs, 100 col); Selene clean. **Lua gotcha:** never start a
   line with `(` — resolve remotes into named locals in `init()`.
@@ -67,32 +60,46 @@ bigger stands, a physical walk-on-pad tycoon loop, passive income, and a de-clut
   ~/.rokit/bin/selene.exe src/
   ~/.rokit/bin/rojo.exe build default.project.json --output build.rbxlx
   ```
-- **Inventory is composite-key stacks** (`"Name#Gold"`); all variant math in `src/shared/Variants.luau`.
-- **PlayerData changes:** add fields to the existing **`_v5`** back-fill in `DataManager.load` (don't
-  bump `_vN` unless the shape truly breaks). Keep `defaultData()` building fresh tables.
-- **New server→client initial-state push** must be added to `Main.pushAllState` AND requested via the
-  client's `RequestState:FireServer()`.
-- **New walk-on pads:** add to `PlotManager.PAD_LAYOUT` (id + local offset) + route the id in
-  `Main`'s `setPadHandler`; drive labels/affordability from `Main.syncPads`.
-- **New bottom-menu UI** uses `MenuLayout` (`makeWindow` for panels, `makeTrayToggle` for the tray).
-- **Reuse, don't reinvent:** service shape = `FusionService`/`PrestigeShopService`; buy paths =
-  `UpgradeService.tryBuy` / `AutoCookerService.tryUpgrade`; carry state = `StealService`.
+- **Design-system rules:** world colors come from `Theme.Palette`, gameplay states from
+  `Theme.Semantic`, UI from `MenuLayout`'s tokens/helpers (styleButton/makeWindow/addChrome).
+  Rarity colors stay in `HotDogDex.RARITY`; variant colors in `Variants.DEFS`. VFX must fit a
+  `Theme.VFX` budget row. New structures follow the chunk rules (Theme §1.3 comments) and the
+  §2.7 theft-access rules — never remove access, sell TIME.
+- **Building grants:** always derive from `data.built` via `BuildGrants` at read time. Never bank a
+  building effect into another field.
+- **Inventory is composite-key stacks** (`"Name#Gold"`); decode via `Variants`/`getByKey`.
+- **PlayerData changes:** add fields to the existing **`_v5`** back-fill in `DataManager.load`.
+- **New server→client initial-state push** goes in `Main.pushAllState` + rides `RequestState`.
+- **New walk-on pads:** `PlotManager.PAD_LAYOUT` + route in `Main.setPadHandler` + label from
+  `Main.syncPads`.
+- **Reuse, don't reinvent:** service shape = `BuildService`/`FusionService`; buy paths =
+  `UpgradeService.tryBuy`/`AutoCookerService.tryUpgrade`; world juice = the `Celebrate` remote.
 
 ## Step 3 — Handoff ritual (DO THIS at each milestone / when you hand off) ⭐
 **Nate's cadence note:** DON'T run the full doc-update ritual after every feature — only near a real
-context/agent handoff (when usage/context is winding down). Batch it. When you do hand off:
+context/agent handoff. Batch it. When you do hand off:
 1. **Validate** — stylua + selene + `rojo build` all clean (0/0). Never hand off a red build.
 2. **Update docs** — `docs/HANDOFF.md`, `docs/ROADMAP.md`, `docs/BACKLOG.md`,
    `docs/design/GAME_DESIGN.md` (§5/§6/§7), and `CLAUDE.md`'s code map + status.
 3. **Rewrite THIS file** for the next session (point it at the new top-of-build-order work; keep this
    Step 3 ritual intact so it self-perpetuates).
-4. **Push only when Nate asks.** Commit locally is fine; this session Nate said **don't push**.
+4. **Push only when Nate asks.** Commit locally is fine; Nate's standing instruction this stretch is
+   **don't push**.
 
 That's the loop: **implement a phase → validate → (at handoff) update docs + rewrite this prompt.**
 
-## Still owed (needs a human)
-- **2-player Studio playtest** of everything M2/M3 + the new tycoon layer (Test → Clients and Servers;
-  enable Game Settings → Security → API Services for DataStore). Nate drives this; it's the outstanding
-  validation and the source of `GAME_DESIGN §6` tuning. Confirm: bigger stands read well; new player
-  spawns with 1 Common; Build-Stove pad (FREE) → stove ticks un-stealable coins; pads red/green; cook
-  station works but is 5-min-gated; upgrade pads charge + recolor.
+## Still owed (needs a human) — THE playtest
+**2-player Studio playtest** (Test → Clients and Servers, 2 players; enable Game Settings →
+Security → API Services for DataStore). This now covers M2/M3 **and** the whole new look + shell:
+- World reads: bright noon, clouds, street/sidewalks/lamps, bun-hill horizon; plots are cream/brown
+  stalls with counters + posts; real hot dogs on pedestals (rarity glow ladder visible), vault gold.
+- New player: spawns at their stand with 1 Common glizzy showing; pads green/red; FREE cook 5-min
+  gate works; stove builds + ticks un-stealable coins.
+- **Build chain:** 🏗️ pad offers floor2 first → stairs → wall → floor3 → gate → elevator; 🎪 pad
+  walks the decors; pedestals appear on floors 2/3 and FILL after cooks; income % rises with decor;
+  **rejoin rebuilds everything exactly once** (watch for double income / double structures).
+- **Steal pathing:** player 2 climbs the stairs/truss and steals from floor 2/3; wall gap + gate slow
+  but never block; carry rig is a welded glizzy; alarm flashes on the victim sign; Giant steals shake.
+- UI: bottom row + tray toggles all mustard-styled; windows drag/minimize/pop; Build window lists
+  ✅/🏗️/🔒 correctly; Upgrades/Rebirth windows still work.
+- Then **tune `GAME_DESIGN §6`** numbers (costs, cooldown, catalog prices) to feel.

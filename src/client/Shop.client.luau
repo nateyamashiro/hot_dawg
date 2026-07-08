@@ -24,44 +24,32 @@ gui.Name = "GlizzyShop"
 gui.ResetOnSpawn = false
 gui.IgnoreGuiInset = true
 
-local toggle = Instance.new("TextButton")
-toggle.Size = UDim2.fromOffset(MenuLayout.BUTTON_W, MenuLayout.BUTTON_H)
-toggle.Position = MenuLayout.primaryPosition(MenuLayout.slotOf("Shop") or 4)
-toggle.BackgroundColor3 = Color3.fromRGB(70, 70, 90)
-toggle.TextColor3 = Color3.fromRGB(255, 255, 255)
-toggle.TextScaled = true
-toggle.Font = Enum.Font.GothamBold
-toggle.Text = "🛒 Shop"
-toggle.Parent = gui
+local toggle = MenuLayout.makePrimaryButton(gui, "Shop", "🛒 Shop")
 
 local panel = Instance.new("Frame")
 panel.Size = UDim2.fromOffset(480, 400)
 panel.Position = UDim2.new(0.5, -240, 0.5, -200)
-panel.BackgroundColor3 = Color3.fromRGB(25, 25, 35)
-panel.BackgroundTransparency = 0.05
 panel.Visible = false
 panel.Parent = gui
+MenuLayout.themePanel(panel)
 
 local title = Instance.new("TextLabel")
 title.Size = UDim2.new(1, -60, 0, 34)
 title.Position = UDim2.fromOffset(12, 8)
 title.BackgroundTransparency = 1
-title.TextColor3 = Color3.fromRGB(255, 230, 150)
+title.TextColor3 = MenuLayout.BodyText
 title.TextXAlignment = Enum.TextXAlignment.Left
 title.TextScaled = true
-title.Font = Enum.Font.GothamBlack
+title.Font = MenuLayout.TitleFont
 title.Text = "🛒 Hot Dog Shop"
 title.Parent = panel
 
 local close = Instance.new("TextButton")
 close.Size = UDim2.fromOffset(36, 36)
 close.Position = UDim2.new(1, -42, 0, 10)
-close.BackgroundColor3 = Color3.fromRGB(180, 50, 50)
-close.TextColor3 = Color3.fromRGB(255, 255, 255)
-close.TextScaled = true
-close.Font = Enum.Font.GothamBold
 close.Text = "✕"
 close.Parent = panel
+MenuLayout.styleButton(close, "danger")
 close.Activated:Connect(function()
 	panel.Visible = false
 end)
@@ -70,7 +58,7 @@ local timer = Instance.new("TextLabel")
 timer.Size = UDim2.new(1, -24, 0, 22)
 timer.Position = UDim2.fromOffset(12, 44)
 timer.BackgroundTransparency = 1
-timer.TextColor3 = Color3.fromRGB(170, 200, 255)
+timer.TextColor3 = MenuLayout.MutedText
 timer.TextXAlignment = Enum.TextXAlignment.Left
 timer.TextScaled = true
 timer.Font = Enum.Font.Gotham
@@ -103,9 +91,10 @@ local function renderOffers(offers: { Offer })
 	for i, offer in offers do
 		local row = Instance.new("Frame")
 		row.Size = UDim2.new(1, -8, 0, 52)
-		row.BackgroundColor3 = Color3.fromRGB(40, 40, 50)
+		row.BackgroundColor3 = MenuLayout.RowBg
 		row.LayoutOrder = i
 		row.Parent = list
+		MenuLayout.addChrome(row, 8)
 
 		local swatch = Instance.new("Frame")
 		swatch.Size = UDim2.fromOffset(8, 52)
@@ -128,7 +117,7 @@ local function renderOffers(offers: { Offer })
 		detail.Size = UDim2.new(1, -150, 0, 18)
 		detail.Position = UDim2.fromOffset(18, 30)
 		detail.BackgroundTransparency = 1
-		detail.TextColor3 = Color3.fromRGB(190, 190, 200)
+		detail.TextColor3 = MenuLayout.MutedText
 		detail.TextXAlignment = Enum.TextXAlignment.Left
 		detail.TextScaled = true
 		detail.Font = Enum.Font.Gotham
@@ -138,12 +127,9 @@ local function renderOffers(offers: { Offer })
 		local buy = Instance.new("TextButton")
 		buy.Size = UDim2.fromOffset(128, 40)
 		buy.Position = UDim2.new(1, -134, 0.5, -20)
-		buy.BackgroundColor3 = Color3.fromRGB(60, 140, 80)
-		buy.TextColor3 = Color3.fromRGB(255, 255, 255)
-		buy.TextScaled = true
-		buy.Font = Enum.Font.GothamBold
 		buy.Text = "💰 " .. offer.price
 		buy.Parent = row
+		MenuLayout.styleButton(buy, "success")
 		buy.Activated:Connect(function()
 			buyFromShop:FireServer(offer.name)
 		end)

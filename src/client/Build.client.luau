@@ -82,9 +82,11 @@ local function render(built: { [string]: boolean }, coins: number)
 	end
 end
 
-buildUpdate.OnClientEvent:Connect(function(_catalog: any, built: { [string]: boolean }?, coins: number?)
-	render(built or {}, coins or 0)
-end)
+buildUpdate.OnClientEvent:Connect(
+	function(_catalog: any, built: { [string]: boolean }?, coins: number?)
+		render(built or {}, coins or 0)
+	end
+)
 
 gui.Parent = player:WaitForChild("PlayerGui")
 requestState:FireServer() -- pull the initial built-set snapshot past the join race

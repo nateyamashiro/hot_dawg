@@ -15,11 +15,20 @@ Approved plan: `~/.claude/plans/inherited-hugging-alpaca.md` · phase order in `
 - ✅ Walk-on **pad framework** + **🌭 cook station** + **🔥 stove (passive income)** + grill/display/vault
   **upgrade pads** (green/red by affordability).
 - ✅ Cook **gated**: free single cook on a 5-min cooldown; cook-10 = paid bypass.
-- 🔜 **Building shell (`BuildService`, Phase 3):** build pads grow the plot INTO a stand
-  (floors/stairs/elevator → walls/gate). **← NEXT.**
-- ⏳ Phase 2 UI migration (panels → `makeWindow` + toolbar) · Phase 4 conveyor + upgraders · Phase 5
-  non-damaging weapons + zone expansion.
-- ❓ Old on-screen upgrade menu is now redundant with pads (fallback) — ask Nate if it should be removed.
+- ✅ **Design system + facelift (P-A):** `Theme.luau` tokens · procedural `GlizzyModel` hot dogs
+  (rarity fx ladder, Gold/Rainbow/Giant, `GlizzyMeshIds` AI-mesh swap slot) · `EnvironmentService`
+  (noon lighting + street/ground) · `GlizzyFx.client` (Rainbow cycle + culling) · plot recolor.
+- ✅ **Building shell (`BuildService`, P-B):** 15-entry catalog (structural chain + 9 income decors),
+  `BuildGrants` read-time grants, floor-1 stall shell, per-id BUILDERS (truss theft access, teleport
+  elevator, slow-only gate), 🏗️/🎪 pads, wall moved from DefenseService (grandfathered).
+- ✅ **Juice (P-C):** `Celebrate` remote (bursts/pops/alarm/Giant shake) · `Sfx` + `GameConfig.Sounds`
+  (ids owed by Nate) · coin sparkle · cook-reveal viewport.
+- ✅ **UI restyle (P-D):** themed `MenuLayout` windows everywhere · `Build.client` window · old
+  Upgrades menu restyled + kept as fallback (locked decision #6).
+- ✅ **Glizzy-land horizon (P-E):** bun hills · mustard river · ketchup geyser.
+- 🔜 **2-player Studio playtest** — gates everything (steal pathing on floors, rebuild-on-join, feel).
+- ⏳ Phase 4 conveyor + upgraders · Phase 5 non-damaging weapons + zone expansion.
+- ⏳ Nate asset passes (zero code): `GameConfig.Sounds` ids · `GlizzyMeshIds` meshes · `SkyboxAssetId`.
 
 ---
 

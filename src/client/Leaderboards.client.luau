@@ -30,7 +30,7 @@ end)
 local status = Instance.new("TextLabel")
 status.Size = UDim2.new(1, 0, 0, 60)
 status.BackgroundTransparency = 1
-status.TextColor3 = Color3.fromRGB(220, 220, 230)
+status.TextColor3 = MenuLayout.BodyText
 status.TextScaled = true
 status.Font = Enum.Font.Gotham
 status.Text = "Loading…"

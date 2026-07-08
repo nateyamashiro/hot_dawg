@@ -1,18 +1,29 @@
 # HANDOFF — Steal a Glizzy 🌭
 
-**Last updated:** 2026-07-09 (**VISUAL OVERHAUL + CLASSIC-TYCOON LAYER in progress** — Nate's post-look
-direction. Since the last handoff: **Fusion shipped**; then a big pivot to make the game look/feel like
-a real tycoon. Done so far: **enlarged plots**; **new players start with 1 random Common glizzy**;
-**Phase 0 scaffold** (all overhaul config + `_v5` data fields + 6 compiling stub services
-[AutoCooker/Build/Weapon/Conveyor/Upgrader/Zone] wired into `Main` + `MenuLayout.makeWindow`
-drag/minimize/close skeleton); and the **physical tycoon stations** — a reusable **walk-on pad
-framework** in `PlotManager`, a **🌭 Cook Station**, a **🔥 Stove** (passive un-stealable coins, starts
-UNBUILT, built/upgraded via a pad, folded into tick + offline income), and **walk-on upgrade pads**
-(grill/display/vault) that are **GREEN affordable / RED too-expensive** live. **Cook is now gated**:
-single cook is FREE but on a 5-min cooldown (`CookCooldownSeconds`/`data.cookReadyAt`); cook-10 is the
-paid bypass. **See `docs/NEXT_SESSION_PROMPT.md` + the plan at
-`~/.claude/plans/inherited-hugging-alpaca.md`.** NEXT: the building shell — walk-on build pads that
-grow the bare plot INTO a stand [`BuildService`/Phase 3]. **NOT pushed; NOT yet 2-player-playtested.**)
+**Last updated:** 2026-07-09 (**VISUAL DESIGN SYSTEM + BUILDING SHELL SHIPPED** — the design plan
+`~/.claude/plans/i-want-you-to-wild-abelson.md` executed end-to-end, phases **P-A → P-E**:
+**P-A facelift** — `Theme.luau` token module (palette/semantic/materials/lighting/UI/VFX budgets);
+procedural glizzies (`GlizzyModel.luau`: 6-part hot dog, rarity fx ladder Common→Secret,
+Gold/Rainbow/Giant treatments, SpecialMesh escape hatch via `GameConfig.GlizzyMeshIds`);
+`EnvironmentService` (bright-noon lighting + post fx + clouds + grass/street/dashes/sidewalks/lamps);
+`GlizzyFx.client` (Rainbow hue-cycle ≤80 studs + emitter culling ≤60); plot recolor pass.
+**P-B building shell** — 15-entry `BuildCatalog` (floor2→stairs2→wall→floor3→gate→elevator + 9
+income decors), `BuildGrants.luau` (ALL grants derived at read time from `data.built` — rebuild can't
+double-apply), static floor-1 stall shell on every plot, per-id `BUILDERS` in `PlotManager` (floor-3
+climbable truss = theft-access guarantee; elevator = teleport pads for EVERYONE; gate slows never
+blocks via `setGateHandler`), full `BuildService` (validate→charge→spawn→push + `applyLoaded`
+rebuild-on-join), 🏗️ build + 🎪 decor walk-on pads (one offer each), **DefenseService wall RETIRED**
+(old owners grandfathered `built.wall` in `DataManager.load`; StealHud wall button removed), decor
+income folded into `Main.incomeMultiplier`, cooker slots = +15%/each on stove output.
+**P-C juice** — `Celebrate` remote + `Celebrate.client` (cook burst by rarity, purchase pop, build
+dust, 3-flash steal alarm, Giant camera shake), `Sfx.luau` + `GameConfig.Sounds` (all `""` —
+silence-safe until Nate fills ids), coin-milestone 💰 sparkle, cook-reveal viewport spin (UI.client).
+**P-D UI restyle** — `MenuLayout` applies Theme.UI (Cream windows, ketchup-gradient title bars,
+FredokaOne, corner+stroke chrome, bounce + click/open sounds); `makePanel` now IS `makeWindow`, so
+every tray panel became a draggable themed window for free; all panel clients swept off dark-slate;
+NEW `Build.client` catalog window; TRAY gains "Build". **P-E** — bun-hill horizon, mustard river,
+ketchup geyser. All static checks clean. **NOT pushed (Nate said don't push); NOT 2-player-playtested
+— that playtest is the #1 next action.**)
 **For:** the next Claude Code session (and Nate)
 
 ## 🏗️ The scaffold (read this before implementing anything new)
@@ -52,13 +63,13 @@ Implement feature by feature; don't re-architect. Key facts:
 
 ## 👉 What the NEXT session should do
 
-**Next CODE feature → the building shell (Phase 3 of the overhaul plan).** Flesh out `BuildService`
-(stub) so walk-on **build pads** raise the actual stand structure — the bare plot visibly **grows into
-a stand** (floors/stairs/elevator → walls/gate). `GameConfig.BuildCatalog` + `data.built` already
-exist; add `PlotManager.spawnStructure`/`rebuildStructures` + build pads (extend `PlotManager.PAD_LAYOUT`
-or a second pad group), routing ids through `Main.setPadHandler`. See `docs/NEXT_SESSION_PROMPT.md` +
-the approved plan `~/.claude/plans/inherited-hugging-alpaca.md` for the full phase order. *(Manual vault
-selection — `data.vaultPins`, `SetVaultPin` handler exists — is now deferred behind the overhaul.)*
+**#1 — the 2-player Studio playtest (below).** The whole visual overhaul + building shell is now
+BUILT and static-clean but has never been seen live; the playtest gates everything else.
+**Next CODE features after that:** conveyor lane + cooker upgraders (overhaul Phase 4 —
+`ConveyorService`/`UpgraderService` stubs; visuals reuse `Theme` + `GlizzyModel`), then weapons +
+zones (Phase 5). Nate fills asset ids at his leisure: `GameConfig.Sounds` (10 slots) and
+`GameConfig.GlizzyMeshIds` (per-dog AI meshes — zero code changes). *(Manual vault selection —
+`data.vaultPins`, `SetVaultPin` handler exists — is still deferred.)*
 
 **Still owed (needs a human): playtest & tune Milestones 2 + 3 in a real 2-player Studio session.**
 Everything through M3 (plus mutations) is BUILT and passes static checks (rojo build + selene +

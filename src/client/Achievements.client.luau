@@ -42,9 +42,9 @@ achievementUpdate.OnClientEvent:Connect(function(list)
 		row.Size = UDim2.new(1, 0, 0, 40)
 		row.LayoutOrder = i
 		row.BackgroundColor3 = if ach.claimed
-			then Color3.fromRGB(45, 45, 55)
-			elseif done then Color3.fromRGB(70, 90, 55)
-			else Color3.fromRGB(55, 55, 75)
+			then MenuLayout.Disabled
+			elseif done then MenuLayout.SuccessBg
+			else MenuLayout.AccentBg
 		row.TextColor3 = Color3.fromRGB(255, 255, 255)
 		row.TextScaled = true
 		row.Font = Enum.Font.GothamBold

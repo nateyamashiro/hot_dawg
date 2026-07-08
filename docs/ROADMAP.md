@@ -11,9 +11,16 @@ Each should be independently testable in Studio. `✅ done · 🔜 next · ⏳ l
 > **2026-07-08/09 shipped:** mutations-on-cook · prestige spending · fusion · then a **VISUAL OVERHAUL +
 > CLASSIC-TYCOON pivot** (Nate, post-Studio look): bigger plots, walk-on-pad tycoon loop (cook station,
 > passive stove, green/red upgrade pads), cook now gated (free single cook / 5-min cooldown; cook-10 =
-> paid bypass), starting Common glizzy. **NEXT: the building shell (`BuildService`, Phase 3) — build
-> pads that grow the plot INTO a stand.** Approved plan: `~/.claude/plans/inherited-hugging-alpaca.md`;
-> phases in `docs/NEXT_SESSION_PROMPT.md`.
+> paid bypass), starting Common glizzy.
+>
+> **2026-07-09 shipped — THE DESIGN SYSTEM + BUILDING SHELL (plan
+> `~/.claude/plans/i-want-you-to-wild-abelson.md`, phases P-A→P-E, all executed):** `Theme` tokens ·
+> procedural `GlizzyModel` hot dogs (rarity fx ladder, variant looks, AI-mesh swap slot) ·
+> `EnvironmentService` (noon lighting + street map + glizzy-land horizon) · 15-entry `BuildCatalog`
+> + `BuildGrants` + `BuildService` end-to-end (🏗️/🎪 walk-on pads; DefenseService wall retired +
+> grandfathered) · juice pass (`Celebrate` remote, `Sfx`, sounds config) · themed window UI
+> (`MenuLayout` + `Build.client`). **NEXT: the 2-player Studio playtest, then conveyor/upgraders
+> (Phase 4) and weapons/zones (Phase 5).** See `docs/NEXT_SESSION_PROMPT.md`.
 
 ---
 

@@ -43,6 +43,7 @@ MenuLayout.TRAY = {
 MenuLayout.BodyText = Theme.UI.BodyText
 MenuLayout.MutedText = Color3.fromRGB(150, 122, 96) -- locked/undiscovered/secondary
 MenuLayout.RowBg = Theme.UI.RowBg
+MenuLayout.TitleFont = Theme.UI.TitleFont
 MenuLayout.SuccessText = Color3.fromRGB(58, 122, 34) -- "owned!" style good-news text
 MenuLayout.SuccessBg = Color3.fromRGB(96, 164, 50) -- deep relish; white text reads on it
 MenuLayout.AccentBg = Theme.Palette.MustardDark -- secondary action buttons (white text)

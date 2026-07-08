@@ -121,10 +121,11 @@ local function buildMap()
 	local map = Instance.new("Model")
 	map.Name = "Environment"
 
-	-- Ground: one big grass slab (top at y 0, flush with a Studio baseplate if present).
+	-- Ground: one big grass slab (top at y 0, flush with a Studio baseplate if
+	-- present). Oversized past the street so the P-E horizon props sit on grass.
 	local ground = makePart({
 		Name = "Ground",
-		Size = Vector3.new(1200, 1, 1200),
+		Size = Vector3.new(1600, 1, 1600),
 		Color = Theme.Palette.Grass,
 		CanCollide = true,
 		CFrame = CFrame.new(0, -0.5, 0),
@@ -188,6 +189,72 @@ local function buildMap()
 			head.Parent = map
 		end
 	end
+
+	-- === Glizzy-land horizon (P-E): surreal skyline dressing beyond the plots. ===
+	-- Bun hills: half-buried bun-tan domes ringing the map (fixed layout — every
+	-- server shows the same skyline).
+	local hills: { { x: number, z: number, size: number } } = {
+		{ x = -580, z = 620, size = 150 },
+		{ x = -300, z = 660, size = 100 },
+		{ x = 250, z = 640, size = 130 },
+		{ x = 590, z = 600, size = 90 },
+		{ x = -520, z = -610, size = 140 },
+		{ x = -80, z = -650, size = 95 },
+		{ x = 420, z = -620, size = 120 },
+		{ x = 640, z = 150, size = 110 },
+		{ x = -650, z = -120, size = 125 },
+		{ x = 660, z = -300, size = 85 },
+	}
+	for _, hill in hills do
+		local dome = makePart({
+			Name = "BunHill",
+			Shape = Enum.PartType.Ball,
+			Size = Vector3.new(hill.size, hill.size, hill.size),
+			Color = Theme.Palette.BunTan,
+			CanCollide = true,
+			-- Centered at ground level = exactly half-buried dome.
+			CFrame = CFrame.new(hill.x, 0, hill.z),
+		})
+		dome.Parent = map
+	end
+
+	-- Mustard river: a glowing yellow ribbon across the far north horizon.
+	local river = makePart({
+		Name = "MustardRiver",
+		Size = Vector3.new(1200, 0.4, 14),
+		Color = Theme.Palette.Mustard,
+		Material = Enum.Material.Neon,
+		CFrame = CFrame.new(0, 0.2, 700),
+	})
+	river.Parent = map
+
+	-- Ketchup geyser prop (static — VFX budgets keep looping emitters off the map).
+	local pool = makePart({
+		Name = "KetchupPool",
+		Shape = Enum.PartType.Cylinder,
+		Size = Vector3.new(1, 24, 24),
+		Color = Theme.Palette.Ketchup,
+		CFrame = CFrame.new(620, 0.4, -540) * CFrame.Angles(0, 0, math.rad(90)),
+	})
+	pool.Parent = map
+	local column = makePart({
+		Name = "KetchupColumn",
+		Size = Vector3.new(5, 22, 5),
+		Color = Theme.Palette.Ketchup,
+		Material = Enum.Material.Neon,
+		CFrame = CFrame.new(620, 11, -540),
+	})
+	column.Parent = map
+	local blob = makePart({
+		Name = "KetchupBlob",
+		Shape = Enum.PartType.Ball,
+		Size = Vector3.new(9, 9, 9),
+		Color = Theme.Palette.Ketchup,
+		Material = Enum.Material.Neon,
+		CastShadow = false,
+		CFrame = CFrame.new(620, 23, -540),
+	})
+	blob.Parent = map
 
 	map.Parent = Workspace
 end

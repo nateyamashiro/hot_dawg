@@ -42,14 +42,13 @@ cosmeticUpdate.OnClientEvent:Connect(function(catalog, owned)
 		local row = Instance.new("TextButton")
 		row.Size = UDim2.new(1, 0, 0, 40)
 		row.LayoutOrder = i
-		row.BackgroundColor3 = if isOwned
-			then Color3.fromRGB(55, 70, 55)
-			else Color3.fromRGB(60, 55, 75)
+		row.BackgroundColor3 = if isOwned then MenuLayout.SuccessBg else MenuLayout.AccentBg
 		row.TextColor3 = Color3.fromRGB(255, 255, 255)
 		row.TextScaled = true
 		row.Font = Enum.Font.GothamBold
 		row.Text = (if isOwned then "Equip " else "Buy ") .. item.label
 		row.Parent = content
+		MenuLayout.addChrome(row, 8)
 		row.Activated:Connect(function()
 			if isOwned then
 				equipCosmetic:FireServer(item.id)

@@ -34,8 +34,8 @@ end)
 local balance = Instance.new("TextLabel")
 balance.Size = UDim2.new(1, -8, 0, 30)
 balance.LayoutOrder = 0
-balance.BackgroundColor3 = Color3.fromRGB(40, 40, 55)
-balance.TextColor3 = Color3.fromRGB(255, 230, 150)
+balance.BackgroundColor3 = MenuLayout.RowBg
+balance.TextColor3 = MenuLayout.BodyText
 balance.TextScaled = true
 balance.Font = Enum.Font.GothamBold
 balance.Text = "✨ Prestige: 0"
@@ -62,17 +62,16 @@ prestigeShopUpdate.OnClientEvent:Connect(function(items, prestige, unlocks)
 
 		local row = Instance.new("Frame")
 		row.Size = UDim2.new(1, -8, 0, 52)
-		row.BackgroundColor3 = Color3.fromRGB(40, 40, 50)
+		row.BackgroundColor3 = MenuLayout.RowBg
 		row.LayoutOrder = i
 		row.Parent = content
+		MenuLayout.addChrome(row, 8)
 
 		local label = Instance.new("TextLabel")
 		label.Size = UDim2.new(1, -134, 1, -8)
 		label.Position = UDim2.fromOffset(10, 4)
 		label.BackgroundTransparency = 1
-		label.TextColor3 = if isOwned
-			then Color3.fromRGB(150, 200, 150)
-			else Color3.fromRGB(235, 235, 245)
+		label.TextColor3 = if isOwned then MenuLayout.SuccessText else MenuLayout.BodyText
 		label.TextXAlignment = Enum.TextXAlignment.Left
 		label.TextYAlignment = Enum.TextYAlignment.Center
 		label.TextScaled = true
@@ -87,14 +86,12 @@ prestigeShopUpdate.OnClientEvent:Connect(function(items, prestige, unlocks)
 		buy.TextScaled = true
 		buy.Font = Enum.Font.GothamBold
 		if isOwned then
-			buy.BackgroundColor3 = Color3.fromRGB(60, 90, 60)
+			buy.BackgroundColor3 = MenuLayout.Disabled
 			buy.Text = "Owned ✓"
 			buy.AutoButtonColor = false
 			buy.Active = false
 		else
-			buy.BackgroundColor3 = if affordable
-				then Color3.fromRGB(60, 140, 80)
-				else Color3.fromRGB(90, 60, 60)
+			buy.BackgroundColor3 = if affordable then MenuLayout.SuccessBg else MenuLayout.DangerBg
 			buy.Text = tostring(item.cost) .. " ✨"
 			buy.Activated:Connect(function()
 				buyPrestige:FireServer(item.id)
