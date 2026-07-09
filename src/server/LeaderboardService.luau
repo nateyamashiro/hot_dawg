@@ -9,9 +9,12 @@ local DataStoreService = game:GetService("DataStoreService")
 local Players = game:GetService("Players")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local ServerScriptService = game:GetService("ServerScriptService")
+local Workspace = game:GetService("Workspace")
 
 local GameConfig = require(ReplicatedStorage.Shared.GameConfig)
+local GlizzyModel = require(ReplicatedStorage.Shared.GlizzyModel)
 local HotDogDex = require(ReplicatedStorage.Shared.HotDogDex)
+local Theme = require(ReplicatedStorage.Shared.Theme)
 local DataManager = require(ServerScriptService.Server.DataManager)
 local RateLimit = require(ServerScriptService.Server.RateLimit)
 
@@ -97,6 +100,103 @@ function LeaderboardService.pushLeaderboard(player: Player)
 	remLeaderboardUpdate:FireClient(player, cachedTops)
 end
 
+-- === World podium (genre-standard flex): the coins top-3, physically on the ===
+-- === street just past the conveyor's east end, rebuilt only when it changes ===
+local PODIUM_X = 240
+local PODIUM_TIERS = {
+	{ dx = 0, height = 3.4, color = Theme.Palette.VaultGold, scale = 2.2, medal = "🥇" },
+	{ dx = -8, height = 2.4, color = Theme.Palette.Steel, scale = 1.7, medal = "🥈" },
+	{ dx = 8, height = 1.6, color = Theme.Palette.CharBrown, scale = 1.4, medal = "🥉" },
+}
+local podiumModel: Model? = nil
+local podiumSignature: string? = nil
+
+local function podiumPart(props: { [string]: any }): BasePart
+	local part = Instance.new("Part")
+	part.Anchored = true
+	part.Material = Enum.Material.SmoothPlastic -- matte (Theme rule: no big neon)
+	part.TopSurface = Enum.SurfaceType.Smooth
+	part.BottomSurface = Enum.SurfaceType.Smooth
+	for k, v in props do
+		(part :: any)[k] = v
+	end
+	return part
+end
+
+local function podiumPlate(parent: BasePart, text: string)
+	local bb = Instance.new("BillboardGui")
+	bb.Size = UDim2.fromOffset(120, 36)
+	bb.StudsOffsetWorldSpace = Vector3.new(0, 3.4, 0)
+	bb.AlwaysOnTop = false
+	bb.MaxDistance = 90 -- a landmark reads a little farther than stand labels
+	bb.Parent = parent
+	local label = Instance.new("TextLabel")
+	label.Size = UDim2.fromScale(1, 1)
+	label.BackgroundTransparency = 1
+	label.TextColor3 = Color3.fromRGB(255, 255, 255)
+	label.TextStrokeTransparency = 0
+	label.TextScaled = true
+	label.Font = Theme.UI.TitleFont
+	label.Text = text
+	label.Parent = bb
+end
+
+local function rebuildPodium()
+	local top = cachedTops.coins
+	local signature = ""
+	for i = 1, 3 do
+		local entry = top[i]
+		signature ..= if entry then entry.name .. "=" .. entry.value .. ";" else ";"
+	end
+	if signature == podiumSignature then
+		return -- top-3 unchanged; don't churn parts every refresh
+	end
+	podiumSignature = signature
+
+	if podiumModel then
+		podiumModel:Destroy()
+	end
+	local model = Instance.new("Model")
+	model.Name = "GlizzyPodium"
+
+	for rank, tier in PODIUM_TIERS do
+		local block = podiumPart({
+			Name = "PodiumTier" .. rank,
+			Size = Vector3.new(6, tier.height, 6),
+			Color = tier.color,
+			CFrame = CFrame.new(PODIUM_X + tier.dx, 0.4 + tier.height / 2, 0),
+		})
+		block.Parent = model
+
+		local entry = top[rank]
+		if entry then
+			-- A glizzy statue for the champ (random dog each rebuild = variety;
+			-- fx off — the podium isn't a particle source).
+			local dog = HotDogDex.randomOfRarity("Common")
+			if dog then
+				local statue = GlizzyModel.build(dog.name, {
+					rarity = dog.rarity,
+					scale = tier.scale,
+					anchored = true,
+					fx = false,
+				})
+				statue.Name = "PodiumStatue"
+				local statueY = 0.4 + tier.height + (1.15 * tier.scale) / 2 + 0.05
+				statue:PivotTo(
+					CFrame.new(PODIUM_X + tier.dx, statueY, 0) * CFrame.Angles(0, math.rad(90), 0)
+				)
+				statue.Parent = model
+			end
+			podiumPlate(block, tier.medal .. " " .. entry.name .. "\n💰 " .. entry.value)
+		else
+			podiumPlate(block, tier.medal .. " Unclaimed!")
+		end
+	end
+
+	model.Parent = Workspace
+	podiumModel = model
+end
+
 function LeaderboardService.init(deps: { remotes: Folder })
 	remLeaderboardUpdate = deps.remotes:WaitForChild("LeaderboardUpdate") :: RemoteEvent
 	remRequestLeaderboard = deps.remotes:WaitForChild("RequestLeaderboard") :: RemoteEvent
@@ -108,10 +208,13 @@ function LeaderboardService.init(deps: { remotes: Folder })
 		LeaderboardService.pushLeaderboard(player)
 	end)
 
+	rebuildPodium() -- empty "Unclaimed!" podium immediately; real names on refresh
+
 	task.spawn(function()
 		while true do
 			submitScores()
 			refreshTops()
+			rebuildPodium()
 			for _, player in Players:GetPlayers() do
 				LeaderboardService.pushLeaderboard(player)
 			end
