@@ -359,6 +359,7 @@ EventService.init({
 	remotes = remotes,
 	updateLeaderstats = updateLeaderstats,
 	grantFreeCook = grantFreeCook,
+	onInventoryChanged = pushInventory, -- event-dog grants refresh the dex too
 })
 LeaderboardService.init({ remotes = remotes })
 AchievementService.init({ remotes = remotes, updateLeaderstats = updateLeaderstats })

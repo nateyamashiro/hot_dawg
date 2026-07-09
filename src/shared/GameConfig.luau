@@ -221,10 +221,27 @@ local GameConfig = {
 	-- Active event is chosen deterministically by week index (like the shop's UTC-day
 	-- trick) so all servers agree. `modifier` interpreted by EventService.
 	EventRefreshSeconds = 7 * 24 * 60 * 60, -- one week
+	-- `rewardDog` = the event-exclusive dog its FINAL reward tier grants
+	-- (HotDogDex.EVENT_DOGS; never obtainable any other way — the FOMO hook).
 	Events = {
-		{ id = "doubleIncome", label = "Double Income Weekend", modifier = "income2x" },
-		{ id = "dogRain", label = "Dog Rain", modifier = "freeCookBursts" },
-		{ id = "discountCook", label = "Discount Cook", modifier = "cookHalfPrice" },
+		{
+			id = "doubleIncome",
+			label = "Double Income Weekend",
+			modifier = "income2x",
+			rewardDog = "Payday Dog",
+		},
+		{
+			id = "dogRain",
+			label = "Dog Rain",
+			modifier = "freeCookBursts",
+			rewardDog = "Rainmaker Wiener",
+		},
+		{
+			id = "discountCook",
+			label = "Discount Cook",
+			modifier = "cookHalfPrice",
+			rewardDog = "Half-Price Hero",
+		},
 	},
 	-- Points needed per event reward-track tier, and the coins each tier pays
 	-- (parallel arrays — keep them the same length). Reasoned placeholders.

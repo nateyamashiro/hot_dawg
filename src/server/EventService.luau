@@ -13,12 +13,14 @@ local ServerScriptService = game:GetService("ServerScriptService")
 
 local GameConfig = require(ReplicatedStorage.Shared.GameConfig)
 local DataManager = require(ServerScriptService.Server.DataManager)
+local PlotManager = require(ServerScriptService.Server.PlotManager)
 local RateLimit = require(ServerScriptService.Server.RateLimit)
 
 local EventService = {}
 
 local updateLeaderstats: (player: Player) -> ()
 local grantFreeCook: (player: Player) -> ()
+local onInventoryChanged: (player: Player) -> ()
 local remEventUpdate: RemoteEvent
 local remClaimEventReward: RemoteEvent
 local remFeedback: RemoteEvent
@@ -36,11 +38,18 @@ local function currentEvent()
 	return list[(currentWeek() % #list) + 1]
 end
 
--- Claimed-tier count persists in the same eventPoints map under a derived key, so
--- no new PlayerData field / _vN bump is needed (the _v5 back-fill already keeps any
--- string->number pair in this map).
+-- Points + claimed-tier count persist in the eventPoints map under derived keys,
+-- so no new PlayerData field / _vN bump is needed (the _v5 back-fill already keeps
+-- any string->number pair in this map). Keys are scoped to the OCCURRENCE
+-- ("doubleIncome@2951"), not just the event id: when the same event returns three
+-- weeks later, the track — and its exclusive reward dog — is fresh again. Old
+-- occurrences' keys linger as tiny residue (a few dozen bytes a year; harmless).
+local function pointsKey(eventId: string): string
+	return eventId .. "@" .. currentWeek()
+end
+
 local function claimedKey(eventId: string): string
-	return eventId .. ":claimed"
+	return eventId .. "@" .. currentWeek() .. ":claimed"
 end
 
 -- The active-event modifier, for other systems (income/cook) to read.
@@ -57,7 +66,7 @@ function EventService.pushEvent(player: Player)
 	local ev = currentEvent()
 	local secondsLeft = GameConfig.EventRefreshSeconds
 		- (os.time() % GameConfig.EventRefreshSeconds)
-	local points = ev and (data.eventPoints[ev.id] or 0) or 0
+	local points = ev and (data.eventPoints[pointsKey(ev.id)] or 0) or 0
 	local claimed = ev and (data.eventPoints[claimedKey(ev.id)] or 0) or 0
 	remEventUpdate:FireClient(player, ev, points, secondsLeft, claimed)
 end
@@ -70,7 +79,8 @@ function EventService.addPoints(player: Player, amount: number)
 	if not (data and ev) or amount <= 0 then
 		return
 	end
-	data.eventPoints[ev.id] = (data.eventPoints[ev.id] or 0) + amount
+	local key = pointsKey(ev.id)
+	data.eventPoints[key] = (data.eventPoints[key] or 0) + amount
 	EventService.pushEvent(player)
 end
 
@@ -81,7 +91,7 @@ local function onClaim(player: Player)
 	if not (data and ev) then
 		return
 	end
-	local points = data.eventPoints[ev.id] or 0
+	local points = data.eventPoints[pointsKey(ev.id)] or 0
 	local claimed = data.eventPoints[claimedKey(ev.id)] or 0
 	local payout = 0
 	local tiersWon = 0
@@ -115,6 +125,19 @@ local function onClaim(player: Player)
 		true,
 		"🎉 Claimed " .. tiersWon .. " event reward" .. plural .. " — +" .. payout .. " coins!"
 	)
+	-- The FINAL tier also grants the event-exclusive dog (the FOMO hook): never in
+	-- cook rolls / shop / conveyor, only here, and only while this event runs.
+	local rewardDog = ev.rewardDog
+	if rewardDog and claimed + tiersWon >= #GameConfig.EventRewardTiers then
+		data.hotDogs[rewardDog] = (data.hotDogs[rewardDog] or 0) + 1
+		PlotManager.syncDisplay(player)
+		onInventoryChanged(player)
+		remFeedback:FireClient(
+			player,
+			true,
+			"🌭✨ EXCLUSIVE unlocked: " .. rewardDog .. " — only from this event!"
+		)
+	end
 	updateLeaderstats(player)
 	EventService.pushEvent(player)
 end
@@ -123,9 +146,11 @@ function EventService.init(deps: {
 	remotes: Folder,
 	updateLeaderstats: (player: Player) -> (),
 	grantFreeCook: (player: Player) -> (),
+	onInventoryChanged: (player: Player) -> (),
 })
 	updateLeaderstats = deps.updateLeaderstats
 	grantFreeCook = deps.grantFreeCook
+	onInventoryChanged = deps.onInventoryChanged
 	remEventUpdate = deps.remotes:WaitForChild("EventUpdate") :: RemoteEvent
 	remClaimEventReward = deps.remotes:WaitForChild("ClaimEventReward") :: RemoteEvent
 	remFeedback = deps.remotes:WaitForChild("StealFeedback") :: RemoteEvent

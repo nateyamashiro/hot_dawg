@@ -102,6 +102,7 @@ local points = 0
 local claimed = 0
 local deadline = 0
 local hasEvent = false
+local rewardDog: string? = nil
 
 local function formatLeft(seconds: number): string
 	if seconds >= 24 * 3600 then
@@ -145,6 +146,10 @@ local function render()
 				GameConfig.EventRewardCoins[i] or 0
 			)
 		end
+		-- The final tier ALSO grants this event's exclusive dog — say so.
+		if i == #tierRows and rewardDog and i > claimed then
+			row.Text = row.Text .. "  + 🌭 " .. rewardDog .. "!"
+		end
 	end
 	claimBtn.Text = if claimable > 0
 		then string.format("Claim rewards (+%d coins)", claimable)
@@ -156,6 +161,7 @@ eventUpdate.OnClientEvent:Connect(function(ev, pts, secondsLeft, claimedCount)
 		hasEvent = true
 		banner.Text = tostring(ev.label)
 		blurb.Text = MODIFIER_BLURBS[tostring(ev.modifier)] or ""
+		rewardDog = if type(ev.rewardDog) == "string" then ev.rewardDog else nil
 		points = if type(pts) == "number" then pts else 0
 		claimed = if type(claimedCount) == "number" then claimedCount else 0
 		deadline = os.time() + (if type(secondsLeft) == "number" then secondsLeft else 0)

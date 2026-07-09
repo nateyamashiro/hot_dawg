@@ -88,9 +88,15 @@ local function ownedKeysFor(dogName: string): { string }
 end
 
 -- Build one tile per dog; keep a handle so we can flip owned/locked on updates.
+-- Event-exclusive dogs get tiles TOO (the FOMO teaser) but are excluded from the
+-- completion count — they're only obtainable while their weekly event runs.
 type Tile = { frame: Frame, label: TextLabel, pin: TextButton, dog: HotDogDex.HotDog }
+local roster: { HotDogDex.HotDog } = HotDogDex.all()
+for _, dog in HotDogDex.eventDogs() do
+	table.insert(roster, dog)
+end
 local tiles: { Tile } = {}
-for i, dog in HotDogDex.all() do
+for i, dog in roster do
 	local frame = Instance.new("Frame")
 	frame.LayoutOrder = i
 	frame.BackgroundColor3 = MenuLayout.RowBg
@@ -177,22 +183,30 @@ inventoryUpdate.OnClientEvent:Connect(function(owned: { [string]: number }, pins
 		end
 	end
 	local ownedCount = 0
+	local baseTotal = 0
 	for _, tile in tiles do
 		local has = ownedBase[tile.dog.name] == true
+		if not tile.dog.eventOnly then
+			baseTotal += 1
+			if has then
+				ownedCount += 1
+			end
+		end
 		if has then
-			ownedCount += 1
 			tile.frame.BackgroundColor3 = HotDogDex.colorFor(tile.dog.rarity)
 			tile.label.Text = tile.dog.name
 			tile.label.TextColor3 = Color3.fromRGB(20, 20, 20)
 		else
 			tile.frame.BackgroundColor3 = MenuLayout.RowBg
-			tile.label.Text = "???"
+			-- Event exclusives tease where they come from instead of a bare "???".
+			tile.label.Text = if tile.dog.eventOnly then "🎉 Event\nreward!" else "???"
 			tile.label.TextColor3 = MenuLayout.MutedText
 		end
 		tile.pin.Visible = has
 		tile.pin.TextTransparency = if pinnedBase[tile.dog.name] then 0 else 0.6
 	end
-	completion.Text = string.format("%d / %d", ownedCount, #tiles)
+	-- Completion (and its one-time reward) is over the BASE roster only.
+	completion.Text = string.format("%d / %d", ownedCount, baseTotal)
 end)
 
 gui.Parent = player:WaitForChild("PlayerGui")

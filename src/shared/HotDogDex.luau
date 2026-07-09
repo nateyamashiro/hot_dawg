@@ -15,6 +15,9 @@ export type HotDog = {
 	name: string,
 	rarity: Rarity,
 	income: number, -- coins per second this hot dog generates while owned
+	-- Event-exclusive (M4): granted only by its weekly event's final reward tier.
+	-- Never in cook rolls / shop / conveyor / dex completion (see EVENT_DOGS).
+	eventOnly: boolean?,
 }
 
 -- Rarity tiers, ordered common -> rare. `weight` is the relative chance of
@@ -82,6 +85,25 @@ for _, def in RARITY do
 	for _, name in DOGS_BY_RARITY[def.rarity] do
 		byName[name] = { name = name, rarity = def.rarity, income = def.income }
 	end
+end
+
+-- Event-exclusive dogs (M4 weekly events): obtainable ONLY as the final
+-- reward-track tier of their event (GameConfig.Events.rewardDog → EventService).
+-- Deliberately NOT in DOGS_BY_RARITY, so cook rolls, the shop pool, the conveyor,
+-- and dex COMPLETION never include them — but they ARE in byName, so income,
+-- stealing, fusion, and display treat them as perfectly normal dogs.
+local EVENT_DOGS: { HotDog } = {
+	{ name = "Payday Dog", rarity = "Legendary", income = 60, eventOnly = true },
+	{ name = "Rainmaker Wiener", rarity = "Legendary", income = 60, eventOnly = true },
+	{ name = "Half-Price Hero", rarity = "Legendary", income = 60, eventOnly = true },
+}
+for _, dog in EVENT_DOGS do
+	byName[dog.name] = dog
+end
+
+-- Event-exclusive roster, for the dex's FOMO tiles (kept out of all()).
+function HotDogDex.eventDogs(): { HotDog }
+	return table.clone(EVENT_DOGS)
 end
 
 -- Look up a hot dog by name.
