@@ -1193,25 +1193,27 @@ local function spawnUnit(plot: Plot, anchor: BasePart, dog: HotDogDex.Unit, stea
 				stealHandler(thief, victim.UserId, dog.key, primary)
 			end
 		end)
-	end
 
-	-- Owner pickup: hold your own glizzy in hand (PickupService owns the rules).
-	-- F (not E) so it can never key-clash with Steal; the server re-checks the
-	-- owner, and PlotPresentation hides this prompt on stands you don't own.
-	local pickup = Instance.new("ProximityPrompt")
-	pickup.Name = "PickupPrompt"
-	pickup.ActionText = "Pick Up"
-	pickup.ObjectText = dog.displayName
-	pickup.KeyboardKeyCode = Enum.KeyCode.F
-	pickup.HoldDuration = 0.25
-	pickup.MaxActivationDistance = 8
-	pickup.RequiresLineOfSight = false
-	pickup.Parent = primary
-	pickup.Triggered:Connect(function(picker: Player)
-		if plot.owner == picker and pickupHandler then
-			pickupHandler(picker, dog.key)
-		end
-	end)
+		-- Owner pickup: hold your own glizzy in hand (PickupService owns the rules).
+		-- F (not E) so it can never key-clash with Steal; the server re-checks the
+		-- owner, and PlotPresentation hides this prompt on stands you don't own.
+		-- DISPLAY units only (deliberate): picking from the vault would free a slot
+		-- that auto-fills with your best displayed dog — a quiet shelter trick.
+		local pickup = Instance.new("ProximityPrompt")
+		pickup.Name = "PickupPrompt"
+		pickup.ActionText = "Pick Up"
+		pickup.ObjectText = dog.displayName
+		pickup.KeyboardKeyCode = Enum.KeyCode.F
+		pickup.HoldDuration = 0.25
+		pickup.MaxActivationDistance = 8
+		pickup.RequiresLineOfSight = false
+		pickup.Parent = primary
+		pickup.Triggered:Connect(function(picker: Player)
+			if plot.owner == picker and pickupHandler then
+				pickupHandler(picker, dog.key)
+			end
+		end)
+	end
 end
 
 -- Current safe-vault / stealable-display capacity: the player's coin-upgrade level

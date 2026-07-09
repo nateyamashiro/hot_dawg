@@ -597,6 +597,13 @@ end)
 
 local function onPlayerAdded(player: Player)
 	local data = DataManager.load(player)
+	if not data then
+		-- Load failed after retries (DataStore outage). Playing on a fresh profile
+		-- would wipe real progress on the next save, so kicking is the only safe
+		-- option; DataManager cached nothing, so no save can fire for this player.
+		player:Kick("⚠️ Your data couldn't load — please rejoin in a minute!")
+		return
+	end
 	setupLeaderstats(player, data)
 	PlotManager.assign(player)
 	DefenseService.applyLoadedDefenses(player)
@@ -725,6 +732,9 @@ Players.PlayerRemoving:Connect(function(player)
 	pendingStatePush[player.UserId] = nil
 	DataManager.release(player)
 end)
+
+-- Autosave every few minutes so a server crash can't cost a whole session.
+DataManager.startAutosave()
 
 -- Save everyone when the server shuts down (also fires on Studio "Stop").
 game:BindToClose(function()

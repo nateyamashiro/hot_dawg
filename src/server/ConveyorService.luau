@@ -11,6 +11,7 @@
 -- Perf: ≤ ConveyorMaxOnBelt (8) anchored models pivoted per Heartbeat — the one
 -- deliberate exception to "no per-frame server work" (bounded + tiny).
 
+local Players = game:GetService("Players")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local RunService = game:GetService("RunService")
 local ServerScriptService = game:GetService("ServerScriptService")
@@ -49,6 +50,9 @@ type BeltUnit = {
 local active: { BeltUnit } = {}
 -- Per-player buy debounce (prompt double-fires are cheap to swallow here).
 local nextBuyAllowed: { [number]: number } = {}
+Players.PlayerRemoving:Connect(function(player)
+	nextBuyAllowed[player.UserId] = nil
+end)
 
 -- Roll a belt offer from the shop's flatter weights (surfaces mid-tier dogs;
 -- Legendary+ riding past is a "lucky belt" moment).

@@ -21,6 +21,12 @@
           "$path": "src/client"
         }
       }
+    },
+
+    "Lighting": {
+      "$properties": {
+        "Technology": "ShadowMap"
+      }
     }
   }
 }

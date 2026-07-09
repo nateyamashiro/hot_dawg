@@ -51,10 +51,15 @@ local function processReceipt(info: { PlayerId: number, PurchaseId: string, Prod
 		return Enum.ProductPurchaseDecision.PurchaseGranted -- already granted
 	end
 	-- TODO(M5-mon): map info.ProductId (GameConfig.DevProductIds) → grant coins /
-	-- steal charges / offline refill via GameConfig.ProductGrants, then persist.
-	data.receiptHistory[info.PurchaseId] = true
-	updateLeaderstats(player)
-	return Enum.ProductPurchaseDecision.PurchaseGranted
+	-- steal charges / offline refill via GameConfig.ProductGrants, mark the receipt
+	-- in receiptHistory, THEN return PurchaseGranted.
+	--
+	-- Until that mapping exists, NOTHING is granted — so do NOT consume the
+	-- receipt. Returning PurchaseGranted here would eat a player's real Robux the
+	-- moment a product id gets configured on the dashboard. NotProcessedYet makes
+	-- Roblox retry (and auto-refund if it never processes).
+	local _ = updateLeaderstats
+	return Enum.ProductPurchaseDecision.NotProcessedYet
 end
 
 function PurchaseService.init(deps: {

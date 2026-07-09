@@ -7,6 +7,7 @@
 -- simply start from default data each session.
 
 local DataStoreService = game:GetService("DataStoreService")
+local Players = game:GetService("Players")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 
 local GameConfig = require(ReplicatedStorage.Shared.GameConfig)
@@ -198,16 +199,43 @@ end
 -- we persist it between sessions.
 local cache: { [number]: PlayerData } = {}
 
+-- os.clock() of each player's last save attempt — drives the autosave cadence and
+-- the double-save guard (PlayerRemoving + BindToClose both fire on shutdown; the
+-- second write inside 5s would only trip the 6s/key DataStore throttle).
+local lastSaveAt: { [number]: number } = {}
+
 -- Load a player's data into the cache and return it. Unknown/missing fields are
 -- back-filled from defaults so older (v2) saves keep working.
-function DataManager.load(player: Player): PlayerData
+--
+-- Returns NIL when the DataStore read fails after retries. Critically, a failed
+-- load must NOT cache a fresh default profile: playing on defaults and then
+-- saving would OVERWRITE the player's real progress. No cache entry means
+-- save/release are structural no-ops; Main kicks the player with a retry message.
+function DataManager.load(player: Player): PlayerData?
 	local data = defaultData()
 
-	local ok, result = pcall(function()
-		return store:GetAsync(keyFor(player))
-	end)
+	local ok, result
+	for attempt = 1, 3 do
+		ok, result = pcall(function()
+			return store:GetAsync(keyFor(player))
+		end)
+		if ok then
+			break
+		end
+		warn(
+			("[DataManager] Load attempt %d failed for %s: %s"):format(
+				attempt,
+				player.Name,
+				tostring(result)
+			)
+		)
+		task.wait(attempt) -- 1s, 2s backoff before the next try
+	end
+	if not ok then
+		return nil
+	end
 
-	if ok and type(result) == "table" then
+	if type(result) == "table" then
 		if type(result.coins) == "number" then
 			data.coins = result.coins
 		end
@@ -289,80 +317,81 @@ function DataManager.load(player: Player): PlayerData
 					})
 				end
 			end
-			-- === v5 fields (all optional; older saves keep the defaults above) ===
-			local function copyBoolMap(src: any, dst: { [string]: boolean })
-				if type(src) == "table" then
-					for k, v in src do
-						if type(k) == "string" and v == true then
-							dst[k] = true
-						end
-					end
-				end
-			end
-			copyBoolMap(result.vaultPins, data.vaultPins)
-			copyBoolMap(result.achievements, data.achievements)
-			copyBoolMap(result.redeemedCodes, data.redeemedCodes)
-			copyBoolMap(result.receiptHistory, data.receiptHistory)
-			copyBoolMap(result.prestigeUnlocks, data.prestigeUnlocks)
-			if type(result.eventPoints) == "table" then
-				for k, v in result.eventPoints do
-					if type(k) == "string" and type(v) == "number" then
-						data.eventPoints[k] = v
-					end
-				end
-			end
-			data.vip = result.vip == true
-			if type(result.bonusDisplaySlots) == "number" then
-				data.bonusDisplaySlots = math.max(0, math.floor(result.bonusDisplaySlots))
-			end
-			if type(result.bonusVaultSlots) == "number" then
-				data.bonusVaultSlots = math.max(0, math.floor(result.bonusVaultSlots))
-			end
-			if type(result.prestigeIncomeMult) == "number" then
-				data.prestigeIncomeMult = math.max(0, result.prestigeIncomeMult)
-			end
-			if type(result.mutationLuck) == "number" then
-				data.mutationLuck = math.max(0, result.mutationLuck)
-			end
-			if type(result.tradeCooldownUntil) == "number" then
-				data.tradeCooldownUntil = result.tradeCooldownUntil
-			end
-			if type(result.cosmetics) == "table" then
-				if type(result.cosmetics.equipped) == "string" then
-					data.cosmetics.equipped = result.cosmetics.equipped
-				end
-				copyBoolMap(result.cosmetics.owned, data.cosmetics.owned)
-			end
-			-- Visual-overhaul / tycoon-layer fields (Phase 0; all optional).
-			copyBoolMap(result.built, data.built)
-			copyBoolMap(result.weaponsOwned, data.weaponsOwned)
-			if type(result.weaponEquipped) == "string" then
-				data.weaponEquipped = result.weaponEquipped
-			end
-			if type(result.autoCookerLvl) == "number" then
-				data.autoCookerLvl = math.max(0, math.floor(result.autoCookerLvl))
-			end
-			if type(result.upgraderLvl) == "number" then
-				data.upgraderLvl = math.max(1, math.floor(result.upgraderLvl))
-			end
-			if type(result.zoneLvl) == "number" then
-				data.zoneLvl = math.max(1, math.floor(result.zoneLvl))
-			end
-			if type(result.shopBuys) == "table" then
-				if type(result.shopBuys.day) == "number" then
-					data.shopBuys.day = math.floor(result.shopBuys.day)
-				end
-				if type(result.shopBuys.counts) == "table" then
-					for k, v in result.shopBuys.counts do
-						if type(k) == "string" and type(v) == "number" then
-							data.shopBuys.counts[k] = v
-						end
+		end
+		-- === v5 fields (all optional; older saves keep the defaults above) ===
+		-- NOTE: deliberately at the TOP level of the `type(result) == "table"` block —
+		-- this was once nested inside the dailyMissions back-fill, which made the
+		-- entire tycoon layer's persistence silently depend on that one field.
+		local function copyBoolMap(src: any, dst: { [string]: boolean })
+			if type(src) == "table" then
+				for k, v in src do
+					if type(k) == "string" and v == true then
+						dst[k] = true
 					end
 				end
 			end
 		end
-	elseif not ok then
-		warn("[DataManager] Load failed for " .. player.Name .. ": " .. tostring(result))
+		copyBoolMap(result.vaultPins, data.vaultPins)
+		copyBoolMap(result.achievements, data.achievements)
+		copyBoolMap(result.redeemedCodes, data.redeemedCodes)
+		copyBoolMap(result.receiptHistory, data.receiptHistory)
+		copyBoolMap(result.prestigeUnlocks, data.prestigeUnlocks)
+		if type(result.eventPoints) == "table" then
+			for k, v in result.eventPoints do
+				if type(k) == "string" and type(v) == "number" then
+					data.eventPoints[k] = v
+				end
+			end
+		end
+		data.vip = result.vip == true
+		if type(result.bonusDisplaySlots) == "number" then
+			data.bonusDisplaySlots = math.max(0, math.floor(result.bonusDisplaySlots))
+		end
+		if type(result.bonusVaultSlots) == "number" then
+			data.bonusVaultSlots = math.max(0, math.floor(result.bonusVaultSlots))
+		end
+		if type(result.prestigeIncomeMult) == "number" then
+			data.prestigeIncomeMult = math.max(0, result.prestigeIncomeMult)
+		end
+		if type(result.mutationLuck) == "number" then
+			data.mutationLuck = math.max(0, result.mutationLuck)
+		end
+		if type(result.tradeCooldownUntil) == "number" then
+			data.tradeCooldownUntil = result.tradeCooldownUntil
+		end
+		if type(result.cosmetics) == "table" then
+			if type(result.cosmetics.equipped) == "string" then
+				data.cosmetics.equipped = result.cosmetics.equipped
+			end
+			copyBoolMap(result.cosmetics.owned, data.cosmetics.owned)
+		end
+		-- Visual-overhaul / tycoon-layer fields (Phase 0; all optional).
+		copyBoolMap(result.built, data.built)
+		copyBoolMap(result.weaponsOwned, data.weaponsOwned)
+		if type(result.weaponEquipped) == "string" then
+			data.weaponEquipped = result.weaponEquipped
+		end
+		if type(result.autoCookerLvl) == "number" then
+			data.autoCookerLvl = math.max(0, math.floor(result.autoCookerLvl))
+		end
+		if type(result.upgraderLvl) == "number" then
+			data.upgraderLvl = math.max(1, math.floor(result.upgraderLvl))
+		end
+		if type(result.zoneLvl) == "number" then
+			data.zoneLvl = math.max(1, math.floor(result.zoneLvl))
+		end
+		if type(result.shopBuys) == "table" then
+			if type(result.shopBuys.day) == "number" then
+				data.shopBuys.day = math.floor(result.shopBuys.day)
+			end
+			if type(result.shopBuys.counts) == "table" then
+				for k, v in result.shopBuys.counts do
+					if type(k) == "string" and type(v) == "number" then
+						data.shopBuys.counts[k] = v
+					end
+				end
+			end
+		end
 	end
 
 	-- Wall grandfather (P-B, locked decision #5): the old $250 DefenseService wall is
@@ -377,14 +406,23 @@ function DataManager.load(player: Player): PlayerData
 	-- Starting glizzy (Phase 0): a brand-new profile (successful load, but no saved
 	-- record yet) spawns owning one random Common. Gated on result == nil so a
 	-- returning player who lost all their dogs is NOT re-granted one every join.
-	if ok and result == nil then
+	if result == nil then
 		local starter = HotDogDex.randomOfRarity(GameConfig.StartingGlizzyRarity)
 		if starter then
 			data.hotDogs[starter.name] = (data.hotDogs[starter.name] or 0) + 1
 		end
 	end
 
+	-- Prune vault pins for keys no longer owned (stolen/fused away) so the pin map
+	-- can't grow forever; SetVaultPin re-validates ownership for live pins anyway.
+	for key in data.vaultPins do
+		if (data.hotDogs[key] or 0) <= 0 then
+			data.vaultPins[key] = nil
+		end
+	end
+
 	cache[player.UserId] = data
+	lastSaveAt[player.UserId] = os.clock() -- joining counts as a fresh checkpoint
 	return data
 end
 
@@ -399,12 +437,27 @@ function DataManager.save(player: Player)
 	if not data then
 		return
 	end
+	local now = os.clock()
+	if now - (lastSaveAt[player.UserId] or -math.huge) < 5 then
+		return -- just saved (autosave/leave/shutdown overlap); nothing meaningful lost
+	end
+	lastSaveAt[player.UserId] = now
 
 	-- Stamp the save time so a rejoin can grant capped offline earnings (item 7).
 	data.lastSeen = os.time()
 
 	local ok, err = pcall(function()
-		store:SetAsync(keyFor(player), data)
+		store:UpdateAsync(keyFor(player), function(old)
+			-- Stale-write guard: if another server already saved NEWER data (quick
+			-- server hop landing our delayed write last), keep theirs — returning
+			-- nil aborts the write. Full session locking stays a later hardening.
+			if type(old) == "table" and type(old.lastSeen) == "number" then
+				if old.lastSeen > data.lastSeen then
+					return nil
+				end
+			end
+			return data
+		end)
 	end)
 
 	if not ok then
@@ -416,6 +469,23 @@ end
 function DataManager.release(player: Player)
 	DataManager.save(player)
 	cache[player.UserId] = nil
+	lastSaveAt[player.UserId] = nil
+end
+
+-- Autosave: a crash between leave-saves must not cost a whole session. Every 60s,
+-- save anyone whose last write is >3 min old (staggered naturally by join times;
+-- respects the per-key throttle via the 5s guard above). Started once from Main.
+function DataManager.startAutosave()
+	task.spawn(function()
+		while true do
+			task.wait(60)
+			for _, player in Players:GetPlayers() do
+				if os.clock() - (lastSaveAt[player.UserId] or 0) > 180 then
+					DataManager.save(player)
+				end
+			end
+		end
+	end)
 end
 
 return DataManager
