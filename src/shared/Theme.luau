@@ -72,7 +72,11 @@ Theme.Semantic = {
 Theme.Materials = {
 	Structure = Enum.Material.SmoothPlastic, -- default everything
 	Machine = Enum.Material.Metal, -- stove / cook-station bodies only
-	Interactive = Enum.Material.Neon, -- walk-on pads, deposit, elevator pads, neon sign
+	-- Interactive surfaces read through bright SEMANTIC COLORS, not emissive glow —
+	-- a world full of Neon at noon is an eyesore. Neon is reserved for SMALL accents
+	-- and gameplay signals only (rarity drizzle, rooftop sign drizzle, trap warning,
+	-- blaster toys); anything big or decorative stays matte.
+	Interactive = Enum.Material.SmoothPlastic,
 	Window = Enum.Material.Glass, -- with Theme.WindowTransparency
 }
 Theme.WindowTransparency = 0.4
@@ -104,10 +108,12 @@ Theme.Lighting = {
 		Glare = 0.2,
 		Haze = 1.2,
 	},
+	-- Soft bloom: high threshold so only genuinely bright spots glow — bloom is the
+	-- multiplier that turned every Neon surface into an eyesore at noon.
 	Bloom = {
-		Intensity = 0.4,
-		Size = 24,
-		Threshold = 1.1,
+		Intensity = 0.25,
+		Size = 14,
+		Threshold = 1.6,
 	},
 	ColorCorrection = {
 		Saturation = 0.15,

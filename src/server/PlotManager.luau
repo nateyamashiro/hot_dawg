@@ -221,7 +221,8 @@ local function makeBuyPad(model: Model, facing: CFrame, id: string, offset: Vect
 		Name = "Pad_" .. id,
 		Size = Vector3.new(6, 0.4, 6),
 		Color = Color3.fromRGB(90, 150, 90),
-		Material = Enum.Material.Neon,
+		-- Matte (Theme.Materials rule): the green/red SEMANTIC color is the signal;
+		-- eight glowing pads per plot was glare soup.
 		CanCollide = false,
 		CFrame = facing * CFrame.new(offset),
 	})
@@ -418,7 +419,6 @@ local function buildPlot(index: number): Plot
 		Name = "DepositPad",
 		Size = Vector3.new(6, 0.6, 6),
 		Color = Theme.Semantic.Deposit,
-		Material = Enum.Material.Neon,
 		CanCollide = true,
 		CFrame = facing * CFrame.new(0, 0.6, 7),
 	})
@@ -758,7 +758,6 @@ BUILDERS.elevator = function(plot: Plot): Model
 			Name = "ElevatorPad",
 			Size = Vector3.new(4, 0.5, 4),
 			Color = Theme.Palette.Mustard,
-			Material = Enum.Material.Neon,
 			CFrame = CFrame.new(21, sy, 5),
 		})
 		table.insert(pads, padPart)
@@ -861,7 +860,8 @@ BUILDERS.sign = function(plot: Plot): Model
 		Shape = Enum.PartType.Cylinder,
 		Size = Vector3.new(6.4, 1.1, 1.1),
 		Color = Theme.Palette.Ketchup,
-		Material = Enum.Material.Neon,
+		-- Matte body; the thin mustard drizzle below stays Neon — a small accent
+		-- reads as "lit sign" without floodlighting the roofline.
 		CanCollide = false,
 		CFrame = CFrame.new(0, 12.75, 10),
 	})

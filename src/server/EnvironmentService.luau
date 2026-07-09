@@ -192,7 +192,7 @@ local function buildMap()
 				Shape = Enum.PartType.Ball,
 				Size = Vector3.new(2.4, 2.4, 2.4),
 				Color = Theme.Palette.Cream,
-				Material = Enum.Material.Neon,
+				-- Matte, not Neon: ~22 glowing balls lining the street was glare soup.
 				CastShadow = false,
 				CFrame = CFrame.new(x, 9.7, side * 30),
 			})
@@ -233,7 +233,7 @@ local function buildMap()
 		Name = "MustardRiver",
 		Size = Vector3.new(1200, 0.4, 14),
 		Color = Theme.Palette.Mustard,
-		Material = Enum.Material.Neon,
+		-- Matte: a 1200-stud emissive ribbon dominated the horizon. Color carries it.
 		-- Bottom floats 0.05 above the grass plane (no shared faces = no shimmer).
 		CFrame = CFrame.new(0, 0.25, 700),
 	})
@@ -252,7 +252,6 @@ local function buildMap()
 		Name = "KetchupColumn",
 		Size = Vector3.new(5, 22, 5),
 		Color = Theme.Palette.Ketchup,
-		Material = Enum.Material.Neon,
 		CFrame = CFrame.new(620, 11, -540),
 	})
 	column.Parent = map
@@ -261,7 +260,6 @@ local function buildMap()
 		Shape = Enum.PartType.Ball,
 		Size = Vector3.new(9, 9, 9),
 		Color = Theme.Palette.Ketchup,
-		Material = Enum.Material.Neon,
 		CastShadow = false,
 		CFrame = CFrame.new(620, 23, -540),
 	})
