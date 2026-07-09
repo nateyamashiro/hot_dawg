@@ -19,6 +19,7 @@ local HotDogDex = require(ReplicatedStorage.Shared.HotDogDex)
 local Variants = require(ReplicatedStorage.Shared.Variants)
 local DataManager = require(ServerScriptService.Server.DataManager)
 local RateLimit = require(ServerScriptService.Server.RateLimit)
+local Telemetry = require(ServerScriptService.Server.Telemetry)
 local EnvironmentService = require(ServerScriptService.Server.EnvironmentService)
 local PlotManager = require(ServerScriptService.Server.PlotManager)
 local StealService = require(ServerScriptService.Server.StealService)
@@ -287,6 +288,7 @@ local function doCook(player: Player, data: DataManager.PlayerData): (HotDogDex.
 	data.hotDogs[key] = (data.hotDogs[key] or 0) + 1
 	DailyService.progress(player, "cook", 1)
 	EventService.addPoints(player, GameConfig.EventPointsPerCook)
+	Telemetry.funnelStep(player, "FirstCook")
 	return dog, key
 end
 
@@ -312,6 +314,7 @@ local function grantFreeCook(player: Player)
 end
 
 -- === Build the world & init services ===
+Telemetry.init() -- error visibility first, so service init errors get tagged too
 EnvironmentService.init() -- lighting + street/ground FIRST so plots land on a real place
 PlotManager.build()
 StealService.init({
@@ -604,6 +607,7 @@ local function onPlayerAdded(player: Player)
 		player:Kick("⚠️ Your data couldn't load — please rejoin in a minute!")
 		return
 	end
+	Telemetry.funnelStep(player, "Joined")
 	setupLeaderstats(player, data)
 	PlotManager.assign(player)
 	DefenseService.applyLoadedDefenses(player)

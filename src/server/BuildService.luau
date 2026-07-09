@@ -22,6 +22,7 @@ local DataManager = require(ServerScriptService.Server.DataManager)
 local PlotManager = require(ServerScriptService.Server.PlotManager)
 local RateLimit = require(ServerScriptService.Server.RateLimit)
 local StealService = require(ServerScriptService.Server.StealService)
+local Telemetry = require(ServerScriptService.Server.Telemetry)
 
 local BuildService = {}
 
@@ -79,6 +80,7 @@ function BuildService.tryBuild(player: Player, id: string): boolean
 
 	data.coins -= entry.cost
 	data.built[id] = true
+	Telemetry.funnelStep(player, "FirstBuild")
 	PlotManager.spawnStructure(player, entry)
 	if id == "wall" then
 		-- The wall's defensive value: thieves hold the Steal prompt longer.

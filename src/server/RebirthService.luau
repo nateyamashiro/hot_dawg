@@ -10,6 +10,7 @@ local ServerScriptService = game:GetService("ServerScriptService")
 local GameConfig = require(ReplicatedStorage.Shared.GameConfig)
 local DataManager = require(ServerScriptService.Server.DataManager)
 local RateLimit = require(ServerScriptService.Server.RateLimit)
+local Telemetry = require(ServerScriptService.Server.Telemetry)
 
 local RebirthService = {}
 
@@ -43,6 +44,7 @@ local function onRebirth(player: Player)
 
 	updateLeaderstats(player)
 	pushProgression(player)
+	Telemetry.funnelStep(player, "FirstRebirth")
 
 	local pct = math.floor(data.rebirths * GameConfig.RebirthIncomeBonus * 100)
 	remFeedback:FireClient(

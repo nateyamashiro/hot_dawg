@@ -23,6 +23,7 @@ local DataManager = require(ServerScriptService.Server.DataManager)
 local PlotManager = require(ServerScriptService.Server.PlotManager)
 local RateLimit = require(ServerScriptService.Server.RateLimit)
 local StealService = require(ServerScriptService.Server.StealService)
+local Telemetry = require(ServerScriptService.Server.Telemetry)
 
 local PickupService = {}
 
@@ -133,6 +134,7 @@ local function onPickup(player: Player, key: string)
 				false,
 				"😱 " .. thief.DisplayName .. " snatched the glizzy out of your hand!"
 			)
+			Telemetry.event(thief, "HandSnatch") -- tuning signal: is hand-risk real?
 		end
 	end)
 

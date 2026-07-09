@@ -11,6 +11,7 @@ local ServerScriptService = game:GetService("ServerScriptService")
 
 local GameConfig = require(ReplicatedStorage.Shared.GameConfig)
 local GlizzyModel = require(ReplicatedStorage.Shared.GlizzyModel)
+local Telemetry = require(ServerScriptService.Server.Telemetry)
 local HotDogDex = require(ReplicatedStorage.Shared.HotDogDex)
 local Sfx = require(ReplicatedStorage.Shared.Sfx)
 local Variants = require(ReplicatedStorage.Shared.Variants)
@@ -283,6 +284,7 @@ local function onDeposit(thief: Player)
 		updateLeaderstats(thief)
 	end
 	onSteal(thief) -- daily-mission progress ("steal Y")
+	Telemetry.funnelStep(thief, "FirstSteal")
 
 	-- Per-target cooldown + diminishing returns (repeat raids cost longer waits).
 	local now = os.time()

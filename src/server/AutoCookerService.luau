@@ -19,6 +19,7 @@ local BuildGrants = require(ReplicatedStorage.Shared.BuildGrants)
 local GameConfig = require(ReplicatedStorage.Shared.GameConfig)
 local DataManager = require(ServerScriptService.Server.DataManager)
 local RateLimit = require(ServerScriptService.Server.RateLimit)
+local Telemetry = require(ServerScriptService.Server.Telemetry)
 local UpgraderService = require(ServerScriptService.Server.UpgraderService)
 
 local AutoCookerService = {}
@@ -80,6 +81,9 @@ function AutoCookerService.tryUpgrade(player: Player): boolean
 	data.autoCookerLvl = nextLvl
 	updateLeaderstats(player)
 	AutoCookerService.pushState(player)
+	if nextLvl == 1 then
+		Telemetry.funnelStep(player, "StoveBuilt")
+	end
 	local msg = if nextLvl == 1
 		then "🔥 Stove built — passive coins flowing!"
 		else "🔥 Stove upgraded to Lv " .. nextLvl .. "!"
