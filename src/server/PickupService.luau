@@ -3,20 +3,26 @@
 -- own units around your base). Server-authoritative COSMETIC hold: inventory and
 -- income never change; the held unit just vacates its display slot (PlotManager
 -- excludes one count of the held key from the fill) and rides in the player's hand
--- as a Tool. Click the Tool to put it back on the stand; dying, respawning, or
--- leaving also puts it back. ONE held dog at a time — a held dog can't be stolen,
--- so the cap keeps "hide it in my hand" from sheltering a collection.
+-- as a Tool. Click the Tool to put it back on the stand; dying, respawning,
+-- unequipping, or leaving also puts it back. ONE held dog at a time.
+--
+-- ⚠️ Holding is NOT shelter: the hand tool carries a Snatch prompt, so rivals can
+-- steal the dog right out of your hand — routed through StealService's full rules
+-- (charges, shield, cooldowns, the carry rig). Unequipping force-returns the dog
+-- to the stand precisely so it can't hide (unstealable) in the backpack.
 
 local Players = game:GetService("Players")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local ServerScriptService = game:GetService("ServerScriptService")
 
+local GameConfig = require(ReplicatedStorage.Shared.GameConfig)
 local GlizzyModel = require(ReplicatedStorage.Shared.GlizzyModel)
 local HotDogDex = require(ReplicatedStorage.Shared.HotDogDex)
 local Variants = require(ReplicatedStorage.Shared.Variants)
 local DataManager = require(ServerScriptService.Server.DataManager)
 local PlotManager = require(ServerScriptService.Server.PlotManager)
 local RateLimit = require(ServerScriptService.Server.RateLimit)
+local StealService = require(ServerScriptService.Server.StealService)
 
 local PickupService = {}
 
@@ -88,10 +94,57 @@ local function onPickup(player: Player, key: string)
 	end
 	held[player.UserId] = { tool = tool, key = key }
 	PlotManager.setHeldKey(player, key) -- vacates one display slot
+
+	-- The held dog can be SNATCHED: same steal pipeline as the stands. Success is
+	-- detected by the inventory decrement (triggerSteal validates everything —
+	-- self-steal, charges, shield, cooldowns, current ownership — and bails silently
+	-- or with its own feedback when the steal doesn't go through).
+	local handle = tool:FindFirstChild("Handle") :: BasePart
+	local snatch = Instance.new("ProximityPrompt")
+	snatch.Name = "HandStealPrompt"
+	snatch.ActionText = "Snatch"
+	snatch.ObjectText = tool.Name
+	snatch.HoldDuration = GameConfig.StealHoldSeconds
+	snatch.MaxActivationDistance = 8
+	snatch.RequiresLineOfSight = false
+	snatch.Parent = handle
+	snatch.Triggered:Connect(function(thief: Player)
+		if thief == player then
+			return
+		end
+		local ownerData = DataManager.get(player)
+		if not ownerData then
+			return
+		end
+		local before = ownerData.hotDogs[key] or 0
+		StealService.triggerSteal(thief, player.UserId, key, handle)
+		local after = ownerData.hotDogs[key] or 0
+		if after < before then
+			-- Snatched — the dog left the inventory, so clear the hold WITHOUT the
+			-- putBack refill semantics (there's nothing to put back).
+			local h = held[player.UserId]
+			if h and h.tool == tool then
+				held[player.UserId] = nil
+				PlotManager.setHeldKey(player, nil)
+				tool:Destroy()
+			end
+			remFeedback:FireClient(
+				player,
+				false,
+				"😱 " .. thief.DisplayName .. " snatched the glizzy out of your hand!"
+			)
+		end
+	end)
+
 	tool.Parent = character -- parenting to the character equips it into the hand
 
 	-- Clicking the held glizzy puts it back on the stand.
 	tool.Activated:Connect(function()
+		putBack(player)
+	end)
+	-- Unequipping = putting it away. Force it back to the stand instead of letting
+	-- it sit (unsnatchable) in the backpack — holding stays a visible risk.
+	tool.Unequipped:Connect(function()
 		putBack(player)
 	end)
 	-- Any way the tool leaves the world (death, respawn wiping the backpack,
@@ -106,7 +159,7 @@ local function onPickup(player: Player, key: string)
 	remFeedback:FireClient(
 		player,
 		true,
-		"🌭 Holding " .. tool.Name .. " — click to put it back!"
+		"🌭 Holding " .. tool.Name .. " — click to put it back. It CAN be snatched!"
 	)
 end
 

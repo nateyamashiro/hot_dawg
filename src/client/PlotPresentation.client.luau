@@ -149,3 +149,22 @@ for _, child in Workspace:GetChildren() do
 	tryWatch(child)
 end
 Workspace.ChildAdded:Connect(tryWatch)
+
+-- You never see the Snatch prompt on the glizzy in YOUR OWN hand — it's for
+-- rivals (PickupService validates server-side; this is pure de-clutter, same
+-- pattern as the plot prompts above).
+local function watchOwnCharacter(character: Model)
+	local function hideOwnSnatch(d: Instance)
+		if d:IsA("ProximityPrompt") and d.Name == "HandStealPrompt" then
+			d.Enabled = false
+		end
+	end
+	for _, d in character:GetDescendants() do
+		hideOwnSnatch(d)
+	end
+	character.DescendantAdded:Connect(hideOwnSnatch)
+end
+if player.Character then
+	watchOwnCharacter(player.Character)
+end
+player.CharacterAdded:Connect(watchOwnCharacter)

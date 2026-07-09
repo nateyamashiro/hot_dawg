@@ -256,6 +256,11 @@ local function onStealTriggered(
 	end
 end
 
+-- Also exported for hand-steals: PickupService routes its "snatch it out of their
+-- hand" prompt through this exact same pipeline, so charges/shield/cooldowns/the
+-- carry rig all apply no matter where the dog was grabbed from.
+StealService.triggerSteal = onStealTriggered
+
 -- === Public: deposit at own stand (registered with PlotManager) ===
 local function onDeposit(thief: Player)
 	local carry = carrying[thief.UserId]
