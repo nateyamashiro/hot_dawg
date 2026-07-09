@@ -43,7 +43,19 @@ bars) · **manual vault selection** (`syncDisplay` fills `vaultPins` first then 
 📌 Dex-tile family toggle; pins ride `InventoryUpdate`; fixed variant-only ownership not lighting
 dex tiles) · **the FULL anti-exploit hardening pass, done early** (every `OnServerEvent` behind
 `RateLimit.check` + arg guards; `RequestState` join bursts coalesce into one deferred push).
-Commit `318f100`. Static checks clean; still not pushed; playtest still waived-not-passed.)
+Commit `318f100`. Static checks clean; still not pushed; playtest still waived-not-passed.
+**THEN (same day): VISUAL POLISH + FEEL PASSES** — grass z-fight fix (Studio Baseplate destroyed at
+runtime), stand-text de-soup to Steal-a-Brainrot conventions (one far sign per plot; small
+occludable labels; stacked unit plates; rival owner-facing labels hidden client-side), neon tamed
+(matte big surfaces, Bloom 0.25/14/1.6, new Theme.Materials rule), vendor-stand pedestals + 1.35×
+display glizzies, pick-up-and-hold (`PickupService`; hand dogs snatchable through the FULL steal
+pipeline; unequip force-returns). Commits `be4dcdc`→`70670eb`→`c6bc43b`→`99fb04a`.
+**THEN (same day): DEPLOYMENT AUDIT + FIXES + STRETCH** (plan
+`~/.claude/plans/modular-crunching-starfish.md`): data-safety criticals fixed (load-failure wipe →
+retry+kick; mis-nested `_v5` back-fill de-nested; autosave; UpdateAsync stale-write guard;
+ProcessReceipt Robux-eater), `Telemetry.luau` (onboarding funnel + error logging), shop daily cap
+(3/offer), world podium (coins top-3), event-exclusive dogs + per-occurrence event tracks.
+Commits `34a1100`→`5dece79`→`306b164`→`a2fead9`→`8001e00`. See §Launch checklist below.)
 **For:** the next Claude Code session (and Nate)
 
 ## 🏗️ The scaffold (read this before implementing anything new)
@@ -81,10 +93,27 @@ Implement feature by feature; don't re-architect. Key facts:
 
 ---
 
+## 🚀 Launch checklist (deployment readiness — mostly Nate)
+
+Code-side readiness is DONE (data safety, telemetry, hardening, error logging). What remains:
+1. **Publish the place** from Studio (File → Publish). API Services work automatically in
+   production — the Studio toggle only affects Studio testing.
+2. **Content maturity questionnaire** on the Creator Dashboard — REQUIRED for the game to get
+   full visibility/recommendations. All-ages answers (no blood/gore; the blasters never damage).
+3. **Genre + tags** (Tycoon / Simulation), **icon (512×512)** + **thumbnails** — huge for CTR.
+4. **Server size**: set ~15–20 (GDD density target for live raiding).
+5. **The 2-player loop test on the PUBLISHED place** (two accounts) — the waived playtest is now
+   genuinely mandatory before public: cook/steal/deposit/snatch, DataStore persistence across
+   rejoin (autosave + offline earnings), leaderboards filling, event claim granting the dog.
+6. Watch the **Analytics dashboard** funnel (Joined→FirstCook→…) after launch — it's wired.
+7. Known-accepted gaps at launch: silent audio (`GameConfig.Sounds` all `""`), procedural dogs
+   (no AI meshes yet), no monetization until M5 (nothing purchasable = safe).
+
 ## 👉 What the NEXT session should do
 
-**Everything through M4 (retention) is code-complete, and the hardening pass is DONE** (2026-07-09,
-commit `318f100`). Development continues down the build order:
+**Everything through M4 (retention) is code-complete, the hardening pass is DONE, and the
+deployment audit (data safety + telemetry + launch stretch goals) SHIPPED 2026-07-09.**
+Development continues down the build order:
 1. **M5 monetization — `PurchaseService` real logic.** Locked order: **Extra-slots + VIP passes
    first** (`GamePassIds.extraSlots`/`vip` — ids are 0 until Nate creates them on the Creator
    Dashboard; build the logic id-agnostic and test with Studio overrides), then dev products via

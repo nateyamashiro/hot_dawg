@@ -347,6 +347,43 @@ validation; §6 stays reasoned-not-observed):
   over-limit requests **coalesce into one deferred push** (2s) instead of being dropped — cheaper
   than before AND un-breakable. Trading (M6) is unblocked on this front.
 
+**Visual polish + feel passes — SHIPPED 2026-07-09** (Nate-directed, post-Studio look):
+- **Grass z-fight fix** — the default Studio Baseplate is destroyed at runtime (its top face was
+  coplanar with our grass at y=0 = the flicker); lane dashes/river lifted off shared planes.
+- **World-text de-soup** (matched to Steal a Brainrot): ONE far label per plot (the owner sign);
+  everything else small, near-fading, occludable (no AlwaysOnTop through walls); per-unit stacked
+  plates (name / rarity+variant / $-per-s); conveyor tags show name/rarity/price+rate; rival
+  stands hide owner-facing labels (pads/cook/stove/vault/deposit) client-side; world font =
+  FredokaOne with full stroke.
+- **Neon tamed** — new `Theme.Materials` rule: interactive surfaces read through bright SEMANTIC
+  COLORS, not emissive glow; Neon reserved for small accents + gameplay signals (rarity drizzle,
+  sign drizzle, trap, blasters). Bloom 0.4/24/1.1 → 0.25/14/1.6.
+- **Vendor-stand pedestals** (base + column + red tray; the TRAY is the anchor — steal/spawn
+  plumbing unchanged) and **display glizzies at 1.35×** (vault copies stay compact).
+- **Pick-up-and-hold** (`PickupService`): F-prompt on your own DISPLAY dogs → welded hand Tool;
+  cosmetic hold (inventory/income unchanged; one held-key count excluded from the fill). The hand
+  is NOT shelter: a Snatch prompt routes rivals through the FULL steal pipeline; unequipping
+  force-returns the dog (no invisible backpack shelter); one held dog at a time.
+
+**Deployment audit + readiness — SHIPPED 2026-07-09** (plan `modular-crunching-starfish`):
+- **Data safety (critical fixes):** load failure now retries 3× then KICKS (a failed load can
+  never save defaults over real progress); the `_v5` back-fill was accidentally nested inside the
+  dailyMissions check (whole tycoon layer silently reset if that one field went missing) — fixed;
+  autosave every 60s for >3-min-stale players (+5s double-save guard); saves use `UpdateAsync`
+  keeping the newer `lastSeen` (stale-write guard); `ProcessReceipt` returns NotProcessedYet for
+  unmapped products (was silently consuming receipts = eating Robux once ids exist).
+- **Telemetry** (`Telemetry.luau`): onboarding funnel Joined→FirstCook→StoveBuilt→FirstBuild→
+  FirstSteal→FirstRebirth (stable step numbers), HandSnatch counter, ScriptContext.Error dedup
+  logging. All pcall-guarded.
+- **Shop daily cap:** 3 buys per offer per day (`shopBuys` lazy day-reset; "X/3 today" in-panel).
+- **World podium:** coins top-3 as gold/silver/bronze tiers + glizzy statues + name plates on the
+  street past the conveyor; rebuilt only when the top-3 changes ("Unclaimed!" until boards fill).
+- **Event-exclusive dogs:** 3 Legendaries (Payday Dog / Rainmaker Wiener / Half-Price Hero) —
+  in `byName` but NOT `DOGS_BY_RARITY`, so rolls/shop/conveyor/dex-completion exclude them by
+  construction; granted only by their event's FINAL reward tier. Event tracks now keyed
+  **per occurrence** (`"id@week"`), so a returning event offers a fresh track + dog.
+- **Launch checklist** (Nate-facing) lives in `docs/HANDOFF.md §Launch checklist`.
+
 ## 6. Current tuning values (from `GameConfig.luau` / `HotDogDex.luau`)
 
 **Economy**
@@ -399,7 +436,9 @@ validation; §6 stays reasoned-not-observed):
   +1 vault / +50% mut-luck). Effects are permanent + additive; income folds into the rebirth multiplier.
 - Fusion: `FusionInputs` 5, forces a mutation · Trap: 450 coins, 4s stun, 10-stud range
 - Events: weekly rotation, 3 modifiers, reward tiers 100/300/700/1500 pts → 250/750/2000/5000
-  coins; points +10/cook +40/steal; Dog Rain every 240s · Leaderboards: top-25, 60s refresh
+  coins; points +10/cook +40/steal; Dog Rain every 240s; final tier grants the event dog
+  (Legendary, 60/s); tracks reset per occurrence · Leaderboards: top-25, 60s refresh
+- Shop daily cap: 3 buys per offer per day · Autosave: 60s sweep, >180s stale · Load: 3 retries
 - Achievements: 5 goals (collect 10/30, steal 25/100, rebirth 3) · Codes: LAUNCH 1000, GLIZZY 500
 - Passes/products: ids 0 (unconfigured) · extra-slots +2 display/+1 vault · VIP +10% income · 2× coins
 - Cosmetics: 3 items (10–25 prestige) · Trade: 30s cooldown, ≤6 items · Emotes: 5 presets
@@ -450,3 +489,10 @@ validation; §6 stays reasoned-not-observed):
 | 2026-07-09 | **Leaderboard "rarest" = income/sec of the single best unit ×100** | One integer that already encodes rarity AND variant (Gold outranks plain twin) via the live `sortedUnits` math; no new scoring table to tune |
 | 2026-07-09 | **Vault pins toggle per dog FAMILY from the Dex** (explicit desired state per key; pins beyond capacity overflow back to display) | Per-key pinning is the correct data model (a Gold variant is worth pinning), but per-variant UI is clutter — one 📌 per tile covers the whole family without half-flipped states |
 | 2026-07-09 | **`RequestState` is rate-limited by COALESCING, not dropping** | ~15 client scripts each fire it on join by design; dropping would randomly lose panels' initial state, so over-limit bursts merge into one deferred full push (fewer pushes than before, same guarantee) |
+| 2026-07-09 | **World text: ONE far label per plot (the sign); all else small/occludable/near-fade** | Matches the genre leader's readability; AlwaysOnTop billboards at 120 studs stacked every plot's labels into soup |
+| 2026-07-09 | **Neon reserved for small accents + gameplay signals; interactive surfaces = matte semantic colors** (+ Bloom threshold up) | Dozens of large emissive surfaces at bright noon were an eyesore; color carries the affordability/deposit signals fine |
+| 2026-07-09 | **Pick-up-and-hold is COSMETIC (inventory/income unchanged) and the hand is NOT shelter** — snatchable via the same steal pipeline; unequip force-returns; display dogs only | Zero dupe/loss surface; closes both shelter tricks (backpack + vault-rotation); holding becomes a risk/reward flex |
+| 2026-07-09 | **Load failure → retry 3× then KICK** (never cache defaults) | A failed load that saves is a progress WIPE; a playable-but-unsaved ghost session is confusing — kick with a rejoin message is the standard for economy games |
+| 2026-07-09 | **Event points/claims keyed per OCCURRENCE (`"id@week"`)** | Id-forever keys meant a returning event offered nothing; occurrence keys make every run fresh (incl. re-earnable event dog = fusion food); old keys are pennies of residue |
+| 2026-07-09 | **Event dogs excluded by construction** (in `byName`, not `DOGS_BY_RARITY`) | Rolls/shop/conveyor/dex-completion can't leak them and completion stays achievable off-event; no filter flags scattered across consumers |
+| 2026-07-09 | **`ProcessReceipt` returns NotProcessedYet until grants exist** | Marking unmapped receipts PurchaseGranted would eat real Robux the moment a product id is configured; Roblox retries/refunds NotProcessedYet |

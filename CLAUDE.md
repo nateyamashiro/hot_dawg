@@ -68,15 +68,17 @@ src/shared/MenuLayout.luau     Bottom-row slot math + "⋯ More" tray + THEMED c
 src/server/Main.server.luau    Orchestrator: remotes (+Celebrate), leaderstats, income×(rebirth+prestige+decor), cook (cookOne=cooldown-gated FREE)/cook-10 (paid),
                                offline earnings, dex reward, RequestState handshake, SetVaultPin, syncPads (incl. 🏗️/🎪 build pads)/setPadHandler/setCookHandler, wires ALL services
 src/server/EnvironmentService.luau  Applies Theme.Lighting (noon + post fx + clouds) + builds the map (grass/street/dashes/sidewalks/lamps + P-E bun hills/mustard river/geyser). init() BEFORE PlotManager.build()
-src/server/DataManager.luau    DataStore load/save + cache (PlayerData incl. M3 + _v5 fields incl. autoCookerLvl/built/weapons/upgraderLvl/zoneLvl/cookReadyAt; first-join starting-glizzy grant; defenses.wall→built.wall grandfather)
+src/server/DataManager.luau    DataStore load/save + cache. HARDENED for launch: load retries 3× then returns nil (Main kicks — a failed load can NEVER save defaults over real data); _v5 back-fill de-nested (was silently gated on dailyMissions); UpdateAsync stale-write guard (keeps newer lastSeen); startAutosave (60s sweep, >3min stale, 5s double-save guard); vaultPins pruned to owned keys on load; first-join starting-glizzy grant; defenses.wall→built.wall grandfather
 src/server/PlotManager.luau    Plots/stands + static floor-1 stall shell; capacity = upgrade level + bonus*Slots + BuildGrants floor slots; syncDisplay honours vaultPins (pins fill vault first, then top-up by value); walk-on PAD framework (PAD_LAYOUT incl. build/decor, updatePads green-red), BUILDERS per catalog id + spawnStructure/rebuildStructures/setGateHandler, cook station, setStove, spawnUnit = GlizzyModel, spawn CFrame, OwnerUserId attr
 src/server/StealService.luau   Grab/carry/deposit/abort (carry rig = welded GlizzyModel), charges, cooldowns, shield, alerts + stealAlarm/giantShake celebrates
 src/server/DefenseService.luau Net tool + NPC guard + trap (wall RETIRED → BuildCatalog perimeter wall)
 src/server/UpgradeService.luau Buy grill / display / vault slots — tryBuy() public (menu remote + walk-on pads share it)
 src/server/RebirthService.luau Rebirth: reset coins, keep dogs+upgrades, income multiplier + prestige
 src/server/DailyService.luau   Daily login streak + rotating cook/steal/earn missions
-src/server/ShopService.luau    Rotating shop: deterministic daily offers, buy validation + coin charge
-src/server/RateLimit.luau      Anti-exploit spine: per-player rate limiter + arg guards (used by new remotes)
+src/server/ShopService.luau    Rotating shop: deterministic daily offers, buy validation + coin charge, per-offer DAILY CAP (ShopDailyBuyCap=3, lazy shopBuys reset, "X/N today" rides ShopUpdate)
+src/server/RateLimit.luau      Anti-exploit spine: per-player rate limiter + arg guards (EVERY OnServerEvent covered since the hardening pass)
+src/server/Telemetry.luau      Launch telemetry: onboarding funnel (Joined→FirstCook→StoveBuilt→FirstBuild→FirstSteal→FirstRebirth, stable step numbers), Telemetry.event custom counter (HandSnatch), ScriptContext.Error dedup logger — all pcall-guarded
+src/server/PickupService.luau  Pick up & hold your own DISPLAY glizzies (F prompt): cosmetic hold (inventory/income unchanged; PlotManager excludes one held-key count from the fill), hand Tool carries a Snatch prompt (rivals steal via StealService.triggerSteal — full rules), unequip/death/leave auto-return
 src/server/MutationService.luau  maybeMint(name, luckBonus)→inventory key — random mutation on cook (WIRED into doCook; luckBonus fed from data.mutationLuck; steal path gated by MutateOnSteal, TODO)
 src/server/PrestigeShopService.luau  Spend prestige on one-time premium unlocks (income%/±slots/mut-luck) — validate+charge, bank effects into _v5 fields
 src/server/FusionService.luau  Combine N dupes → same dog one variant up the ladder (SHIPPED; Giant=top)
@@ -86,8 +88,8 @@ src/server/WeaponService.luau  Condiment blasters SHIPPED (Phase 5): buy/equip/f
 src/server/ConveyorService.luau  Street buy-lane SHIPPED (Phase 4): belt strip + glizzies ride the aisle, prompt-to-buy (shop weights/prices, base dogs, no mint), Heartbeat mover (≤8 units)
 src/server/UpgraderService.luau  Cooker upgrader SHIPPED (Phase 4): tryUpgrade (⚙️ pad + remote), outputMultiplier folded into AutoCookerService.coinsPerSecond
 src/server/ZoneService.luau    Zone expansion SHIPPED (Phase 5): prestige-priced tryUpgrade (🌍 pad + remote), PlotManager.applyZone pad resize, extraSlots derived in displayCapacity
-src/server/EventService.luau   Weekly events SHIPPED (M4): deterministic week-index event; modifiers consumed where the math lives (income2x→incomeMultiplier, cookHalfPrice→cook-10, Dog Rain→grantFreeCook closure); points via addPoints (cook/steal); tier claims (claimed count = eventPoints["id:claimed"])
-src/server/LeaderboardService.luau  Leaderboards SHIPPED (M4): OrderedDataStore top-N (coins/steals/rarest = best-unit income×100); periodic submit+refetch+push; session-cached UserId→name
+src/server/EventService.luau   Weekly events SHIPPED (M4): deterministic week-index event; modifiers consumed where the math lives (income2x→incomeMultiplier, cookHalfPrice→cook-10, Dog Rain→grantFreeCook closure); points via addPoints (cook/steal); tier claims keyed PER OCCURRENCE (eventPoints["id@week"]) so returning events offer fresh tracks; FINAL tier grants the event-exclusive rewardDog
+src/server/LeaderboardService.luau  Leaderboards SHIPPED (M4): OrderedDataStore top-N (coins/steals/rarest = best-unit income×100); periodic submit+refetch+push; session-cached UserId→name; WORLD PODIUM (coins top-3 statues + plates on the street, rebuilt only on top-3 change)
 src/server/AchievementService.luau  Achievements SHIPPED (M4): metric progress (dogs/steals/rebirths) + validated one-time coin claims into data.achievements
 src/server/CodesService.luau   Redeem promo codes for coins (mostly complete)
 src/server/PurchaseService.luau  Passes + dev products via ProcessReceipt (STUB; Extra-slots+VIP first)
@@ -221,9 +223,31 @@ state; pins ride `InventoryUpdate`; also fixed variant-only ownership not lighti
 `RequestState` join bursts COALESCE into one deferred push instead of dropping — trading is now
 unblocked on this front).
 
+**VISUAL POLISH + GAMEPLAY FEEL PASSES 2026-07-09** (Nate-directed): grass z-fighting killed
+(default Studio Baseplate destroyed at runtime — its top was coplanar with our grass at y=0);
+stand text de-souped to genre conventions (ONE far label per plot = the sign; small occludable
+near-fade labels elsewhere; stacked name/rarity/$-per-s unit plates; rival stands hide owner-facing
+labels client-side; FredokaOne world font); conveyor tags match (name/rarity/price+rate); NEON
+tamed (matte big surfaces per new `Theme.Materials` rule — Neon reserved for small accents +
+gameplay signals; Bloom 0.25/14/1.6); vendor-stand pedestals (base+column+red tray; tray = anchor);
+display glizzies at 1.35×; **pick-up-and-hold** (PickupService; hand dogs SNATCHABLE via the full
+steal pipeline; unequip force-returns — no backpack shelter).
+
+**DEPLOYMENT AUDIT + FIXES + STRETCH SHIPPED 2026-07-09** (plan
+`~/.claude/plans/modular-crunching-starfish.md`, approved + fully executed): **data safety** —
+load-failure wipe fixed (retry 3× → kick; failed loads can NEVER save defaults over real data),
+mis-nested `_v5` back-fill de-nested (whole tycoon layer's persistence silently depended on
+`dailyMissions` existing), autosave (60s sweep / >3min stale / 5s double-save guard), UpdateAsync
+stale-write guard, ProcessReceipt no longer eats Robux for unmapped products (NotProcessedYet);
+**Telemetry** (onboarding funnel + error visibility); **shop daily cap** (3/offer/day);
+**world podium** (coins top-3 on the street); **event-exclusive dogs** (3 Legendaries granted by
+final reward tiers; event tracks now per-occurrence so returning events are fresh). Launch
+checklist lives in `docs/HANDOFF.md §Launch checklist`.
+
 Static checks clean (stylua/selene/rojo). **NOT pushed (standing instruction: don't push).** The
-2-player playtest remains **waived, not passed** — no live validation has run; `GAME_DESIGN §6`
-stays reasoned-not-observed. **Next up (build order):** M5 monetization — `PurchaseService` real
-logic (Extra-slots + VIP passes first, locked), dev products via ProcessReceipt, then cosmetics;
-loose ends available any time: codes finishing touches, traps polish, steal-path minting
-(`MutateOnSteal`), event-only dogs, shop per-day cap. See `docs/NEXT_SESSION_PROMPT.md` + HANDOFF.
+2-player playtest remains **waived, not passed** — now genuinely REQUIRED on the published place
+before going public (see the launch checklist). **Next up (build order):** M5 monetization —
+`PurchaseService` real logic (Extra-slots + VIP passes first, locked; needs Nate's dashboard ids),
+then cosmetics; deferred: onboarding first-60s, sounds/meshes/skybox (Nate assets), session
+locking, StreamingEnabled evaluation, traps polish, `MutateOnSteal`. See
+`docs/NEXT_SESSION_PROMPT.md` + HANDOFF.
