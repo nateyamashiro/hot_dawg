@@ -225,8 +225,16 @@ local GameConfig = {
 		{ id = "dogRain", label = "Dog Rain", modifier = "freeCookBursts" },
 		{ id = "discountCook", label = "Discount Cook", modifier = "cookHalfPrice" },
 	},
-	-- Coins/points needed per event reward-track tier (reasoned placeholder).
+	-- Points needed per event reward-track tier, and the coins each tier pays
+	-- (parallel arrays — keep them the same length). Reasoned placeholders.
 	EventRewardTiers = { 100, 300, 700, 1500 },
+	EventRewardCoins = { 250, 750, 2000, 5000 },
+	-- Event points earned per action while any event is live.
+	EventPointsPerCook = 10,
+	EventPointsPerSteal = 40,
+	-- Dog Rain (freeCookBursts): while that event is live, everyone online gets a
+	-- free glizzy roll this often (no cost, no cooldown).
+	EventDogRainIntervalSeconds = 240,
 
 	-- === Leaderboards (M4, OrderedDataStore) ===
 	LeaderboardTopN = 25,

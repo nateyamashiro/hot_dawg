@@ -9,6 +9,7 @@ local ServerScriptService = game:GetService("ServerScriptService")
 
 local GameConfig = require(ReplicatedStorage.Shared.GameConfig)
 local DataManager = require(ServerScriptService.Server.DataManager)
+local RateLimit = require(ServerScriptService.Server.RateLimit)
 local PlotManager = require(ServerScriptService.Server.PlotManager)
 
 local UpgradeService = {}
@@ -110,7 +111,10 @@ function UpgradeService.init(deps: {
 	remBuyUpgrade = deps.remotes:WaitForChild("BuyUpgrade") :: RemoteEvent
 
 	remBuyUpgrade.OnServerEvent:Connect(function(player, which)
-		if type(which) == "string" then
+		if not RateLimit.check(player, "BuyUpgrade", 5) then
+			return
+		end
+		if type(which) == "string" and #which <= 32 then
 			UpgradeService.tryBuy(player, which)
 		end
 	end)

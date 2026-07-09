@@ -13,6 +13,7 @@ local ServerScriptService = game:GetService("ServerScriptService")
 
 local GameConfig = require(ReplicatedStorage.Shared.GameConfig)
 local DataManager = require(ServerScriptService.Server.DataManager)
+local RateLimit = require(ServerScriptService.Server.RateLimit)
 local PlotManager = require(ServerScriptService.Server.PlotManager)
 local StealService = require(ServerScriptService.Server.StealService)
 
@@ -256,7 +257,10 @@ function DefenseService.init(deps: { remotes: Folder, updateLeaderstats: (player
 	remFeedback = deps.remotes:WaitForChild("StealFeedback") :: RemoteEvent
 	remBuyDefense = deps.remotes:WaitForChild("BuyDefense") :: RemoteEvent
 	remBuyDefense.OnServerEvent:Connect(function(player, which)
-		if type(which) == "string" then
+		if not RateLimit.check(player, "BuyDefense", 5) then
+			return
+		end
+		if type(which) == "string" and #which <= 32 then
 			onBuyDefense(player, which)
 		end
 	end)

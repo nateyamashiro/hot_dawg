@@ -9,6 +9,7 @@ local ServerScriptService = game:GetService("ServerScriptService")
 
 local GameConfig = require(ReplicatedStorage.Shared.GameConfig)
 local DataManager = require(ServerScriptService.Server.DataManager)
+local RateLimit = require(ServerScriptService.Server.RateLimit)
 
 local RebirthService = {}
 
@@ -62,6 +63,9 @@ function RebirthService.init(deps: {
 	remRebirth = deps.remotes:WaitForChild("Rebirth") :: RemoteEvent
 
 	remRebirth.OnServerEvent:Connect(function(player)
+		if not RateLimit.check(player, "Rebirth", 2) then
+			return
+		end
 		onRebirth(player)
 	end)
 end

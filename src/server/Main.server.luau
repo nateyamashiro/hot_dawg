@@ -18,6 +18,7 @@ local GameConfig = require(ReplicatedStorage.Shared.GameConfig)
 local HotDogDex = require(ReplicatedStorage.Shared.HotDogDex)
 local Variants = require(ReplicatedStorage.Shared.Variants)
 local DataManager = require(ServerScriptService.Server.DataManager)
+local RateLimit = require(ServerScriptService.Server.RateLimit)
 local EnvironmentService = require(ServerScriptService.Server.EnvironmentService)
 local PlotManager = require(ServerScriptService.Server.PlotManager)
 local StealService = require(ServerScriptService.Server.StealService)
@@ -192,10 +193,16 @@ end
 -- All additive. Offline earnings and the live tick both call this, so decor income
 -- applies everywhere automatically.
 local function incomeMultiplier(data: DataManager.PlayerData): number
-	return 1
+	local mult = 1
 		+ data.rebirths * GameConfig.RebirthIncomeBonus
 		+ data.prestigeIncomeMult
 		+ BuildGrants.incomeBonus(data.built)
+	-- Weekly-event modifier (M4): Double Income Weekend doubles the whole thing —
+	-- both the live tick and offline earnings call through here, so both inherit it.
+	if EventService.activeModifier() == "income2x" then
+		mult *= 2
+	end
+	return mult
 end
 
 -- === Client state pushes (server -> client snapshots) ===
@@ -245,7 +252,8 @@ local function pushInventory(player: Player)
 	if not data then
 		return
 	end
-	inventoryUpdate:FireClient(player, data.hotDogs)
+	-- Pins ride along so the Dex can show which keys are vault-pinned.
+	inventoryUpdate:FireClient(player, data.hotDogs, data.vaultPins)
 	if not data.dexRewarded and ownsEveryDog(data) then
 		data.dexRewarded = true
 		data.coins += GameConfig.DexCompletionReward
@@ -277,7 +285,29 @@ local function doCook(player: Player, data: DataManager.PlayerData): (HotDogDex.
 	local key = MutationService.maybeMint(dog.name, data.mutationLuck)
 	data.hotDogs[key] = (data.hotDogs[key] or 0) + 1
 	DailyService.progress(player, "cook", 1)
+	EventService.addPoints(player, GameConfig.EventPointsPerCook)
 	return dog, key
+end
+
+-- Dog Rain (EventService "freeCookBursts"): one free roll — no cost, no cooldown —
+-- with the full reveal + celebrate so it feels like a gift, not a glitch.
+local function grantFreeCook(player: Player)
+	local data = DataManager.get(player)
+	if not data then
+		return
+	end
+	local dog, key = doCook(player, data)
+	local _, variant = Variants.decode(key)
+	updateLeaderstats(player)
+	PlotManager.syncDisplay(player)
+	pushInventory(player)
+	pushCookStats(player)
+	cookResult:FireClient(player, dog.name, dog.rarity, variant)
+	stealFeedback:FireClient(player, true, "🌭 Dog Rain! A free glizzy fell your way!")
+	local station = PlotManager.cookStationOf(player)
+	if station then
+		celebrate:FireAllClients("cook", station, dog.rarity)
+	end
 end
 
 -- === Build the world & init services ===
@@ -289,6 +319,7 @@ StealService.init({
 	onInventoryChanged = pushInventory,
 	onSteal = function(player)
 		DailyService.progress(player, "steal", 1)
+		EventService.addPoints(player, GameConfig.EventPointsPerSteal)
 	end,
 })
 DefenseService.init({ remotes = remotes, updateLeaderstats = updateLeaderstats })
@@ -320,7 +351,11 @@ FusionService.init({
 	updateLeaderstats = updateLeaderstats,
 	onInventoryChanged = pushInventory,
 })
-EventService.init({ remotes = remotes, updateLeaderstats = updateLeaderstats })
+EventService.init({
+	remotes = remotes,
+	updateLeaderstats = updateLeaderstats,
+	grantFreeCook = grantFreeCook,
+})
 LeaderboardService.init({ remotes = remotes })
 AchievementService.init({ remotes = remotes, updateLeaderstats = updateLeaderstats })
 CodesService.init({ remotes = remotes, updateLeaderstats = updateLeaderstats })
@@ -477,22 +512,28 @@ PlotManager.setPadHandler(function(player: Player, padId: string)
 	syncPads(player) -- refresh labels/visibility after any purchase
 end)
 
--- Manual vault selection (M2 fast-follow): toggle whether a dog key is pinned safe.
--- PlotManager.syncDisplay honours data.vaultPins (see its TODO). Kept here as a tiny
--- handler until the Dex pin UI is built. Server-authoritative + rate-limited.
-setVaultPin.OnServerEvent:Connect(function(player: Player, key)
-	if type(key) ~= "string" then
+-- Manual vault selection (M2 fast-follow): pin/unpin an inventory key as vault-safe.
+-- PlotManager.syncDisplay fills pinned keys into the vault FIRST, then tops up by
+-- value. The Dex pin UI sends an explicit desired state (third arg) so toggling a
+-- whole dog family (base + variants) can't half-flip; a bare call still toggles.
+setVaultPin.OnServerEvent:Connect(function(player: Player, key, pinned)
+	-- Generous limit: one Dex tap pins every owned variant of a dog in a burst.
+	if not RateLimit.check(player, "SetVaultPin", 40) then
+		return
+	end
+	if type(key) ~= "string" or #key > 64 then
 		return
 	end
 	local data = DataManager.get(player)
 	if not data then
 		return
 	end
-	if data.vaultPins[key] then
-		data.vaultPins[key] = nil
-	else
-		data.vaultPins[key] = true
+	local want = if type(pinned) == "boolean" then pinned else not data.vaultPins[key]
+	-- Only keys the player actually owns can be pinned (keeps the map from growing junk).
+	if want and (data.hotDogs[key] or 0) <= 0 then
+		return
 	end
+	data.vaultPins[key] = if want then true else nil
 	PlotManager.syncDisplay(player)
 	pushInventory(player)
 end)
@@ -533,7 +574,24 @@ local function pushAllState(player: Player)
 	end
 end
 
-requestState.OnServerEvent:Connect(pushAllState)
+-- Every client script fires RequestState once its handlers connect, so a burst of
+-- ~15 calls right after join is NORMAL. Rate-limit by COALESCING, not dropping:
+-- over-limit requests schedule one deferred full push, so the last script to wake
+-- up still gets its state even under the cap.
+local pendingStatePush: { [number]: boolean } = {}
+requestState.OnServerEvent:Connect(function(player: Player)
+	if RateLimit.check(player, "RequestState", 4, 2) then
+		pushAllState(player)
+	elseif not pendingStatePush[player.UserId] then
+		pendingStatePush[player.UserId] = true
+		task.delay(2, function()
+			pendingStatePush[player.UserId] = nil
+			if player.Parent then
+				pushAllState(player)
+			end
+		end)
+	end
+end)
 
 local function onPlayerAdded(player: Player)
 	local data = DataManager.load(player)
@@ -605,17 +663,28 @@ end
 -- === Cook handlers ===
 -- The on-screen Cook button and the physical cook station share cookOne (defined above).
 cookHotDog.OnServerEvent:Connect(function(player: Player)
+	if not RateLimit.check(player, "Cook", 5) then
+		return
+	end
 	cookOne(player)
 end)
 
 -- Cook-ten (item 9): pay 10× cost up front, roll 10, send a summary of the results.
 cookTen.OnServerEvent:Connect(function(player: Player)
+	if not RateLimit.check(player, "CookTen", 2) then
+		return
+	end
 	local data = DataManager.get(player)
 	if not data then
 		return
 	end
 	local n = GameConfig.CookTenCount
-	local totalCost = GameConfig.CookCost * n
+	-- Weekly-event modifier (M4): Discount Cook halves the paid batch price.
+	local unitCost = GameConfig.CookCost
+	if EventService.activeModifier() == "cookHalfPrice" then
+		unitCost = math.floor(unitCost / 2)
+	end
+	local totalCost = unitCost * n
 	if data.coins < totalCost then
 		stealFeedback:FireClient(
 			player,
@@ -651,6 +720,7 @@ end)
 
 Players.PlayerRemoving:Connect(function(player)
 	pendingWelcome[player.UserId] = nil
+	pendingStatePush[player.UserId] = nil
 	DataManager.release(player)
 end)
 

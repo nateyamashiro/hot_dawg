@@ -11,6 +11,7 @@ local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local ServerScriptService = game:GetService("ServerScriptService")
 
 local GameConfig = require(ReplicatedStorage.Shared.GameConfig)
+local HotDogDex = require(ReplicatedStorage.Shared.HotDogDex)
 local DataManager = require(ServerScriptService.Server.DataManager)
 local RateLimit = require(ServerScriptService.Server.RateLimit)
 
@@ -33,11 +34,29 @@ local cachedTops: { [string]: { { name: string, value: number } } } = {
 	rarest = {},
 }
 
--- A single numeric "rarest" score derived from a player's inventory (higher = rarer
--- collection). TODO(M4-lb): compute from best-dog income / variant via HotDogDex.
+-- A single numeric "rarest" score derived from a player's inventory: the income/sec
+-- of their single best unit (variant-scaled, so a Gold dog outranks its plain twin),
+-- ×100 because OrderedDataStore only takes integers. sortedUnits sorts descending.
 local function rarestScore(data: DataManager.PlayerData): number
-	local _ = data
-	return 0
+	local units = HotDogDex.sortedUnits(data.hotDogs)
+	local best = units[1]
+	return if best then math.floor(best.income * 100) else 0
+end
+
+-- UserId -> display name, cached for the server's lifetime (the web lookup is slow
+-- and rate-limited; a stale name for a session is fine for a leaderboard).
+local nameCache: { [number]: string } = {}
+local function nameForUserId(userId: number): string
+	local cached = nameCache[userId]
+	if cached then
+		return cached
+	end
+	local ok, name = pcall(function()
+		return Players:GetNameFromUserIdAsync(userId)
+	end)
+	local resolved = if ok and type(name) == "string" then name else "Player " .. userId
+	nameCache[userId] = resolved
+	return resolved
 end
 
 -- Write everyone's current stats into the ordered stores (pcall-guarded like saves).
@@ -63,9 +82,11 @@ local function refreshTops()
 		end)
 		if ok and page then
 			local out: { { name: string, value: number } } = {}
-			-- TODO(M4-lb): map UserIds → display names (GetNameFromUserIdAsync, cached).
 			for _, entry in page:GetCurrentPage() do
-				table.insert(out, { name = tostring(entry.key), value = entry.value })
+				-- Keys are "player_<UserId>" (see submitScores).
+				local userId = tonumber(string.match(tostring(entry.key), "^player_(%d+)$"))
+				local name = if userId then nameForUserId(userId) else tostring(entry.key)
+				table.insert(out, { name = name, value = entry.value })
 			end
 			cachedTops[boardName] = out
 		end

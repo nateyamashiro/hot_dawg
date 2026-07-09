@@ -1,19 +1,23 @@
 --!strict
 -- Dex / collection UI (item 8, GDD §4.4). A toggleable grid of every hot dog in the
 -- game: owned ones show their name in rarity colour, undiscovered ones are locked
--- silhouettes. The owned set comes from the server's InventoryUpdate snapshot
--- (leaderstats only carries counts, not which dogs). Untrusted display only.
+-- silhouettes. Owned tiles carry a 📌 toggle — pinned dogs are held in the safe
+-- vault first (manual vault selection; the server honours data.vaultPins). The
+-- owned set comes from the server's InventoryUpdate snapshot (leaderstats only
+-- carries counts, not which dogs). Untrusted display only.
 
 local Players = game:GetService("Players")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 
 local HotDogDex = require(ReplicatedStorage.Shared.HotDogDex)
 local MenuLayout = require(ReplicatedStorage.Shared.MenuLayout)
+local Variants = require(ReplicatedStorage.Shared.Variants)
 
 local player = Players.LocalPlayer
 
 local remotes = ReplicatedStorage:WaitForChild("Remotes")
 local inventoryUpdate = remotes:WaitForChild("InventoryUpdate") :: RemoteEvent
+local setVaultPin = remotes:WaitForChild("SetVaultPin") :: RemoteEvent
 local requestState = remotes:WaitForChild("RequestState") :: RemoteEvent
 
 local gui = Instance.new("ScreenGui")
@@ -53,7 +57,7 @@ close.Activated:Connect(function()
 end)
 
 local grid = Instance.new("ScrollingFrame")
-grid.Size = UDim2.new(1, -24, 1, -60)
+grid.Size = UDim2.new(1, -24, 1, -84)
 grid.Position = UDim2.fromOffset(12, 52)
 grid.BackgroundTransparency = 1
 grid.BorderSizePixel = 0
@@ -68,8 +72,23 @@ layout.CellPadding = UDim2.fromOffset(8, 8)
 layout.SortOrder = Enum.SortOrder.LayoutOrder
 layout.Parent = grid
 
+-- Latest server snapshot: inventory (composite keys) + which keys are vault-pinned.
+local lastOwned: { [string]: number } = {}
+local lastPins: { [string]: boolean } = {}
+
+-- Every owned inventory key for a base dog ("Chicago Dog" matches "Chicago Dog#Gold").
+local function ownedKeysFor(dogName: string): { string }
+	local keys = {}
+	for key, count in lastOwned do
+		if count > 0 and Variants.baseName(key) == dogName then
+			table.insert(keys, key)
+		end
+	end
+	return keys
+end
+
 -- Build one tile per dog; keep a handle so we can flip owned/locked on updates.
-type Tile = { frame: Frame, label: TextLabel, dog: HotDogDex.HotDog }
+type Tile = { frame: Frame, label: TextLabel, pin: TextButton, dog: HotDogDex.HotDog }
 local tiles: { Tile } = {}
 for i, dog in HotDogDex.all() do
 	local frame = Instance.new("Frame")
@@ -88,8 +107,44 @@ for i, dog in HotDogDex.all() do
 	label.TextWrapped = true
 	label.Parent = frame
 
-	table.insert(tiles, { frame = frame, label = label, dog = dog })
+	-- 📌 vault-pin toggle (owned tiles only). One tap flips the whole dog family
+	-- (base + every owned variant) with an explicit desired state, so a mixed
+	-- pinned/unpinned family can't half-toggle.
+	local pin = Instance.new("TextButton")
+	pin.Size = UDim2.fromOffset(22, 22)
+	pin.Position = UDim2.new(1, -24, 0, 2)
+	pin.BackgroundTransparency = 1
+	pin.TextScaled = true
+	pin.Text = "📌"
+	pin.Visible = false
+	pin.Parent = frame
+	pin.Activated:Connect(function()
+		local keys = ownedKeysFor(dog.name)
+		local anyPinned = false
+		for _, key in keys do
+			if lastPins[key] then
+				anyPinned = true
+				break
+			end
+		end
+		for _, key in keys do
+			setVaultPin:FireServer(key, not anyPinned)
+		end
+	end)
+
+	table.insert(tiles, { frame = frame, label = label, pin = pin, dog = dog })
 end
+
+local pinHint = Instance.new("TextLabel")
+pinHint.Size = UDim2.new(1, -24, 0, 22)
+pinHint.Position = UDim2.new(0, 12, 1, -28)
+pinHint.BackgroundTransparency = 1
+pinHint.TextColor3 = MenuLayout.MutedText
+pinHint.TextScaled = true
+pinHint.Font = Enum.Font.Gotham
+pinHint.TextXAlignment = Enum.TextXAlignment.Left
+pinHint.Text = "📌 pins fill your safe vault first — vault dogs can't be stolen"
+pinHint.Parent = panel
 
 local completion = Instance.new("TextLabel")
 completion.Size = UDim2.fromOffset(240, 40)
@@ -105,10 +160,25 @@ toggle.Activated:Connect(function()
 	panel.Visible = not panel.Visible
 end)
 
-inventoryUpdate.OnClientEvent:Connect(function(owned: { [string]: number })
+inventoryUpdate.OnClientEvent:Connect(function(owned: { [string]: number }, pins)
+	lastOwned = if type(owned) == "table" then owned else {}
+	lastPins = if type(pins) == "table" then pins else {}
+	-- Aggregate composite keys down to base dogs: owning only "Chicago Dog#Gold"
+	-- still lights up the Chicago Dog tile (and counts toward completion).
+	local ownedBase: { [string]: boolean } = {}
+	local pinnedBase: { [string]: boolean } = {}
+	for key, count in lastOwned do
+		if count > 0 then
+			local base = Variants.baseName(key)
+			ownedBase[base] = true
+			if lastPins[key] then
+				pinnedBase[base] = true
+			end
+		end
+	end
 	local ownedCount = 0
 	for _, tile in tiles do
-		local has = (owned[tile.dog.name] or 0) > 0
+		local has = ownedBase[tile.dog.name] == true
 		if has then
 			ownedCount += 1
 			tile.frame.BackgroundColor3 = HotDogDex.colorFor(tile.dog.rarity)
@@ -119,6 +189,8 @@ inventoryUpdate.OnClientEvent:Connect(function(owned: { [string]: number })
 			tile.label.Text = "???"
 			tile.label.TextColor3 = MenuLayout.MutedText
 		end
+		tile.pin.Visible = has
+		tile.pin.TextTransparency = if pinnedBase[tile.dog.name] then 0 else 0.6
 	end
 	completion.Text = string.format("%d / %d", ownedCount, #tiles)
 end)

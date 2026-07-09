@@ -13,6 +13,7 @@ local ServerScriptService = game:GetService("ServerScriptService")
 local GameConfig = require(ReplicatedStorage.Shared.GameConfig)
 local HotDogDex = require(ReplicatedStorage.Shared.HotDogDex)
 local DataManager = require(ServerScriptService.Server.DataManager)
+local RateLimit = require(ServerScriptService.Server.RateLimit)
 local PlotManager = require(ServerScriptService.Server.PlotManager)
 
 local ShopService = {}
@@ -132,7 +133,10 @@ function ShopService.init(deps: {
 	remShopUpdate = deps.remotes:WaitForChild("ShopUpdate") :: RemoteEvent
 
 	remBuyFromShop.OnServerEvent:Connect(function(player, name)
-		if type(name) == "string" then
+		if not RateLimit.check(player, "BuyFromShop", 5) then
+			return
+		end
+		if type(name) == "string" and #name <= 64 then
 			onBuy(player, name)
 		end
 	end)

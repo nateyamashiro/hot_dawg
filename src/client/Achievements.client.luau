@@ -35,11 +35,10 @@ achievementUpdate.OnClientEvent:Connect(function(list)
 	if type(list) ~= "table" then
 		return
 	end
-	-- TODO(M4-ach): show a real progress bar + only enable claim when complete.
 	for i, ach in list do
 		local done = ach.progress >= ach.target
 		local row = Instance.new("TextButton")
-		row.Size = UDim2.new(1, 0, 0, 40)
+		row.Size = UDim2.new(1, 0, 0, 44)
 		row.LayoutOrder = i
 		row.BackgroundColor3 = if ach.claimed
 			then MenuLayout.Disabled
@@ -48,15 +47,33 @@ achievementUpdate.OnClientEvent:Connect(function(list)
 		row.TextColor3 = Color3.fromRGB(255, 255, 255)
 		row.TextScaled = true
 		row.Font = Enum.Font.GothamBold
-		row.Text = ach.label
-			.. "  ("
-			.. tostring(ach.progress)
-			.. "/"
-			.. tostring(ach.target)
-			.. ")"
+		row.Text = if ach.claimed
+			then "✅ " .. ach.label
+			elseif done then "🎁 " .. ach.label .. " — claim +" .. tostring(ach.reward) .. "!"
+			else string.format(
+				"%s  (%d/%d) → +%d",
+				tostring(ach.label),
+				ach.progress,
+				ach.target,
+				ach.reward
+			)
 		row.Parent = content
+
+		-- Slim progress bar along the bottom edge of the row.
+		local bar = Instance.new("Frame")
+		bar.AnchorPoint = Vector2.new(0, 1)
+		bar.Position = UDim2.fromScale(0, 1)
+		bar.Size = UDim2.new(math.clamp(ach.progress / math.max(ach.target, 1), 0, 1), 0, 0, 4)
+		bar.BackgroundColor3 = MenuLayout.SuccessText
+		bar.BorderSizePixel = 0
+		bar.Parent = row
+
+		-- Claim only fires when there's actually something to claim (server
+		-- re-validates anyway; this just avoids junk requests + error toasts).
 		row.Activated:Connect(function()
-			claimAchievement:FireServer(ach.id)
+			if done and not ach.claimed then
+				claimAchievement:FireServer(ach.id)
+			end
 		end)
 	end
 end)

@@ -1132,27 +1132,39 @@ function PlotManager.syncDisplay(player: Player)
 	-- (folded into vaultCapacity/displayCapacity).
 	local vaultCap = vaultCapacity(data)
 	local displayCap = displayCapacity(data)
-	-- TODO(M2-vault): honor data.vaultPins first — pinned keys fill the vault before
-	-- the auto-top-by-value overflow below.
+	-- Manual vault selection (M2 fast-follow): pinned keys claim vault slots FIRST
+	-- (in value order — sortedUnits is income-descending), then the vault tops up
+	-- with the best unpinned units; everything left overflows to the pedestals.
 	local units = HotDogDex.sortedUnits(data.hotDogs)
-	-- Top `vaultCap` units -> safe vault; the next `displayCap` -> stealable pedestals.
-	for i, unit in units do
-		if i <= vaultCap then
-			local anchor = plot.vaultAnchors[i]
-			if anchor then
-				spawnUnit(plot, anchor, unit, false)
-			end
+	local vaultUnits: { HotDogDex.Unit } = {}
+	local overflow: { HotDogDex.Unit } = {}
+	for _, unit in units do
+		if data.vaultPins[unit.key] and #vaultUnits < vaultCap then
+			table.insert(vaultUnits, unit)
 		else
-			local pedIndex = i - vaultCap
-			if pedIndex > displayCap then
-				break -- Out of display room; remaining units are "in storage" (not shown).
-			end
-			local anchor = plot.pedestalAnchors[pedIndex]
-			if anchor then
-				spawnUnit(plot, anchor, unit, true)
-			else
-				break
-			end
+			table.insert(overflow, unit)
+		end
+	end
+	while #vaultUnits < vaultCap and #overflow > 0 do
+		table.insert(vaultUnits, table.remove(overflow, 1) :: HotDogDex.Unit)
+	end
+	for i, unit in vaultUnits do
+		local anchor = plot.vaultAnchors[i]
+		if anchor then
+			spawnUnit(plot, anchor, unit, false)
+		end
+	end
+	-- The next `displayCap` overflow units -> stealable pedestals; the rest are
+	-- "in storage" (not shown).
+	for i, unit in overflow do
+		if i > displayCap then
+			break
+		end
+		local anchor = plot.pedestalAnchors[i]
+		if anchor then
+			spawnUnit(plot, anchor, unit, true)
+		else
+			break
 		end
 	end
 end

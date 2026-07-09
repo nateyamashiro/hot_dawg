@@ -9,6 +9,7 @@ local ServerScriptService = game:GetService("ServerScriptService")
 
 local GameConfig = require(ReplicatedStorage.Shared.GameConfig)
 local DataManager = require(ServerScriptService.Server.DataManager)
+local RateLimit = require(ServerScriptService.Server.RateLimit)
 
 local DailyService = {}
 
@@ -181,10 +182,16 @@ function DailyService.init(deps: {
 	remClaimMission = deps.remotes:WaitForChild("ClaimMission") :: RemoteEvent
 
 	remClaimDaily.OnServerEvent:Connect(function(player)
+		if not RateLimit.check(player, "ClaimDaily", 3) then
+			return
+		end
 		onClaimDaily(player)
 	end)
 	remClaimMission.OnServerEvent:Connect(function(player, id)
-		if type(id) == "string" then
+		if not RateLimit.check(player, "ClaimMission", 5) then
+			return
+		end
+		if type(id) == "string" and #id <= 64 then
 			onClaimMission(player, id)
 		end
 	end)
