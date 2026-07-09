@@ -164,9 +164,10 @@ local GameConfig = {
 		Mythic = 75000,
 		Secret = 300000,
 	},
-	-- Rotating-shop per-day purchase cap (closes the v1 unlimited-buys fast-follow).
+	-- Rotating-shop per-day purchase cap PER OFFER (closes the v1 unlimited-buys
+	-- fast-follow — otherwise the shop is an infinite income printer for whales).
 	-- 0 = unlimited. Tracked per player in PlayerData.shopBuys (see DataManager _v5).
-	ShopDailyBuyCap = 0,
+	ShopDailyBuyCap = 3,
 
 	-- === Mutations / variants (M3 remainder) ===
 	-- Chance (0-1) that a freshly acquired dog (cook, and optionally steal) is minted

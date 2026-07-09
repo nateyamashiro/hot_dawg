@@ -81,7 +81,8 @@ layout.SortOrder = Enum.SortOrder.LayoutOrder
 layout.Parent = list
 
 -- Build one row per offer, fresh on each ShopUpdate (offer set is small + changes daily).
-local function renderOffers(offers: { Offer })
+-- `boughtToday`/`cap` drive the per-offer daily limit display (cap 0 = unlimited).
+local function renderOffers(offers: { Offer }, boughtToday: { [string]: number }, cap: number)
 	for _, child in list:GetChildren() do
 		if child:IsA("Frame") then
 			child:Destroy()
@@ -113,6 +114,9 @@ local function renderOffers(offers: { Offer })
 		name.Text = offer.name
 		name.Parent = row
 
+		local bought = boughtToday[offer.name] or 0
+		local capped = cap > 0 and bought >= cap
+
 		local detail = Instance.new("TextLabel")
 		detail.Size = UDim2.new(1, -150, 0, 18)
 		detail.Position = UDim2.fromOffset(18, 30)
@@ -121,17 +125,30 @@ local function renderOffers(offers: { Offer })
 		detail.TextXAlignment = Enum.TextXAlignment.Left
 		detail.TextScaled = true
 		detail.Font = Enum.Font.Gotham
-		detail.Text = string.format("%s · +%d/s income", offer.rarity, offer.income)
+		detail.Text = if cap > 0
+			then string.format(
+				"%s · +%d/s income · %d/%d today",
+				offer.rarity,
+				offer.income,
+				bought,
+				cap
+			)
+			else string.format("%s · +%d/s income", offer.rarity, offer.income)
 		detail.Parent = row
 
 		local buy = Instance.new("TextButton")
 		buy.Size = UDim2.fromOffset(128, 40)
 		buy.Position = UDim2.new(1, -134, 0.5, -20)
-		buy.Text = "💰 " .. offer.price
+		buy.Text = if capped then "✅ Maxed today" else "💰 " .. offer.price
 		buy.Parent = row
-		MenuLayout.styleButton(buy, "success")
+		MenuLayout.styleButton(buy, if capped then "danger" else "success")
+		if capped then
+			buy.BackgroundColor3 = MenuLayout.Disabled
+		end
 		buy.Activated:Connect(function()
-			buyFromShop:FireServer(offer.name)
+			if not capped then
+				buyFromShop:FireServer(offer.name)
+			end
 		end)
 	end
 end
@@ -151,10 +168,14 @@ toggle.Activated:Connect(function()
 	panel.Visible = not panel.Visible
 end)
 
-shopUpdate.OnClientEvent:Connect(function(offers: { Offer }, refreshInSeconds: number)
+shopUpdate.OnClientEvent:Connect(function(offers: { Offer }, refreshInSeconds: number, bought, cap)
 	secondsLeft = refreshInSeconds
 	timer.Text = formatCountdown(secondsLeft)
-	renderOffers(offers)
+	renderOffers(
+		offers,
+		if type(bought) == "table" then bought else {},
+		if type(cap) == "number" then cap else 0
+	)
 end)
 
 -- Tick the countdown down each second; when it lapses, ask the server for the fresh

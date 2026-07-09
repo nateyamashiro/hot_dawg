@@ -80,10 +80,32 @@ local function offersFor(day: number): { Offer }
 	return offers
 end
 
--- Send a player today's offers + seconds until the next rotation (for a countdown).
+-- Roll the per-day purchase counters when the rotation day changes (lazy — no loop).
+local function resetBuysIfNewDay(data: DataManager.PlayerData)
+	local day = currentDay()
+	if data.shopBuys.day ~= day then
+		data.shopBuys.day = day
+		data.shopBuys.counts = {}
+	end
+end
+
+-- Send a player today's offers + seconds until the next rotation (for a countdown),
+-- plus their per-offer buys-today so the panel can show "X/N today".
 function ShopService.pushShop(player: Player)
 	local secondsLeft = GameConfig.ShopRefreshSeconds - (os.time() % GameConfig.ShopRefreshSeconds)
-	remShopUpdate:FireClient(player, offersFor(currentDay()), secondsLeft)
+	local boughtToday: { [string]: number } = {}
+	local data = DataManager.get(player)
+	if data then
+		resetBuysIfNewDay(data)
+		boughtToday = data.shopBuys.counts
+	end
+	remShopUpdate:FireClient(
+		player,
+		offersFor(currentDay()),
+		secondsLeft,
+		boughtToday,
+		GameConfig.ShopDailyBuyCap
+	)
 end
 
 local function onBuy(player: Player, name: string)
@@ -109,11 +131,29 @@ local function onBuy(player: Player, name: string)
 		return
 	end
 
+	-- Per-day cap per offer (0 = unlimited): the shop is a targeted top-up, not an
+	-- infinite income printer.
+	local cap = GameConfig.ShopDailyBuyCap
+	if cap > 0 then
+		resetBuysIfNewDay(data)
+		local bought = data.shopBuys.counts[name] or 0
+		if bought >= cap then
+			remFeedback:FireClient(
+				player,
+				false,
+				"Daily limit for " .. name .. " reached (" .. cap .. "/day) — back tomorrow!"
+			)
+			return
+		end
+		data.shopBuys.counts[name] = bought + 1
+	end
+
 	data.coins -= offer.price
 	data.hotDogs[name] = (data.hotDogs[name] or 0) + 1
 	updateLeaderstats(player)
 	PlotManager.syncDisplay(player)
 	onInventoryChanged(player) -- dex snapshot + one-time completion reward
+	ShopService.pushShop(player) -- refresh the panel's "X/N today" counters
 	remFeedback:FireClient(
 		player,
 		true,
