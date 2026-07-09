@@ -30,7 +30,20 @@ server-picked target near YOUR plot only, slow/knockback/stun never damage, spla
 zone expansion (🌍 pad, pad physically swells, extraSlots derived read-time). All static checks
 clean. **NOT pushed (Nate said don't push). The 2-player playtest was WAIVED by Nate** ("act like
 it worked") — systems are accepted but no live validation has run; §6 tuning remains
-reasoned-not-observed.)
+reasoned-not-observed.
+**THEN (same day): M4 RETENTION + VAULT PINS + HARDENING SHIPPED** — weekly events real
+(deterministic week-index rotation; modifiers live in the real math: income2x →
+`Main.incomeMultiplier` (tick + offline), cookHalfPrice → cook-10 batch price, freeCookBursts =
+Dog Rain free rolls every 4 min via a Main-provided `grantFreeCook` closure; points +10/cook
++40/steal; 4-tier reward track with batched claims; claimed count persists as
+`eventPoints["<id>:claimed"]`, no `_vN` bump) · leaderboards real (OrderedDataStore top-N
+coins/steals/rarest, rarest = best variant-scaled unit income ×100, session-cached name lookups,
+tabbed panel) · achievements real (validated one-time coin claims, gated claim UI + progress
+bars) · **manual vault selection** (`syncDisplay` fills `vaultPins` first then tops up by value;
+📌 Dex-tile family toggle; pins ride `InventoryUpdate`; fixed variant-only ownership not lighting
+dex tiles) · **the FULL anti-exploit hardening pass, done early** (every `OnServerEvent` behind
+`RateLimit.check` + arg guards; `RequestState` join bursts coalesce into one deferred push).
+Commit `318f100`. Static checks clean; still not pushed; playtest still waived-not-passed.)
 **For:** the next Claude Code session (and Nate)
 
 ## 🏗️ The scaffold (read this before implementing anything new)
@@ -70,16 +83,20 @@ Implement feature by feature; don't re-architect. Key facts:
 
 ## 👉 What the NEXT session should do
 
-**The entire visual overhaul + tycoon layer (P-A→P-E + Phases 4/5) is code-complete.** Nate waived
-the playtest, so development continues down the build order (retention before content):
-1. **M4 retention systems, real logic:** `EventService` (weekly deterministic event + reward
-   track), `LeaderboardService` (OrderedDataStore top-N), `AchievementService` (metric tracking +
-   claims). All three have stubs, remotes, tray panels, and config already.
-2. **Manual vault selection** — `data.vaultPins` + the `SetVaultPin` handler exist; honour pins in
-   `PlotManager.syncDisplay` (its TODO) + a pin toggle in the Dex.
-3. **Hardening pass** (wrap every legacy `OnServerEvent` with `RateLimit` + arg guards) — REQUIRED
-   before trading (M6) / soft launch.
-4. Nate asset passes (zero code): `GameConfig.Sounds` ids · `GlizzyMeshIds` meshes · `SkyboxAssetId`.
+**Everything through M4 (retention) is code-complete, and the hardening pass is DONE** (2026-07-09,
+commit `318f100`). Development continues down the build order:
+1. **M5 monetization — `PurchaseService` real logic.** Locked order: **Extra-slots + VIP passes
+   first** (`GamePassIds.extraSlots`/`vip` — ids are 0 until Nate creates them on the Creator
+   Dashboard; build the logic id-agnostic and test with Studio overrides), then dev products via
+   `ProcessReceipt` (`receiptHistory` dedup already in `_v5`), then cosmetics (`CosmeticService`).
+   Effects config already exists (`ExtraSlotsPassDisplay/Vault`, `VipIncomeBonus`, `ProductGrants`).
+2. **Loose ends (any time, small):** `CodesService` finishing touches · traps polish/UI ·
+   steal-path minting (`MutateOnSteal`) · event-only dogs (content) · shop per-day cap
+   (`shopBuys`/`ShopDailyBuyCap`).
+3. **Then M6 social** — trading (now unblocked: the hardening pass shipped), parties, emotes.
+4. Nate asset passes (zero code): `GameConfig.Sounds` ids · `GlizzyMeshIds` meshes ·
+   `SkyboxAssetId` · **game-pass/dev-product ids on the Creator Dashboard (unblocks M5 testing
+   end-to-end)**.
 
 **Still owed (needs a human): playtest & tune Milestones 2 + 3 in a real 2-player Studio session.**
 Everything through M3 (plus mutations) is BUILT and passes static checks (rojo build + selene +

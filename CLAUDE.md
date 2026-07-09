@@ -69,7 +69,7 @@ src/server/Main.server.luau    Orchestrator: remotes (+Celebrate), leaderstats, 
                                offline earnings, dex reward, RequestState handshake, SetVaultPin, syncPads (incl. 🏗️/🎪 build pads)/setPadHandler/setCookHandler, wires ALL services
 src/server/EnvironmentService.luau  Applies Theme.Lighting (noon + post fx + clouds) + builds the map (grass/street/dashes/sidewalks/lamps + P-E bun hills/mustard river/geyser). init() BEFORE PlotManager.build()
 src/server/DataManager.luau    DataStore load/save + cache (PlayerData incl. M3 + _v5 fields incl. autoCookerLvl/built/weapons/upgraderLvl/zoneLvl/cookReadyAt; first-join starting-glizzy grant; defenses.wall→built.wall grandfather)
-src/server/PlotManager.luau    Plots/stands + static floor-1 stall shell; capacity = upgrade level + bonus*Slots + BuildGrants floor slots; walk-on PAD framework (PAD_LAYOUT incl. build/decor, updatePads green-red), BUILDERS per catalog id + spawnStructure/rebuildStructures/setGateHandler, cook station, setStove, spawnUnit = GlizzyModel, spawn CFrame, OwnerUserId attr
+src/server/PlotManager.luau    Plots/stands + static floor-1 stall shell; capacity = upgrade level + bonus*Slots + BuildGrants floor slots; syncDisplay honours vaultPins (pins fill vault first, then top-up by value); walk-on PAD framework (PAD_LAYOUT incl. build/decor, updatePads green-red), BUILDERS per catalog id + spawnStructure/rebuildStructures/setGateHandler, cook station, setStove, spawnUnit = GlizzyModel, spawn CFrame, OwnerUserId attr
 src/server/StealService.luau   Grab/carry/deposit/abort (carry rig = welded GlizzyModel), charges, cooldowns, shield, alerts + stealAlarm/giantShake celebrates
 src/server/DefenseService.luau Net tool + NPC guard + trap (wall RETIRED → BuildCatalog perimeter wall)
 src/server/UpgradeService.luau Buy grill / display / vault slots — tryBuy() public (menu remote + walk-on pads share it)
@@ -86,9 +86,9 @@ src/server/WeaponService.luau  Condiment blasters SHIPPED (Phase 5): buy/equip/f
 src/server/ConveyorService.luau  Street buy-lane SHIPPED (Phase 4): belt strip + glizzies ride the aisle, prompt-to-buy (shop weights/prices, base dogs, no mint), Heartbeat mover (≤8 units)
 src/server/UpgraderService.luau  Cooker upgrader SHIPPED (Phase 4): tryUpgrade (⚙️ pad + remote), outputMultiplier folded into AutoCookerService.coinsPerSecond
 src/server/ZoneService.luau    Zone expansion SHIPPED (Phase 5): prestige-priced tryUpgrade (🌍 pad + remote), PlotManager.applyZone pad resize, extraSlots derived in displayCapacity
-src/server/EventService.luau   Weekly deterministic event + modifier + reward track (STUB)
-src/server/LeaderboardService.luau  OrderedDataStore top-N (coins/steals/rarest) (STUB)
-src/server/AchievementService.luau  Milestone goals + one-time rewards (STUB)
+src/server/EventService.luau   Weekly events SHIPPED (M4): deterministic week-index event; modifiers consumed where the math lives (income2x→incomeMultiplier, cookHalfPrice→cook-10, Dog Rain→grantFreeCook closure); points via addPoints (cook/steal); tier claims (claimed count = eventPoints["id:claimed"])
+src/server/LeaderboardService.luau  Leaderboards SHIPPED (M4): OrderedDataStore top-N (coins/steals/rarest = best-unit income×100); periodic submit+refetch+push; session-cached UserId→name
+src/server/AchievementService.luau  Achievements SHIPPED (M4): metric progress (dogs/steals/rebirths) + validated one-time coin claims into data.achievements
 src/server/CodesService.luau   Redeem promo codes for coins (mostly complete)
 src/server/PurchaseService.luau  Passes + dev products via ProcessReceipt (STUB; Extra-slots+VIP first)
 src/server/CosmeticService.luau  Stand skins / trails / titles (STUB)
@@ -102,15 +102,15 @@ src/client/Weapons.client.luau Blaster window (tray): Buy → Equip → equipped
 src/client/StealHud.client.luau  Carry banner, charge/shield meter, robbed alert + arrow, guard buy button (wall button removed — the wall is a build now)
 src/client/PlotPresentation.client.luau  Owner highlight/"YOUR STAND", rival label + own-prompt hiding
 src/client/Menu.client.luau    Bottom menu row + Upgrades & Rebirth panels
-src/client/Dex.client.luau     Collection grid (owned vs locked silhouettes)
+src/client/Dex.client.luau     Collection grid (owned vs locked silhouettes; variant-aware via baseName) + 📌 vault-pin toggle per owned dog family
 src/client/Daily.client.luau   Streak + missions panel
 src/client/Shop.client.luau    Rotating-shop panel: 6 offers, buy buttons, refresh countdown
 src/client/More.client.luau    "⋯ More" primary button — toggles the secondary-panel tray
 src/client/PrestigeShop.client.luau  Prestige-spend panel (tray): catalog + live balance + owned/afforded rows
 src/client/Fusion.client.luau  Fuse-duplicates panel (tray; STUB)
-src/client/Events.client.luau  Weekly-event panel (tray; STUB)
-src/client/Leaderboards.client.luau  Top-N ranks panel (tray; STUB)
-src/client/Achievements.client.luau  Milestone goals panel (tray; STUB)
+src/client/Events.client.luau  Weekly-event panel (tray): banner + modifier blurb + live countdown + reward-track tiers + claim
+src/client/Leaderboards.client.luau  Ranks panel (tray): 3 tabs (coins/steals/rarest), top-10 rows, own-rank highlight
+src/client/Achievements.client.luau  Goals panel (tray): progress bars, claim gated when complete
 src/client/Codes.client.luau   Promo-code entry panel (tray)
 src/client/Passes.client.luau  Passes & perks panel (tray; STUB)
 src/client/Cosmetics.client.luau  Cosmetics wardrobe panel (tray; STUB)
@@ -205,8 +205,25 @@ WAIVED the 2-player playtest and told us to proceed):
   BuyZone; charges prestige, physically swells the pad (`PlotManager.applyZone`, reset on release,
   re-applied on join), `extraSlots` derived read-time in `displayCapacity`.
 
-Static checks clean (stylua/selene/rojo). **NOT pushed (Nate said don't push).** The 2-player
-playtest was **waived by Nate** (treat systems as accepted; no live validation has actually run —
-tuning in `GAME_DESIGN §6` remains reasoned-not-observed). **Next up (build order):** M4 retention
-systems — events/leaderboards/achievements real logic — plus manual vault selection, then the
-RateLimit hardening pass before trading. See `docs/NEXT_SESSION_PROMPT.md` + HANDOFF.
+**M4 RETENTION + VAULT PINS + HARDENING SHIPPED 2026-07-09** (same session pattern — static-clean,
+no live validation): **weekly events** real (deterministic week rotation; modifiers consumed where
+the math lives — `income2x` doubles `Main.incomeMultiplier` live+offline, `cookHalfPrice` halves
+cook-10, `freeCookBursts` = Dog Rain free rolls every 4 min via a `grantFreeCook` closure Main
+hands the service; points +10/cook +40/steal via `EventService.addPoints`; 4-tier reward track,
+batched claims, claimed count persisted as `eventPoints["<id>:claimed"]` — no `_vN` bump);
+**leaderboards** real (OrderedDataStore submit/refetch/push; rarest = best variant-scaled unit
+income ×100; session-cached name lookups; tabbed panel); **achievements** real (validated one-time
+coin claims); **manual vault selection** (M2 fast-follow closed: `syncDisplay` fills `vaultPins`
+keys first then tops up by value; 📌 Dex-tile toggle flips a dog family with explicit desired
+state; pins ride `InventoryUpdate`; also fixed variant-only ownership not lighting dex tiles);
+**the full anti-exploit hardening pass done early** (every `OnServerEvent` behind
+`RateLimit.check` + arg guards — cook/cook-10/daily/rebirth/shop/upgrades/defenses/vault-pins;
+`RequestState` join bursts COALESCE into one deferred push instead of dropping — trading is now
+unblocked on this front).
+
+Static checks clean (stylua/selene/rojo). **NOT pushed (standing instruction: don't push).** The
+2-player playtest remains **waived, not passed** — no live validation has run; `GAME_DESIGN §6`
+stays reasoned-not-observed. **Next up (build order):** M5 monetization — `PurchaseService` real
+logic (Extra-slots + VIP passes first, locked), dev products via ProcessReceipt, then cosmetics;
+loose ends available any time: codes finishing touches, traps polish, steal-path minting
+(`MutateOnSteal`), event-only dogs, shop per-day cap. See `docs/NEXT_SESSION_PROMPT.md` + HANDOFF.

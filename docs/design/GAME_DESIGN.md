@@ -312,6 +312,41 @@ validation; §6 stays reasoned-not-observed):
   charging physically swells the plot pad (`PlotManager.applyZone`; reset on release, re-applied
   on join) and adds display slots derived read-time in `displayCapacity`.
 
+**Milestone 4 — retention systems + vault pins + hardening — SHIPPED 2026-07-09**
+(static-clean; like Phases 4+5, accepted without live validation):
+- **Weekly events** (`EventService`/`Events.client`) — the active event is a deterministic function
+  of the week index (ShopService's trick), so every server agrees. Modifiers run in the REAL math:
+  `income2x` doubles `Main.incomeMultiplier` (live tick + offline both call through it);
+  `cookHalfPrice` halves the cook-10 batch price; `freeCookBursts` = **Dog Rain** — every
+  `EventDogRainIntervalSeconds` (4 min) each online player gets a FREE roll with the full
+  reveal/celebrate (Main hands the service a `grantFreeCook` closure). Points: +10/cook, +40/steal
+  (`EventService.addPoints` from `doCook` + the steal callback). Reward track: 4 point tiers →
+  coin payouts; one claim collects every reachable tier; the claimed-tier count persists as
+  `eventPoints["<id>:claimed"]` — same `{string→number}` map, **no new field / no `_vN` bump**.
+  Panel: banner + modifier blurb + live countdown + tier rows. *Event-only dogs deferred (content).*
+- **Leaderboards** (`LeaderboardService`/`Leaderboards.client`) — three OrderedDataStores
+  (coins/steals/rarest); every `LeaderboardRefreshSeconds` the server submits online players'
+  scores, refetches top-N, caches, and pushes. **Rarest = the income/sec of the player's single
+  best unit** (variant-scaled via `sortedUnits`, ×100 because OrderedDataStore is integer-only).
+  UserId→display-name via `GetNameFromUserIdAsync`, session-cached. Panel: three tabs, top-10
+  rows, own-rank highlighted.
+- **Achievements** (`AchievementService`/`Achievements.client`) — progress read off existing
+  counters/inventory (dogs/steals/rebirths), claims validated server-side (known id + unclaimed +
+  target met) and paid once into `data.achievements`; panel gates the claim button client-side
+  (server revalidates anyway) + progress bars.
+- **Manual vault selection** (M2 fast-follow closed) — `data.vaultPins` honoured in
+  `PlotManager.syncDisplay`: pinned keys fill the vault FIRST (value order), then the vault tops
+  up with the best unpinned units; the rest overflow to pedestals. Dex tiles gain a 📌 toggle that
+  flips a whole dog family (base + owned variants) with an explicit desired state (no half-flips);
+  pins ride `InventoryUpdate`; only owned keys are pinnable. Also fixed: variant-only ownership
+  (e.g. only `"X#Gold"`) now lights the dex tile + counts toward completion.
+- **Anti-exploit hardening pass** (scheduled pre-M6, done early) — every `OnServerEvent` in the
+  codebase now goes through `RateLimit.check` + type/length arg guards (cook, cook-10, daily
+  claims, rebirth, shop, upgrades, defenses, vault pins, and all newer remotes which already had
+  it). `RequestState` is special-cased: the ~15-scripts-fire-on-join handshake is NORMAL, so
+  over-limit requests **coalesce into one deferred push** (2s) instead of being dropped — cheaper
+  than before AND un-breakable. Trading (M6) is unblocked on this front.
+
 ## 6. Current tuning values (from `GameConfig.luau` / `HotDogDex.luau`)
 
 **Economy**
@@ -363,7 +398,8 @@ validation; §6 stays reasoned-not-observed):
 - Prestige shop (**shipped 2026-07-08**): 4 one-time unlocks 5–15 prestige (income +10% / +1 display /
   +1 vault / +50% mut-luck). Effects are permanent + additive; income folds into the rebirth multiplier.
 - Fusion: `FusionInputs` 5, forces a mutation · Trap: 450 coins, 4s stun, 10-stud range
-- Events: weekly rotation, 3 modifiers, reward tiers 100/300/700/1500 · Leaderboards: top-25, 60s refresh
+- Events: weekly rotation, 3 modifiers, reward tiers 100/300/700/1500 pts → 250/750/2000/5000
+  coins; points +10/cook +40/steal; Dog Rain every 240s · Leaderboards: top-25, 60s refresh
 - Achievements: 5 goals (collect 10/30, steal 25/100, rebirth 3) · Codes: LAUNCH 1000, GLIZZY 500
 - Passes/products: ids 0 (unconfigured) · extra-slots +2 display/+1 vault · VIP +10% income · 2× coins
 - Cosmetics: 3 items (10–25 prestige) · Trade: 30s cooldown, ≤6 items · Emotes: 5 presets
@@ -408,3 +444,9 @@ validation; §6 stays reasoned-not-observed):
 | 2026-07-09 | **Walk-on pads coloured green (affordable) / red (too expensive)**, refreshed each income tick | Immediate legibility of what you can buy; server-authoritative (affordability computed in `Main.syncPads`), cheap for ~4 pads |
 | 2026-07-09 | **Weapons will be NON-DAMAGING** (slow/knockback/stun), never HP/damage | All-ages / Gen-Alpha tone + lower moderation risk; still adds defense-loop counterplay |
 | 2026-07-09 | **UI overhaul = shared-window upgrade** (`makeWindow` drag/minimize/close + toolbar), NOT a full rebuild | Reuses working panels; incremental + lower regression risk than retiring all 16 GUIs at once |
+| 2026-07-09 | **Event modifiers live in the consumers, not the service** (income2x in `Main.incomeMultiplier`, cookHalfPrice in cook-10, Dog Rain via a Main-provided `grantFreeCook` closure) | `EventService` stays a pure "which event is it" oracle; the math changes where the math lives, so offline earnings/celebrates inherit for free and there's no duplicated income path |
+| 2026-07-09 | **Event claimed-tier count persists as `eventPoints["<id>:claimed"]`** | The `_v5` back-fill already keeps any string→number pair in that map — zero migration for a per-event counter; a dedicated field can come later if events grow richer state |
+| 2026-07-09 | **Dog Rain = free cook rolls on an interval** (not literal falling pickups) | Same excitement, no physics/pickup-race/exploit surface; reuses the entire cook reveal + celebrate path |
+| 2026-07-09 | **Leaderboard "rarest" = income/sec of the single best unit ×100** | One integer that already encodes rarity AND variant (Gold outranks plain twin) via the live `sortedUnits` math; no new scoring table to tune |
+| 2026-07-09 | **Vault pins toggle per dog FAMILY from the Dex** (explicit desired state per key; pins beyond capacity overflow back to display) | Per-key pinning is the correct data model (a Gold variant is worth pinning), but per-variant UI is clutter — one 📌 per tile covers the whole family without half-flipped states |
+| 2026-07-09 | **`RequestState` is rate-limited by COALESCING, not dropping** | ~15 client scripts each fire it on join by design; dropping would randomly lose panels' initial state, so over-limit bursts merge into one deferred full push (fewer pushes than before, same guarantee) |

@@ -25,8 +25,16 @@ Each should be independently testable in Studio. `✅ done · 🔜 next · ⏳ l
 > (belt + prompt-to-buy glizzies at shop prices) · cooker upgrader (⚙️ pad → stove output mult) ·
 > condiment blasters (🔫 buy/equip Tool; server-authoritative slow/knockback/stun near your own
 > plot; never damage) · prestige zone expansion (🌍 pad; bigger pad + extra slots). **The whole
-> visual overhaul + tycoon layer is code-complete. NEXT: M4 retention (events/leaderboards/
-> achievements real logic) + manual vault + the hardening pass.** See `docs/NEXT_SESSION_PROMPT.md`.
+> visual overhaul + tycoon layer is code-complete.**
+>
+> **2026-07-09 shipped (same day) — M4 RETENTION + VAULT PINS + HARDENING:** weekly events real
+> (deterministic week-index rotation; modifiers live in the actual math — income2x, cook-10 half
+> price, Dog Rain free rolls; points from cooks/steals; reward-track claims) · leaderboards real
+> (OrderedDataStore top-N coins/steals/rarest with name mapping + tabbed panel) · achievements real
+> (validated one-time claims) · manual vault selection (📌 Dex pin toggle; pinned keys fill the
+> vault first) · **the anti-exploit hardening pass** (RateLimit + arg guards on every legacy
+> `OnServerEvent`; RequestState bursts coalesce). **NEXT: M5 monetization (Extra-slots + VIP
+> passes first).** See `docs/NEXT_SESSION_PROMPT.md`.
 
 ---
 
@@ -53,7 +61,8 @@ The retention engine. Built 2026-07-03 (needs a 2-player Studio playtest to vali
   NPC guard (auto-nets raiders even while away) (`DefenseService.luau`).
 - Anti-grief: steal charges (recharge over time), per-target cooldown + diminishing returns,
   timed newbie shield.
-- **Fast-follows (deferred within M2):** traps, manual vault selection.
+- **Fast-follows (deferred within M2):** traps (built, needs polish/UI). ✅ Manual vault selection
+  shipped 2026-07-09 (📌 pin in the Dex; `syncDisplay` fills pins first).
 - *Ref: `docs/roblox-reference/gameplay/` (ProximityPrompt, Humanoid, CollectionService).*
 
 ## ✅ Milestone 3 — Progression & economy depth
@@ -89,11 +98,20 @@ Built 2026-07-03 (Top-10 items 5–10; static-clean, needs a Studio playtest to 
 - **Data:** DataStore now `_v5` (2026-07-07 scaffold; batches all later fields, back-fills from
   `_v4`/`_v3`). Earlier M3 was `_v4`; shop itself added no fields.
 
-## 🏗️ Milestone 4 — Retention systems ⭐ (scaffolded — stubs to fill in)
+## ✅ Milestone 4 — Retention systems ⭐ (shipped 2026-07-09; static-clean, not playtested)
 - Daily login + daily missions. *(shipped early in M3 — see above.)*
-- 🏗️ Weekly limited-time events + event-only dogs (FOMO) — `EventService`/`Events.client`.
-- 🏗️ Achievements / milestone rewards — `AchievementService`/`Achievements.client`.
-- 🏗️ Leaderboards (coins / rarest / most steals) via OrderedDataStore — `LeaderboardService`/`Leaderboards.client`.
+- ✅ Weekly limited-time events — deterministic week-index rotation (all servers agree), modifiers
+  wired into the REAL math (`income2x` → `Main.incomeMultiplier`, live + offline; `cookHalfPrice` →
+  cook-10 batch price; `freeCookBursts` → Dog Rain: everyone online gets a free roll every 4 min),
+  points from cooks (+10) and steals (+40), 4-tier reward track with batched claims
+  (`EventService`/`Events.client` — banner, blurb, live countdown, tier rows).
+  *Event-only dogs still ⏳ (content, not systems).*
+- ✅ Achievements / milestone rewards — validated one-time claims (progress from existing
+  counters/inventory), coin payouts, claim gated client-side + revalidated server-side
+  (`AchievementService`/`Achievements.client` with progress bars).
+- ✅ Leaderboards (coins / steals / rarest) via OrderedDataStore — periodic submit + cached top-N,
+  UserId→name mapping (session-cached), rarest = best variant-scaled unit income
+  (`LeaderboardService`/`Leaderboards.client` with three tabs + own-rank highlight).
 - 🏗️ Codes system (creator marketing lever) — `CodesService`/`Codes.client` (mostly complete).
 
 ## 🏗️ Milestone 5 — Monetization (scaffolded — stubs to fill in)
@@ -101,7 +119,10 @@ Built 2026-07-03 (Top-10 items 5–10; static-clean, needs a Studio playtest to 
 - 🏗️ Dev products (coin packs, refills, extra charges) via `ProcessReceipt`. **No paid gacha.**
   Both in `PurchaseService`/`Passes.client`.
 - 🏗️ Cosmetics (stand skins, trails, titles) — `CosmeticService`/`Cosmetics.client`.
-- **Do the anti-exploit hardening pass here (before M6 + launch).** *Ref: `docs/roblox-reference/monetization/`.*
+- ✅ **Anti-exploit hardening pass done early (2026-07-09):** every legacy `OnServerEvent`
+  (cook/cook-10, daily claims, rebirth, shop, upgrades, defenses, vault pins) now behind
+  `RateLimit.check` + arg guards; `RequestState` join bursts coalesce instead of dropping.
+  *Ref: `docs/roblox-reference/monetization/`.*
 
 ## 🏗️ Milestone 6 — Social & virality (scaffolded — stubs to fill in)
 - 🏗️ Trading (baseline safeguards: confirm + cooldown + log) — `TradeService`/`Trade.client`.

@@ -96,17 +96,24 @@ feature by feature, don't re-architect.
 
 **M2 fast-follows**
 - 🏗️ Traps (`DefenseService` trap case + `PlotManager.trapModel`) — ~complete, needs polish/UI.
-- 🏗️ Manual vault selection (`Main` `SetVaultPin` handler + `PlotManager.syncDisplay` TODO; needs a
-  Dex pin UI + honoring `vaultPins` in the vault fill).
+- ✅ Manual vault selection **shipped 2026-07-09** — `PlotManager.syncDisplay` fills pinned keys
+  into the vault first, then tops up by value; 📌 toggle on owned Dex tiles flips the whole dog
+  family (base + variants) with an explicit desired state; pins ride `InventoryUpdate`; only owned
+  keys are pinnable.
 
 **M3 remainder** (rotating shop + mutations + prestige spending shipped; per-day cap scaffolded via `shopBuys`/`ShopDailyBuyCap`)
 - 🏗️ Duplicates → fusion (`FusionService`/`Fusion.client`) — **next up.** Note `GameConfig.FusionForcesMutation`
   can reuse `Variants.pickMint`/`MutationService` now that the variant layer is live.
 
 **M4 retention** (daily streak/missions already shipped in M3)
-- 🏗️ Weekly events + event-only dogs (`EventService`/`Events.client`).
-- 🏗️ Achievements/milestones (`AchievementService`/`Achievements.client`).
-- 🏗️ Leaderboards via OrderedDataStore (`LeaderboardService`/`Leaderboards.client`).
+- ✅ Weekly events **shipped 2026-07-09** — deterministic week rotation; modifiers live (income2x /
+  cook-10 half price / Dog Rain free rolls every 4 min); points per cook (+10) & steal (+40);
+  4-tier reward track, claims batched; claimed-tier count persists as
+  `eventPoints["<id>:claimed"]` (no new field). **Still open:** event-only dogs (content).
+- ✅ Achievements/milestones **shipped 2026-07-09** — validated one-time claims + coin payouts;
+  panel gates claims + shows progress bars.
+- ✅ Leaderboards **shipped 2026-07-09** — OrderedDataStore top-N (coins/steals/rarest), rarest =
+  best variant-scaled unit income ×100, session name cache; tabbed panel, own-rank highlight.
 - 🏗️ Codes system (`CodesService`/`Codes.client`) — mostly complete. · Free battle-pass track — later.
 
 **M5 monetization** (all non-pay-to-win; gacha stays coin-only)
@@ -117,6 +124,9 @@ feature by feature, don't re-architect.
 **Social (later)** — 🏗️ trading (baseline safeguards, `TradeService`/`Trade.client`), 🏗️ emotes
 (`EmoteService`), parties/co-op, clans.
 
-**Hardening / infra** — 🏗️ `RateLimit` spine exists + guards new remotes; do the **FULL** pass (wrap
-every `OnServerEvent`) before trading ships / before public launch. Then AI-gen art pass,
-icon/thumbnail, soft-launch prep.
+**Hardening / infra** — ✅ the **FULL** pass **shipped 2026-07-09**: every `OnServerEvent` in the
+codebase is behind `RateLimit.check` + type/length arg guards (cook, cook-10, daily claims,
+rebirth, shop, upgrades, defenses, vault pins); `RequestState` join bursts COALESCE into one
+deferred push instead of being dropped (the ~15-scripts-fire-on-join handshake stays intact).
+Trading (M6) is now unblocked on this front. Still later: anomaly logging (`RateLimit` TODO),
+AI-gen art pass, icon/thumbnail, soft-launch prep.
