@@ -46,6 +46,7 @@ local WeaponService = require(ServerScriptService.Server.WeaponService)
 local ConveyorService = require(ServerScriptService.Server.ConveyorService)
 local UpgraderService = require(ServerScriptService.Server.UpgraderService)
 local ZoneService = require(ServerScriptService.Server.ZoneService)
+local PickupService = require(ServerScriptService.Server.PickupService)
 
 -- === Set up remotes ===
 -- Created in code so there's nothing to wire up by hand in Studio. The client
@@ -372,6 +373,7 @@ ConveyorService.init({
 	updateLeaderstats = updateLeaderstats,
 	onInventoryChanged = pushInventory,
 })
+PickupService.init({ remotes = remotes }) -- pick up & hold your own glizzies
 UpgraderService.init({ remotes = remotes, updateLeaderstats = updateLeaderstats })
 ZoneService.init({
 	remotes = remotes,

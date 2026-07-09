@@ -67,14 +67,22 @@ type CookHandler = (owner: Player) -> ()
 -- A NON-owner brushed a slow-down gate curtain → apply the slow (BuildService owns
 -- the rule; the per-player 1.5s debounce lives in the gate builder).
 type GateHandler = (toucher: Player) -> ()
+-- The OWNER pressed the pickup prompt on one of their own displayed dogs
+-- (PickupService owns the rule: builds the hand Tool + excludes the slot).
+type PickupHandler = (player: Player, key: string) -> ()
 local stealHandler: StealHandler? = nil
 local depositHandler: DepositHandler? = nil
 local padHandler: PadHandler? = nil
 local cookHandler: CookHandler? = nil
 local gateHandler: GateHandler? = nil
+local pickupHandler: PickupHandler? = nil
 
 function PlotManager.setStealHandler(fn: StealHandler)
 	stealHandler = fn
+end
+
+function PlotManager.setPickupHandler(fn: PickupHandler)
+	pickupHandler = fn
 end
 
 function PlotManager.setDepositHandler(fn: DepositHandler)
@@ -152,11 +160,11 @@ end
 -- Compact stacked unit plate — the genre's slot label (name / rarity / $-per-sec in
 -- three small lines) instead of one giant name tag. Occludable + fades at 60 studs
 -- (same horizon as the GlizzyFx emitter culling).
-local function makeUnitPlate(parent: BasePart, dog: HotDogDex.Unit)
+local function makeUnitPlate(parent: BasePart, dog: HotDogDex.Unit, offsetY: number?)
 	local bb = Instance.new("BillboardGui")
 	bb.Name = "UnitPlate"
 	bb.Size = UDim2.fromOffset(96, 44)
-	bb.StudsOffsetWorldSpace = Vector3.new(0, 2.1, 0)
+	bb.StudsOffsetWorldSpace = Vector3.new(0, offsetY or 2.1, 0)
 	bb.AlwaysOnTop = false
 	bb.MaxDistance = 60
 	bb.Parent = parent
@@ -349,17 +357,36 @@ local function buildPlot(index: number): Plot
 	-- fills up to the owner's current DisplaySlots level (upgrades reveal more).
 	local pedestalAnchors: { BasePart } = {}
 	local slots = GameConfig.MaxDisplaySlots
+	-- Each slot is a little vendor stand (dark base + slim column + red serving
+	-- tray) instead of a bare block, so the glizzy on top reads as merchandise.
+	-- The TRAY is the anchor part — spawn/steal plumbing is unchanged.
 	for i = 1, slots do
 		local offsetX = (i - (slots + 1) / 2) * 2.6
-		local anchor = makePart({
-			Name = "Pedestal" .. i,
-			Size = Vector3.new(2, 2, 2),
-			Color = Theme.Palette.Cream,
+		local base = makePart({
+			Name = "PedestalBase",
+			Size = Vector3.new(2, 0.4, 2),
+			Color = Theme.Palette.CharBrown,
 			CanCollide = true,
-			CFrame = facing * CFrame.new(offsetX, 1.5, 3),
+			CFrame = facing * CFrame.new(offsetX, 0.2, 3),
 		})
-		anchor.Parent = model
-		table.insert(pedestalAnchors, anchor)
+		base.Parent = model
+		local column = makePart({
+			Name = "PedestalColumn",
+			Size = Vector3.new(0.8, 1.55, 0.8),
+			Color = Theme.Palette.Cream,
+			CanCollide = false,
+			CFrame = facing * CFrame.new(offsetX, 1.15, 3),
+		})
+		column.Parent = model
+		local tray = makePart({
+			Name = "Pedestal" .. i,
+			Size = Vector3.new(2.4, 0.35, 2.4),
+			Color = Theme.Palette.Ketchup,
+			CanCollide = true,
+			CFrame = facing * CFrame.new(offsetX, 2.1, 3),
+		})
+		tray.Parent = model
+		table.insert(pedestalAnchors, tray)
 	end
 
 	-- Back shelf: safe vault slots (also built to the maximum; filled per level).
@@ -1125,24 +1152,33 @@ end
 -- a mutation tints the label with its variant colour. The unit is a real procedural
 -- glizzy (GlizzyModel): rarity aura fx on pedestals only (vault stays clean — budget
 -- rule), Giant renders at 1.5× (overlap IS the flex).
+-- Display (stealable) units render enlarged — they're the storefront merchandise;
+-- vault copies stay compact on the shelf. Giant multiplies on top.
+local DISPLAY_SCALE = 1.35
 local function spawnUnit(plot: Plot, anchor: BasePart, dog: HotDogDex.Unit, stealable: boolean)
+	local scale = (if stealable then DISPLAY_SCALE else 1)
+		* (if dog.variant == "Giant" then 1.5 else 1)
 	local unit = GlizzyModel.build(dog.name, {
 		rarity = dog.rarity,
 		variant = dog.variant,
-		scale = if dog.variant == "Giant" then 1.5 else 1,
+		scale = scale,
 		anchored = true,
 		fx = stealable,
 	})
 	unit:SetAttribute("DogName", dog.name)
 	unit:SetAttribute("DogKey", dog.key)
-	unit:PivotTo(anchor.CFrame * CFrame.new(0, 1.6, 0))
+	-- Rest the dog on the anchor's top face whatever the anchor's height: half the
+	-- anchor + half the glizzy (1.15 tall at scale 1) + a whisker of air.
+	local lift = anchor.Size.Y / 2 + (1.15 * scale) / 2 + 0.05
+	unit:PivotTo(anchor.CFrame * CFrame.new(0, lift, 0))
 	local primary = unit.PrimaryPart :: BasePart
 
-	makeUnitPlate(primary, dog)
+	makeUnitPlate(primary, dog, 1.2 + 0.9 * scale)
 	unit.Parent = anchor
 
 	if stealable then
 		local prompt = Instance.new("ProximityPrompt")
+		prompt.Name = "StealPrompt"
 		prompt.ActionText = "Steal"
 		prompt.ObjectText = dog.displayName
 		prompt.HoldDuration = GameConfig.StealHoldSeconds + plot.holdBonus
@@ -1158,6 +1194,24 @@ local function spawnUnit(plot: Plot, anchor: BasePart, dog: HotDogDex.Unit, stea
 			end
 		end)
 	end
+
+	-- Owner pickup: hold your own glizzy in hand (PickupService owns the rules).
+	-- F (not E) so it can never key-clash with Steal; the server re-checks the
+	-- owner, and PlotPresentation hides this prompt on stands you don't own.
+	local pickup = Instance.new("ProximityPrompt")
+	pickup.Name = "PickupPrompt"
+	pickup.ActionText = "Pick Up"
+	pickup.ObjectText = dog.displayName
+	pickup.KeyboardKeyCode = Enum.KeyCode.F
+	pickup.HoldDuration = 0.25
+	pickup.MaxActivationDistance = 8
+	pickup.RequiresLineOfSight = false
+	pickup.Parent = primary
+	pickup.Triggered:Connect(function(picker: Player)
+		if plot.owner == picker and pickupHandler then
+			pickupHandler(picker, dog.key)
+		end
+	end)
 end
 
 -- Current safe-vault / stealable-display capacity: the player's coin-upgrade level
@@ -1178,6 +1232,14 @@ local function displayCapacity(data: DataManager.PlayerData): number
 	local zoneTier = GameConfig.ZoneTiers[data.zoneLvl]
 	local zoneBonus = zoneTier and zoneTier.extraSlots or 0
 	return def.slots + data.bonusDisplaySlots + BuildGrants.displaySlotBonus(data.built) + zoneBonus
+end
+
+-- One inventory key per player currently "in hand" (PickupService). syncDisplay
+-- skips one count of it so the stand reflects what left with the owner.
+local heldKeys: { [number]: string } = {}
+function PlotManager.setHeldKey(player: Player, key: string?)
+	heldKeys[player.UserId] = key
+	PlotManager.syncDisplay(player)
 end
 
 -- Rebuild a player's pedestals + vault from their current inventory. Cheap enough
@@ -1203,6 +1265,17 @@ function PlotManager.syncDisplay(player: Player)
 	-- (in value order — sortedUnits is income-descending), then the vault tops up
 	-- with the best unpinned units; everything left overflows to the pedestals.
 	local units = HotDogDex.sortedUnits(data.hotDogs)
+	-- One copy of the held key is riding in the owner's HAND (PickupService) —
+	-- leave that one off the stand so the hand copy isn't also displayed.
+	local heldKey = heldKeys[player.UserId]
+	if heldKey then
+		for i, unit in units do
+			if unit.key == heldKey then
+				table.remove(units, i)
+				break
+			end
+		end
+	end
 	local vaultUnits: { HotDogDex.Unit } = {}
 	local overflow: { HotDogDex.Unit } = {}
 	for _, unit in units do
@@ -1389,6 +1462,7 @@ function PlotManager.release(player: Player)
 	plot.signText.Text = "Empty Plot"
 	plot.model:SetAttribute("OwnerUserId", nil)
 	plot.owner = nil
+	heldKeys[player.UserId] = nil -- defensive; PickupService also clears on leave
 	ownerToPlot[player.UserId] = nil
 end
 

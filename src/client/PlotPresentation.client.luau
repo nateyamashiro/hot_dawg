@@ -21,13 +21,18 @@ local function isOwned(model: Instance): boolean
 	return model:GetAttribute("OwnerUserId") == player.UserId
 end
 
--- A Steal prompt sits on a glizzy model's PrimaryPart inside a "DogUnit" model on a
--- pedestal. Hide it on your OWN dogs. (Ancestor check, not parent: the prompt's
--- parent is the Sausage part, not the model itself.)
+-- Two prompts sit on a glizzy's PrimaryPart inside a "DogUnit" model: Steal (E,
+-- rivals only) and Pick Up (F, owner only). Show each side only theirs — the
+-- server re-validates both, this is pure de-clutter. (Ancestor check, not parent:
+-- the prompt's parent is the Sausage part, not the model itself.)
 local function applyPromptState(prompt: ProximityPrompt, owned: boolean)
 	local model = prompt:FindFirstAncestorWhichIsA("Model")
 	if model and model.Name == "DogUnit" then
-		prompt.Enabled = not owned
+		if prompt.Name == "PickupPrompt" then
+			prompt.Enabled = owned
+		else
+			prompt.Enabled = not owned
+		end
 	end
 end
 
