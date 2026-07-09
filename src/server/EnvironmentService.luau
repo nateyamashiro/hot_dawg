@@ -121,8 +121,17 @@ local function buildMap()
 	local map = Instance.new("Model")
 	map.Name = "Environment"
 
-	-- Ground: one big grass slab (top at y 0, flush with a Studio baseplate if
-	-- present). Oversized past the street so the P-E horizon props sit on grass.
+	-- Remove the default Studio Baseplate: its top face sits at the same y=0 plane
+	-- as our grass slab, and two coplanar same-facing surfaces z-fight — the "grass
+	-- constantly flickering/flashing" bug. Our ground fully replaces it (collidable,
+	-- larger). No-op in a published place that has no Baseplate.
+	local baseplate = Workspace:FindFirstChild("Baseplate")
+	if baseplate and baseplate:IsA("BasePart") then
+		baseplate:Destroy()
+	end
+
+	-- Ground: one big grass slab (top at y 0). Oversized past the street so the
+	-- P-E horizon props sit on grass.
 	local ground = makePart({
 		Name = "Ground",
 		Size = Vector3.new(1600, 1, 1600),
@@ -143,13 +152,14 @@ local function buildMap()
 	street.Parent = map
 
 	-- Lane dashes: mustard road paint (on-theme), 20 dashes down the middle.
+	-- Lifted a hair off the street top (0.4) so the faces never share a plane.
 	for x = -456, 456, 48 do
 		local dash = makePart({
 			Name = "LaneDash",
 			Size = Vector3.new(6, 0.1, 1.2),
 			Color = Theme.Palette.Mustard,
 			CastShadow = false,
-			CFrame = CFrame.new(x, 0.45, 0),
+			CFrame = CFrame.new(x, 0.48, 0),
 		})
 		dash.Parent = map
 	end
@@ -224,7 +234,8 @@ local function buildMap()
 		Size = Vector3.new(1200, 0.4, 14),
 		Color = Theme.Palette.Mustard,
 		Material = Enum.Material.Neon,
-		CFrame = CFrame.new(0, 0.2, 700),
+		-- Bottom floats 0.05 above the grass plane (no shared faces = no shimmer).
+		CFrame = CFrame.new(0, 0.25, 700),
 	})
 	river.Parent = map
 

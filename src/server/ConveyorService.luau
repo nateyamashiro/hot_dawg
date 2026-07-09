@@ -126,21 +126,35 @@ local function spawnUnit()
 	model.Name = "BeltDog"
 	local primary = model.PrimaryPart :: BasePart
 
+	-- Genre-standard belt tag (Steal a Brainrot's conveyor shows rarity, cost, AND
+	-- earning rate): three compact stacked lines, occludable, near-fading.
 	local billboard = Instance.new("BillboardGui")
-	billboard.Size = UDim2.fromOffset(170, 52)
-	billboard.StudsOffsetWorldSpace = Vector3.new(0, 2.4, 0)
-	billboard.AlwaysOnTop = true
-	billboard.MaxDistance = 90
+	billboard.Size = UDim2.fromOffset(104, 46)
+	billboard.StudsOffsetWorldSpace = Vector3.new(0, 2.3, 0)
+	billboard.AlwaysOnTop = false
+	billboard.MaxDistance = 70
 	billboard.Parent = primary
-	local tag = Instance.new("TextLabel")
-	tag.Size = UDim2.fromScale(1, 1)
-	tag.BackgroundTransparency = 1
-	tag.TextColor3 = HotDogDex.colorFor(dog.rarity)
-	tag.TextStrokeTransparency = 0.4
-	tag.TextScaled = true
-	tag.Font = Enum.Font.GothamBold
-	tag.Text = dog.name .. "\n💰" .. price
-	tag.Parent = billboard
+	local function tagLine(text: string, color: Color3, y: number, h: number, font: Enum.Font)
+		local l = Instance.new("TextLabel")
+		l.Size = UDim2.fromScale(1, h)
+		l.Position = UDim2.fromScale(0, y)
+		l.BackgroundTransparency = 1
+		l.TextColor3 = color
+		l.TextStrokeTransparency = 0
+		l.TextScaled = true
+		l.Font = font
+		l.Text = text
+		l.Parent = billboard
+	end
+	tagLine(dog.name, Color3.fromRGB(255, 255, 255), 0, 0.42, Theme.UI.TitleFont)
+	tagLine(dog.rarity, HotDogDex.colorFor(dog.rarity), 0.42, 0.3, Theme.UI.TitleFont)
+	tagLine(
+		"💰" .. price .. " · +" .. dog.income .. "/s",
+		Color3.fromRGB(170, 255, 170),
+		0.72,
+		0.28,
+		Theme.UI.NumberFont
+	)
 
 	local unit: BeltUnit = {
 		model = model,

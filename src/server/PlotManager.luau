@@ -107,34 +107,85 @@ local function makePart(props: { [string]: any }): BasePart
 	return part
 end
 
+-- World-text rules (genre standard, matched to Steal a Brainrot: one FAR label per
+-- plot — the owner sign — and everything else small, near-fading, and occludable):
+-- defaults are compact (120px wide, 45-stud fade, NOT AlwaysOnTop so walls hide
+-- labels behind them). Pass `opts` to widen/extend the few labels that earn it.
+type BillboardOpts = {
+	width: number?,
+	maxDistance: number?,
+	alwaysOnTop: boolean?,
+	offsetY: number?,
+}
 local function makeBillboard(
 	parent: BasePart,
 	text: string,
 	color: Color3,
 	sizeY: number,
-	name: string?
+	name: string?,
+	opts: BillboardOpts?
 ): TextLabel
+	local o: BillboardOpts = opts or {}
 	local bb = Instance.new("BillboardGui")
 	if name then
 		-- Stable name so the client can find + hide structural labels on rival stands.
 		bb.Name = name
 	end
-	bb.Size = UDim2.fromOffset(180, sizeY)
-	bb.StudsOffsetWorldSpace = Vector3.new(0, 2.5, 0)
-	bb.AlwaysOnTop = true
-	bb.MaxDistance = 120
+	bb.Size = UDim2.fromOffset(o.width or 120, sizeY)
+	bb.StudsOffsetWorldSpace = Vector3.new(0, o.offsetY or 2.5, 0)
+	bb.AlwaysOnTop = o.alwaysOnTop == true
+	bb.MaxDistance = o.maxDistance or 45
 	bb.Parent = parent
 
 	local label = Instance.new("TextLabel")
 	label.Size = UDim2.fromScale(1, 1)
 	label.BackgroundTransparency = 1
 	label.TextColor3 = color
-	label.TextStrokeTransparency = 0.4
+	label.TextStrokeTransparency = 0
 	label.TextScaled = true
-	label.Font = Enum.Font.GothamBold
+	label.Font = Theme.UI.TitleFont
 	label.Text = text
 	label.Parent = bb
 	return label
+end
+
+-- Compact stacked unit plate — the genre's slot label (name / rarity / $-per-sec in
+-- three small lines) instead of one giant name tag. Occludable + fades at 60 studs
+-- (same horizon as the GlizzyFx emitter culling).
+local function makeUnitPlate(parent: BasePart, dog: HotDogDex.Unit)
+	local bb = Instance.new("BillboardGui")
+	bb.Name = "UnitPlate"
+	bb.Size = UDim2.fromOffset(96, 44)
+	bb.StudsOffsetWorldSpace = Vector3.new(0, 2.1, 0)
+	bb.AlwaysOnTop = false
+	bb.MaxDistance = 60
+	bb.Parent = parent
+
+	local function line(text: string, color: Color3, y: number, h: number, font: Enum.Font)
+		local l = Instance.new("TextLabel")
+		l.Size = UDim2.fromScale(1, h)
+		l.Position = UDim2.fromScale(0, y)
+		l.BackgroundTransparency = 1
+		l.TextColor3 = color
+		l.TextStrokeTransparency = 0
+		l.TextScaled = true
+		l.Font = font
+		l.Text = text
+		l.Parent = bb
+	end
+
+	local vdef = Variants.def(dog.variant)
+	local tierColor = if vdef and dog.variant ~= "base"
+		then vdef.color
+		else HotDogDex.colorFor(dog.rarity)
+	local tierText = if vdef and dog.variant ~= "base"
+		then dog.variant .. " " .. dog.rarity
+		else dog.rarity
+	-- Fractional incomes (variant multipliers) show one decimal, whole ones stay whole.
+	local income = math.floor(dog.income * 10 + 0.5) / 10
+	line(dog.name, Color3.fromRGB(255, 255, 255), 0, 0.42, Theme.UI.TitleFont)
+	line(tierText, tierColor, 0.42, 0.3, Theme.UI.TitleFont)
+	line("💰 " .. income .. "/s", Color3.fromRGB(170, 255, 170), 0.72, 0.28, Theme.UI.NumberFont)
 end
 
 -- Walk-on tycoon pads laid across the front apron of the pad (local offsets; +Z is the
@@ -167,7 +218,8 @@ local function makeBuyPad(model: Model, facing: CFrame, id: string, offset: Vect
 		CFrame = facing * CFrame.new(offset),
 	})
 	part.Parent = model
-	local label = makeBillboard(part, "", Color3.fromRGB(220, 255, 210), 60, "PadLabel")
+	local label =
+		makeBillboard(part, "", Color3.fromRGB(220, 255, 210), 34, "PadLabel", { width = 104 })
 	-- Start hidden (no owner yet). updatePads reveals affordable/available pads.
 	part.Transparency = 1
 	part.CanTouch = false
@@ -234,7 +286,13 @@ local function buildPlot(index: number): Plot
 		CFrame = facing * CFrame.new(0, 4, -8),
 	})
 	signPost.Parent = model
-	local signText = makeBillboard(signPost, "Empty Plot", Color3.fromRGB(255, 240, 200), 60)
+	-- The ONE far-visible label per plot (genre convention: the owner sign carries
+	-- identity at range; everything else reveals on approach).
+	local signText = makeBillboard(signPost, "Empty Plot", Color3.fromRGB(255, 240, 200), 44, nil, {
+		width = 170,
+		maxDistance = 160,
+		alwaysOnTop = true,
+	})
 
 	-- === Floor-1 shell (STATIC on every plot): a humble open-air stall ===
 	-- Envelope x ∈ [-24,24], z ∈ [-13.5,8.5]; stations (z=12) + pads (z=19) stay
@@ -317,7 +375,14 @@ local function buildPlot(index: number): Plot
 			CFrame = facing * CFrame.new(offsetX, 1.6, -6),
 		})
 		anchor.Parent = model
-		makeBillboard(anchor, "🔒 Vault", Color3.fromRGB(255, 230, 120), 40, "VaultLabel")
+		-- ONE small "Vault" tag on the middle anchor (was one per slot = text soup);
+		-- the gold shelf color already reads as the safe zone.
+		if i == math.ceil(vaultSlots / 2) then
+			makeBillboard(anchor, "🔒 Vault", Color3.fromRGB(255, 230, 120), 20, "VaultLabel", {
+				width = 76,
+				maxDistance = 35,
+			})
+		end
 		table.insert(vaultAnchors, anchor)
 	end
 
@@ -331,7 +396,11 @@ local function buildPlot(index: number): Plot
 		CFrame = facing * CFrame.new(0, 0.6, 7),
 	})
 	depositPad.Parent = model
-	makeBillboard(depositPad, "Deposit", Color3.fromRGB(180, 255, 200), 40, "DepositLabel")
+	makeBillboard(depositPad, "Deposit", Color3.fromRGB(180, 255, 200), 20, "DepositLabel", {
+		width = 84,
+		maxDistance = 35,
+		offsetY = 1.6,
+	})
 
 	local depositPrompt = Instance.new("ProximityPrompt")
 	depositPrompt.ActionText = "Deposit stolen dog"
@@ -361,7 +430,10 @@ local function buildPlot(index: number): Plot
 		CFrame = facing * CFrame.new(15, 1.5, 12),
 	})
 	cookStation.Parent = model
-	makeBillboard(cookStation, "🌭 Cook Station", Color3.fromRGB(255, 220, 150), 40, "CookLabel")
+	makeBillboard(cookStation, "🌭 Cook", Color3.fromRGB(255, 220, 150), 22, "CookLabel", {
+		width = 90,
+		maxDistance = 50,
+	})
 	local cookPrompt = Instance.new("ProximityPrompt")
 	cookPrompt.ActionText = "Cook a glizzy"
 	cookPrompt.ObjectText = "Grill"
@@ -1066,12 +1138,7 @@ local function spawnUnit(plot: Plot, anchor: BasePart, dog: HotDogDex.Unit, stea
 	unit:PivotTo(anchor.CFrame * CFrame.new(0, 1.6, 0))
 	local primary = unit.PrimaryPart :: BasePart
 
-	local color = HotDogDex.colorFor(dog.rarity)
-	local vdef = Variants.def(dog.variant)
-	local labelColor = if vdef and dog.variant ~= "base" then vdef.color else color
-	local label = makeBillboard(primary, dog.displayName, labelColor, 44)
-	local billboard = label.Parent :: BillboardGui
-	billboard.StudsOffsetWorldSpace = Vector3.new(0, 2.2, 0)
+	makeUnitPlate(primary, dog)
 	unit.Parent = anchor
 
 	if stealable then
@@ -1226,7 +1293,10 @@ function PlotManager.setStove(player: Player, level: number, coinsPerSec: number
 			CFrame = plot.facing * CFrame.new(-15, 1.5, 12),
 		})
 		body.Parent = m
-		makeBillboard(body, "", Color3.fromRGB(255, 200, 120), 40, "StoveLabel")
+		makeBillboard(body, "", Color3.fromRGB(255, 200, 120), 22, "StoveLabel", {
+			width = 110,
+			maxDistance = 50,
+		})
 		m.Parent = plot.model
 		plot.stoveModel = m
 		model = m

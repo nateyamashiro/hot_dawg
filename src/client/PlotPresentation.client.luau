@@ -31,10 +31,25 @@ local function applyPromptState(prompt: ProximityPrompt, owned: boolean)
 	end
 end
 
--- The Vault/Deposit billboards are structural clutter on someone else's stand.
-local function applyLabel(gui: BillboardGui, owned: boolean)
-	if gui.Name == "VaultLabel" or gui.Name == "DepositLabel" then
-		gui.Enabled = owned
+-- Structural labels are OWNER-facing information: vault/deposit tags, the buy-pad
+-- costs, and the cook/stove machine tags mean nothing on a rival's stand and stack
+-- into text soup across the street. Hide them all on stands you don't own — the
+-- owner sign + per-dog unit plates stay, which is exactly the raid-scouting info
+-- the genre keeps visible (see Steal a Brainrot).
+local HIDDEN_ON_RIVALS: { [string]: boolean } = {
+	VaultLabel = true,
+	DepositLabel = true,
+	PadLabel = true,
+	CookLabel = true,
+	StoveLabel = true,
+}
+-- Toggle the TextLabel child, NOT BillboardGui.Enabled: the server flips pad
+-- billboards' Enabled every sync tick and would fight (and win) a client override.
+-- .Visible on the label is never written server-side, so the local hide sticks.
+local function applyLabel(label: TextLabel, owned: boolean)
+	local gui = label.Parent
+	if gui and gui:IsA("BillboardGui") and HIDDEN_ON_RIVALS[gui.Name] then
+		label.Visible = owned
 	end
 end
 
@@ -56,19 +71,19 @@ local function ensureOwnedVisuals(model: Model)
 	local signPost = model:WaitForChild("SignPost", 5) :: BasePart?
 	local banner = Instance.new("BillboardGui")
 	banner.Name = "YourStandBanner"
-	banner.Size = UDim2.fromOffset(220, 60)
+	banner.Size = UDim2.fromOffset(160, 40)
 	banner.StudsOffsetWorldSpace = Vector3.new(0, 5, 0)
 	banner.AlwaysOnTop = true
-	banner.MaxDistance = 250
+	banner.MaxDistance = 200
 	banner.Parent = signPost or model
 
 	local label = Instance.new("TextLabel")
 	label.Size = UDim2.fromScale(1, 1)
 	label.BackgroundTransparency = 1
 	label.TextColor3 = Color3.fromRGB(150, 255, 170)
-	label.TextStrokeTransparency = 0.3
+	label.TextStrokeTransparency = 0
 	label.TextScaled = true
-	label.Font = Enum.Font.GothamBlack
+	label.Font = Theme.UI.TitleFont
 	label.Text = "🏠 YOUR STAND"
 	label.Parent = banner
 
@@ -95,7 +110,7 @@ local function refresh(model: Model)
 	for _, d in model:GetDescendants() do
 		if d:IsA("ProximityPrompt") then
 			applyPromptState(d, owned)
-		elseif d:IsA("BillboardGui") then
+		elseif d:IsA("TextLabel") then
 			applyLabel(d, owned)
 		end
 	end
@@ -113,7 +128,7 @@ local function watchPlot(model: Model)
 		local owned = isOwned(model)
 		if d:IsA("ProximityPrompt") then
 			applyPromptState(d, owned)
-		elseif d:IsA("BillboardGui") then
+		elseif d:IsA("TextLabel") then
 			applyLabel(d, owned)
 		end
 	end)
