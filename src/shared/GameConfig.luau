@@ -88,8 +88,12 @@ local GameConfig = {
 		{ cost = 35000, slots = 6 },
 	},
 	-- Max anchors PlotManager pre-builds (must be >= the top DisplaySlot/VaultSlot level).
-	MaxDisplaySlots = 16,
-	MaxVaultSlots = 6,
+	-- Anchor maxima include headroom past the top coin level (16/6) so the
+	-- extra-slots PASS (+2 display / +1 vault) and the prestige vault unlock
+	-- actually render. (Stacked build/zone bonuses beyond this still go unshown
+	-- at the extreme — pre-existing, accepted.)
+	MaxDisplaySlots = 18,
+	MaxVaultSlots = 8,
 
 	-- Rebirth: cost grows geometrically; each rebirth adds a permanent income % and
 	-- grants prestige currency (banked for future premium unlocks).
@@ -324,6 +328,18 @@ local GameConfig = {
 		coinsSmall = 1000,
 		coinsLarge = 12000,
 		stealCharges = 5,
+		-- offlineRefill deliberately absent: it needs bespoke logic (refill the
+		-- offline cap, not a flat grant). Do NOT configure its dashboard id until
+		-- PurchaseService implements it — unmapped products stay NotProcessedYet.
+	},
+	-- Studio-only pass overrides: with the real ids still 0, flip these true to
+	-- test pass EFFECTS end-to-end in Studio (slots appear, VIP income rises).
+	-- Ignored outside Studio; a real id ~= 0 always wins over the override.
+	StudioTestPasses = {
+		extraSlots = false,
+		vip = false,
+		doubleCoins = false,
+		autoCollect = false,
 	},
 
 	-- === Cosmetics (M5) — skins/trails/titles; cost in Robux (pass/product) or prestige ===

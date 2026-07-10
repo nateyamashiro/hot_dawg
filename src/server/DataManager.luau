@@ -106,6 +106,12 @@ export type PlayerData = {
 	eventPoints: { [string]: number },
 	-- VIP pass cache (authoritative check still via MarketplaceService on join).
 	vip: boolean,
+	-- Last-known game-pass ownership by GameConfig.GamePassIds key (refreshed via
+	-- UserOwnsGamePassAsync on join + on purchase; kept if the check errors).
+	-- Effects DERIVE from these at read time (PlotManager capacity, Main income) —
+	-- never banked into bonus*Slots, so a refund can't leave phantom slots and a
+	-- re-check can't double-grant.
+	passes: { [string]: boolean },
 	-- Extra slots granted by the extra-slots game pass / prestige (PlotManager adds
 	-- these on top of the coin-upgrade capacity).
 	bonusDisplaySlots: number,
@@ -174,6 +180,7 @@ local function defaultData(): PlayerData
 		redeemedCodes = {},
 		eventPoints = {},
 		vip = false,
+		passes = {},
 		bonusDisplaySlots = 0,
 		bonusVaultSlots = 0,
 		prestigeUnlocks = {},
@@ -370,6 +377,7 @@ function DataManager.load(player: Player): PlayerData?
 			end
 		end
 		data.vip = result.vip == true
+		copyBoolMap(result.passes, data.passes)
 		if type(result.bonusDisplaySlots) == "number" then
 			data.bonusDisplaySlots = math.max(0, math.floor(result.bonusDisplaySlots))
 		end

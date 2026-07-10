@@ -196,10 +196,12 @@ end
 -- All additive. Offline earnings and the live tick both call this, so decor income
 -- applies everywhere automatically.
 local function incomeMultiplier(data: DataManager.PlayerData): number
+	-- VIP pass derives at read time from data.vip (refreshed on join/purchase).
 	local mult = 1
 		+ data.rebirths * GameConfig.RebirthIncomeBonus
 		+ data.prestigeIncomeMult
 		+ BuildGrants.incomeBonus(data.built)
+		+ (if data.vip then GameConfig.VipIncomeBonus else 0)
 	-- Weekly-event modifier (M4): Double Income Weekend doubles the whole thing —
 	-- both the live tick and offline earnings call through here, so both inherit it.
 	if EventService.activeModifier() == "income2x" then
@@ -650,6 +652,10 @@ local function onPlayerAdded(player: Player)
 	DefenseService.applyLoadedDefenses(player)
 	BuildService.applyLoaded(player) -- re-raise built structures (+ wall hold bonus)
 	ZoneService.applyLoaded(player) -- re-apply the expanded pad size
+	-- Re-check pass ownership (UserOwnsGamePassAsync YIELDS — own thread, never
+	-- inline): stale data.passes keeps working meanwhile, then a fresh answer
+	-- re-pushes status + re-renders the stand if slot ownership changed.
+	task.spawn(PurchaseService.onJoin, player)
 	StealService.pushStats(player)
 
 	-- Capped offline earnings (item 7): pay out income for time away since last save.

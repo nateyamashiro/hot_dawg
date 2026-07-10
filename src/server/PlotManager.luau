@@ -1223,7 +1223,9 @@ end
 local function vaultCapacity(data: DataManager.PlayerData): number
 	local levels = GameConfig.VaultSlotLevels
 	local def = levels[data.vaultSlotsLvl] or levels[#levels]
-	return def.slots + data.bonusVaultSlots
+	-- Extra-slots pass derives at read time from data.passes (refund-safe).
+	local passBonus = if data.passes.extraSlots then GameConfig.ExtraSlotsPassVault else 0
+	return def.slots + data.bonusVaultSlots + passBonus
 end
 
 local function displayCapacity(data: DataManager.PlayerData): number
@@ -1233,7 +1235,12 @@ local function displayCapacity(data: DataManager.PlayerData): number
 	-- data.zoneLvl — never banked — so rebuild-on-join can't double-apply).
 	local zoneTier = GameConfig.ZoneTiers[data.zoneLvl]
 	local zoneBonus = zoneTier and zoneTier.extraSlots or 0
-	return def.slots + data.bonusDisplaySlots + BuildGrants.displaySlotBonus(data.built) + zoneBonus
+	local passBonus = if data.passes.extraSlots then GameConfig.ExtraSlotsPassDisplay else 0
+	return def.slots
+		+ data.bonusDisplaySlots
+		+ BuildGrants.displaySlotBonus(data.built)
+		+ zoneBonus
+		+ passBonus
 end
 
 -- One inventory key per player currently "in hand" (PickupService). syncDisplay
