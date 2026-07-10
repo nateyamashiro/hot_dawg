@@ -98,6 +98,7 @@ makeRemote("ClaimAchievement") -- c -> s: claim a completed achievement
 makeRemote("RedeemCode") -- c -> s: redeem a promo code (CodesService)
 makeRemote("PromptPurchase") -- c -> s: prompt a pass/product purchase (PurchaseService)
 makeRemote("PurchaseUpdate") -- s -> c: owned-pass status
+local onboardingUpdate = makeRemote("OnboardingUpdate") -- s -> c: first-60s guide stage
 makeRemote("BuyCosmetic") -- c -> s: buy a cosmetic (CosmeticService)
 makeRemote("EquipCosmetic") -- c -> s: equip a cosmetic
 makeRemote("CosmeticUpdate") -- s -> c: cosmetic catalog + owned/equipped
@@ -228,6 +229,35 @@ local function pushProgression(player: Player)
 		rebirths = data.rebirths,
 		prestige = data.prestige,
 	})
+end
+
+-- === Onboarding first-60s (GDD §4.9): guided arrows cook → stove → build ===
+-- The stage is DERIVED from existing data, no new field: a brand-new player has
+-- cookReadyAt == 0 (the first FREE cook sets it; they can't afford cook-10), no
+-- stove (autoCookerLvl 0), and no builds. Veterans derive straight to 0 = done.
+local lastOnboardingStage: { [number]: number } = {}
+
+local function onboardingStage(data: DataManager.PlayerData): number
+	if data.cookReadyAt == 0 then
+		return 1 -- point at the 🌭 cook station
+	elseif data.autoCookerLvl < 1 then
+		return 2 -- point at the 🔥 stove pad
+	elseif next(data.built) == nil then
+		return 3 -- point at the 🏗️ build pad
+	end
+	return 0 -- done: client tears everything down
+end
+
+-- Unconditional push (rides pushAllState + the RequestState handshake); the tick
+-- loop consults lastOnboardingStage so it only re-pushes on an actual change.
+local function pushOnboarding(player: Player)
+	local data = DataManager.get(player)
+	if not data then
+		return
+	end
+	local stage = onboardingStage(data)
+	lastOnboardingStage[player.UserId] = stage
+	onboardingUpdate:FireClient(player, stage)
 end
 
 local function ownsEveryDog(data: DataManager.PlayerData): boolean
@@ -577,6 +607,7 @@ local function pushAllState(player: Player)
 	WeaponService.pushState(player)
 	UpgraderService.pushState(player)
 	ZoneService.pushState(player)
+	pushOnboarding(player)
 	syncPads(player) -- reveal the walk-on pads + render the stove for this player
 	local welcome = pendingWelcome[player.UserId]
 	if welcome then
@@ -661,6 +692,12 @@ local function onPlayerAdded(player: Player)
 			if live then
 				-- Keep the walk-on pads' green/red affordability colours live as coins tick.
 				syncPads(player)
+				-- Onboarding: re-push only when the derived stage changes; stops
+				-- costing anything once a player reaches 0 (done).
+				local lastStage = lastOnboardingStage[player.UserId]
+				if lastStage ~= nil and lastStage ~= 0 and lastStage ~= onboardingStage(live) then
+					pushOnboarding(player)
+				end
 				local income = incomePerSecond(live) + AutoCookerService.coinsPerSecond(live)
 				if income > 0 then
 					local gain = math.floor(income * incomeMultiplier(live))
@@ -740,6 +777,7 @@ end)
 Players.PlayerRemoving:Connect(function(player)
 	pendingWelcome[player.UserId] = nil
 	pendingStatePush[player.UserId] = nil
+	lastOnboardingStage[player.UserId] = nil
 	DataManager.release(player)
 end)
 
