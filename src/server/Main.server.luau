@@ -363,7 +363,12 @@ EventService.init({
 })
 LeaderboardService.init({ remotes = remotes })
 AchievementService.init({ remotes = remotes, updateLeaderstats = updateLeaderstats })
-CodesService.init({ remotes = remotes, updateLeaderstats = updateLeaderstats })
+CodesService.init({
+	remotes = remotes,
+	updateLeaderstats = updateLeaderstats,
+	onInventoryChanged = pushInventory, -- code-granted dogs refresh dex + pedestals
+	pushProgression = pushProgression, -- code-granted prestige refreshes the panel
+})
 PurchaseService.init({ remotes = remotes, updateLeaderstats = updateLeaderstats })
 CosmeticService.init({ remotes = remotes })
 TradeService.init({ remotes = remotes })

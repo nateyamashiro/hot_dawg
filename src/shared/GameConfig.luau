@@ -286,10 +286,13 @@ local GameConfig = {
 		},
 	},
 
-	-- === Codes (M4) — creator-marketing lever. code -> reward coins. ===
+	-- === Codes (M4) — creator-marketing lever. code -> coins (plain number) OR a
+	-- table { coins?, dogs? (inventory keys, may encode variants), prestige?,
+	-- mutationLuck? }. CodesService is the single validator. ===
 	Codes = {
 		LAUNCH = 1000,
 		GLIZZY = 500,
+		FREEGLIZZY = { dogs = { "Plain Dog" } },
 		-- DEV code for progression-curve testing (buy everything / rebirth loops).
 		-- Open + once-per-player by Nate's call — DELETE before public launch.
 		NATE = 1000000000,
