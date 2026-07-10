@@ -57,8 +57,9 @@ test on the PUBLISHED place is the human gate before going public.
   ```
 - **Data rules:** PlayerData fields go in the existing **`_v5`** back-fill (NOTE: it sits at the
   TOP level of the `type(result)=="table"` block — never nest it inside another field's check).
-  A failed load returns nil → Main kicks; never cache defaults on failure. Saves are throttled
-  (5s guard) + stale-write-guarded; autosave runs via `DataManager.startAutosave`.
+  A failed load returns nil → Main kicks (PRODUCTION only; in Studio it falls back to a TEMP
+  `unsaveable` profile so no-API test sessions still work — never weaken that split). Saves are
+  throttled (5s guard) + stale-write-guarded; autosave runs via `DataManager.startAutosave`.
 - **Design-system rules:** world colors from `Theme.Palette`, states from `Theme.Semantic`, UI via
   `MenuLayout` helpers (`styleButton` is one-shot — flip colors directly for state changes).
   World text: ONE far label per plot; everything else small/occludable/near-fade. Neon only for

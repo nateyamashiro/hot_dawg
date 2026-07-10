@@ -9,6 +9,7 @@
 local DataStoreService = game:GetService("DataStoreService")
 local Players = game:GetService("Players")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
+local RunService = game:GetService("RunService")
 
 local GameConfig = require(ReplicatedStorage.Shared.GameConfig)
 local HotDogDex = require(ReplicatedStorage.Shared.HotDogDex)
@@ -204,18 +205,29 @@ local cache: { [number]: PlayerData } = {}
 -- second write inside 5s would only trip the 6s/key DataStore throttle).
 local lastSaveAt: { [number]: number } = {}
 
+-- Profiles that loaded WITHOUT real data behind them (Studio with API Services
+-- off). They play fine but must never write — see the Studio branch in load().
+local unsaveable: { [number]: boolean } = {}
+
 -- Load a player's data into the cache and return it. Unknown/missing fields are
 -- back-filled from defaults so older (v2) saves keep working.
 --
--- Returns NIL when the DataStore read fails after retries. Critically, a failed
--- load must NOT cache a fresh default profile: playing on defaults and then
--- saving would OVERWRITE the player's real progress. No cache entry means
--- save/release are structural no-ops; Main kicks the player with a retry message.
+-- In PRODUCTION this returns NIL when the DataStore read fails after retries.
+-- Critically, a failed load must NOT cache a fresh default profile: playing on
+-- defaults and then saving would OVERWRITE the player's real progress. No cache
+-- entry means save/release are structural no-ops; Main kicks with a retry message.
+--
+-- In STUDIO a failed read is the NORMAL case (Game Settings → Security → "API
+-- Services" off), so kicking would break every test session: fall back to a temp
+-- default profile instead — flagged `unsaveable` so the wipe protection holds.
 function DataManager.load(player: Player): PlayerData?
 	local data = defaultData()
 
+	-- One attempt in Studio (a no-API failure is instant and permanent — retry
+	-- backoff would just add 3s to every test join); three in production.
+	local maxAttempts = if RunService:IsStudio() then 1 else 3
 	local ok, result
-	for attempt = 1, 3 do
+	for attempt = 1, maxAttempts do
 		ok, result = pcall(function()
 			return store:GetAsync(keyFor(player))
 		end)
@@ -229,9 +241,23 @@ function DataManager.load(player: Player): PlayerData?
 				tostring(result)
 			)
 		)
-		task.wait(attempt) -- 1s, 2s backoff before the next try
+		if attempt < maxAttempts then
+			task.wait(attempt) -- 1s, 2s backoff before the next try
+		end
 	end
 	if not ok then
+		if RunService:IsStudio() then
+			warn(
+				"[DataManager] Studio TEMP session for "
+					.. player.Name
+					.. " — nothing will save. Enable Game Settings → Security → "
+					.. "'Enable Studio Access to API Services' for persistence."
+			)
+			unsaveable[player.UserId] = true
+			cache[player.UserId] = data
+			lastSaveAt[player.UserId] = os.clock()
+			return data
+		end
 		return nil
 	end
 
@@ -437,6 +463,9 @@ function DataManager.save(player: Player)
 	if not data then
 		return
 	end
+	if unsaveable[player.UserId] then
+		return -- Studio temp session (no real data behind it) — never write
+	end
 	local now = os.clock()
 	if now - (lastSaveAt[player.UserId] or -math.huge) < 5 then
 		return -- just saved (autosave/leave/shutdown overlap); nothing meaningful lost
@@ -470,6 +499,7 @@ function DataManager.release(player: Player)
 	DataManager.save(player)
 	cache[player.UserId] = nil
 	lastSaveAt[player.UserId] = nil
+	unsaveable[player.UserId] = nil
 end
 
 -- Autosave: a crash between leave-saves must not cost a whole session. Every 60s,
