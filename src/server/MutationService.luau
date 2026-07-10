@@ -14,11 +14,10 @@ local Variants = require(ReplicatedStorage.Shared.Variants)
 local MutationService = {}
 
 -- Given a freshly-acquired base dog name, roll for a mutation and return the key to
--- store in data.hotDogs. `luckBonus` (0-1) lets prestige/passes raise the odds.
--- Wired into Main.doCook (cook + cook-10); the minted variant rides CookResult so the
--- client plays a bigger reveal. TODO(M3-mut): also call from StealService deposit when
--- GameConfig.MutateOnSteal is on (a stolen BASE dog can then roll a mutation). TODO:
--- feed a real luckBonus once PrestigeShop's "mutationLuck" effect banks a data field.
+-- store in data.hotDogs. `luckBonus` (0-1) lets prestige/passes raise the odds
+-- (data.mutationLuck, banked by the prestige shop). Wired into Main.doCook (cook +
+-- cook-10) with the variant riding CookResult for a bigger reveal, and into
+-- StealService.onDeposit (gated by GameConfig.MutateOnSteal — base dogs only).
 function MutationService.maybeMint(baseName: string, luckBonus: number?): string
 	local chance = GameConfig.MutationChance * (1 + (luckBonus or 0))
 	if math.random() >= chance then

@@ -16,6 +16,7 @@ local HotDogDex = require(ReplicatedStorage.Shared.HotDogDex)
 local Sfx = require(ReplicatedStorage.Shared.Sfx)
 local Variants = require(ReplicatedStorage.Shared.Variants)
 local DataManager = require(ServerScriptService.Server.DataManager)
+local MutationService = require(ServerScriptService.Server.MutationService)
 local PlotManager = require(ServerScriptService.Server.PlotManager)
 
 type Carry = {
@@ -271,14 +272,25 @@ local function onDeposit(thief: Player)
 	carrying[thief.UserId] = nil
 	clearCarryVisuals(thief, carry)
 
-	grantDog(thief, carry.dogName)
+	-- Steal-path mutation (GDD §4.4, MutateOnSteal): a stolen BASE dog can mint a
+	-- variant on the way into the thief's stand — already-mutated loot transfers
+	-- as-is, and the victim lost exactly the carried key either way. The THIEF's
+	-- banked mutation luck applies, same as their own cooks.
+	local thiefData = DataManager.get(thief)
+	local bankKey = carry.dogName
+	local baseName, variant = Variants.decode(carry.dogName)
+	if GameConfig.MutateOnSteal and variant == "base" and thiefData then
+		bankKey = MutationService.maybeMint(baseName, thiefData.mutationLuck)
+	end
+	local minted = bankKey ~= carry.dogName
+
+	grantDog(thief, bankKey)
 	-- 3D "banked it!" sting at the thief's stand (silence-safe until ids land).
 	local depositPart = PlotManager.signPostOf(thief)
 	if depositPart then
 		Sfx.play("Deposit", depositPart)
 	end
 
-	local thiefData = DataManager.get(thief)
 	if thiefData then
 		thiefData.totalSteals += 1
 		updateLeaderstats(thief)
@@ -299,7 +311,23 @@ local function onDeposit(thief: Player)
 	recentSteals[thief.UserId][carry.victimUserId] =
 		{ untilTime = now + cd, raids = raids, lastRaidAt = now }
 
-	feedback(thief, true, "Stole a " .. Variants.displayName(carry.dogName) .. "! It's yours now.")
+	if minted then
+		feedback(
+			thief,
+			true,
+			"Stole a "
+				.. baseName
+				.. "… and it turned ✨ "
+				.. Variants.displayName(bankKey)
+				.. "!"
+		)
+	else
+		feedback(
+			thief,
+			true,
+			"Stole a " .. Variants.displayName(carry.dogName) .. "! It's yours now."
+		)
+	end
 end
 
 -- Charge recharge loop: tops up every player's steal energy over time.

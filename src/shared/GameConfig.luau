@@ -175,7 +175,8 @@ local GameConfig = {
 	-- by the per-variant `mintWeight` in Variants.luau. Reasoned placeholder — tune.
 	MutationChance = 0.04,
 	-- Whether stolen dogs can also roll a mutation on deposit (cook always can).
-	MutateOnSteal = false,
+	-- Only a BASE dog can mint on the way in — already-mutated loot transfers as-is.
+	MutateOnSteal = true,
 
 	-- === Prestige spending (M3 remainder) ===
 	-- Premium unlocks bought with banked `prestige` currency (never Robux). `effect`
