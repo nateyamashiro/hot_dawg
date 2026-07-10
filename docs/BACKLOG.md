@@ -101,15 +101,17 @@ feature by feature, don't re-architect.
   family (base + variants) with an explicit desired state; pins ride `InventoryUpdate`; only owned
   keys are pinnable.
 
-**M3 remainder** (rotating shop + mutations + prestige spending shipped; per-day cap scaffolded via `shopBuys`/`ShopDailyBuyCap`)
+**M3 remainder** (rotating shop + mutations + prestige spending shipped; ✅ per-day cap **shipped
+2026-07-09** — 3/offer/day, lazy `shopBuys` reset, "X/3 today" in-panel)
 - 🏗️ Duplicates → fusion (`FusionService`/`Fusion.client`) — **next up.** Note `GameConfig.FusionForcesMutation`
   can reuse `Variants.pickMint`/`MutationService` now that the variant layer is live.
 
 **M4 retention** (daily streak/missions already shipped in M3)
 - ✅ Weekly events **shipped 2026-07-09** — deterministic week rotation; modifiers live (income2x /
   cook-10 half price / Dog Rain free rolls every 4 min); points per cook (+10) & steal (+40);
-  4-tier reward track, claims batched; claimed-tier count persists as
-  `eventPoints["<id>:claimed"]` (no new field). **Still open:** event-only dogs (content).
+  4-tier reward track, claims batched. ✅ **Event-only dogs shipped same day** — 3 exclusive
+  Legendaries via final tiers; points/claims now keyed per OCCURRENCE (`"id@week"`), so returning
+  events offer fresh tracks (+ re-earnable dog = fusion food).
 - ✅ Achievements/milestones **shipped 2026-07-09** — validated one-time claims + coin payouts;
   panel gates claims + shows progress bars.
 - ✅ Leaderboards **shipped 2026-07-09** — OrderedDataStore top-N (coins/steals/rarest), rarest =
@@ -128,5 +130,9 @@ feature by feature, don't re-architect.
 codebase is behind `RateLimit.check` + type/length arg guards (cook, cook-10, daily claims,
 rebirth, shop, upgrades, defenses, vault pins); `RequestState` join bursts COALESCE into one
 deferred push instead of being dropped (the ~15-scripts-fire-on-join handshake stays intact).
-Trading (M6) is now unblocked on this front. Still later: anomaly logging (`RateLimit` TODO),
-AI-gen art pass, icon/thumbnail, soft-launch prep.
+Trading (M6) is now unblocked on this front.
+✅ **Deployment readiness shipped 2026-07-09** — data-safety criticals (load-retry+kick, `_v5`
+de-nest, autosave, UpdateAsync stale guard, ProcessReceipt fix), `Telemetry` (onboarding funnel +
+error logs), world podium; launch checklist in `HANDOFF.md §Launch checklist`.
+Still later: anomaly logging (`RateLimit` TODO), full session locking, StreamingEnabled
+evaluation, AI-gen art pass, icon/thumbnail (Nate), onboarding first-60s (design), soft launch.

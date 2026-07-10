@@ -33,8 +33,16 @@ Each should be independently testable in Studio. `✅ done · 🔜 next · ⏳ l
 > (OrderedDataStore top-N coins/steals/rarest with name mapping + tabbed panel) · achievements real
 > (validated one-time claims) · manual vault selection (📌 Dex pin toggle; pinned keys fill the
 > vault first) · **the anti-exploit hardening pass** (RateLimit + arg guards on every legacy
-> `OnServerEvent`; RequestState bursts coalesce). **NEXT: M5 monetization (Extra-slots + VIP
-> passes first).** See `docs/NEXT_SESSION_PROMPT.md`.
+> `OnServerEvent`; RequestState bursts coalesce).
+>
+> **2026-07-09 shipped — VISUAL POLISH + DEPLOYMENT READINESS:** grass z-fight fix · world-text
+> de-soup to genre conventions · neon tamed (matte rule + softer bloom) · vendor-stand pedestals +
+> 1.35× display glizzies · pick-up-and-hold (hand dogs snatchable through the full steal pipeline)
+> · **data-safety criticals** (load-failure wipe → retry+kick; `_v5` back-fill de-nest; autosave;
+> UpdateAsync stale guard; ProcessReceipt Robux-eater) · Telemetry (funnel + error logs) · shop
+> daily cap · world podium · event-exclusive dogs (per-occurrence tracks). Launch checklist in
+> `HANDOFF.md`. **NEXT: M5 monetization (Extra-slots + VIP passes first) + the published-place
+> 2-account loop test.** See `docs/NEXT_SESSION_PROMPT.md`.
 
 ---
 
@@ -105,7 +113,8 @@ Built 2026-07-03 (Top-10 items 5–10; static-clean, needs a Studio playtest to 
   cook-10 batch price; `freeCookBursts` → Dog Rain: everyone online gets a free roll every 4 min),
   points from cooks (+10) and steals (+40), 4-tier reward track with batched claims
   (`EventService`/`Events.client` — banner, blurb, live countdown, tier rows).
-  *Event-only dogs still ⏳ (content, not systems).*
+  ✅ **Event-only dogs shipped 2026-07-09** — 3 exclusive Legendaries granted by final reward
+  tiers; tracks keyed per occurrence so returning events are fresh.
 - ✅ Achievements / milestone rewards — validated one-time claims (progress from existing
   counters/inventory), coin payouts, claim gated client-side + revalidated server-side
   (`AchievementService`/`Achievements.client` with progress bars).
