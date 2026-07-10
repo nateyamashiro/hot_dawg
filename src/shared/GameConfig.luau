@@ -290,6 +290,9 @@ local GameConfig = {
 	Codes = {
 		LAUNCH = 1000,
 		GLIZZY = 500,
+		-- DEV code for progression-curve testing (buy everything / rebirth loops).
+		-- Open + once-per-player by Nate's call — DELETE before public launch.
+		NATE = 1000000000,
 	},
 
 	-- === Monetization (M5) — all non-pay-to-win; NEVER paid gacha ===
