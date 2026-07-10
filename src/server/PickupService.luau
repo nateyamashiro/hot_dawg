@@ -67,6 +67,12 @@ local function buildTool(key: string): Tool?
 	tool.CanBeDropped = false -- putBack is the only way it leaves your hand
 	tool.ToolTip = "Click to put it back on your stand"
 	primary.Name = "Handle"
+	-- Grip: how the dog sits in the hand (was default identity = sticking sideways
+	-- through the fist). The Handle is the sausage cylinder, whose LONG axis is
+	-- Handle-local X; this yaw points the length forward ("about to eat it") and
+	-- settles it slightly down/forward of the palm. TUNE LIVE with Nate in Studio:
+	-- offset (studs) first, then the angles.
+	tool.Grip = CFrame.new(0, -0.1, -0.4) * CFrame.Angles(0, math.rad(90), 0)
 	for _, child in model:GetChildren() do
 		child.Parent = tool
 	end
