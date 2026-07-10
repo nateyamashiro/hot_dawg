@@ -109,6 +109,7 @@ end
 -- (The 🧱 Wall button is gone — the perimeter wall is a BuildCatalog structure now,
 -- bought on the 🏗️ build pad at your stand.)
 makeBuyButton(string.format("🛡️ Guard (%d)", GameConfig.GuardCost), -60, "guard")
+makeBuyButton(string.format("🪤 Trap (%d)", GameConfig.TrapCost), -110, "trap")
 
 gui.Parent = player:WaitForChild("PlayerGui")
 

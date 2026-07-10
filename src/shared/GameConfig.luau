@@ -214,9 +214,11 @@ local GameConfig = {
 	FusionForcesMutation = true,
 
 	-- === Traps (M2 fast-follow / 4th defense) ===
+	-- Touched-triggered stun pad: springing it disarms the pad (grey) until it
+	-- re-arms after TrapRearmSeconds. (TrapRange retired with the old poll loop.)
 	TrapCost = 450,
 	TrapStunSeconds = 4,
-	TrapRange = 10,
+	TrapRearmSeconds = 6,
 
 	-- === Weekly events (M4) ===
 	-- Active event is chosen deterministically by week index (like the shop's UTC-day

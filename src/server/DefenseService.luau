@@ -165,12 +165,15 @@ local function buildGuard(plot: PlotManager.Plot)
 end
 
 -- === Trap (M2 fast-follow / 4th defense) ===
--- A placeable stun pad: a carrier who lingers on the plot gets stunned + dropped.
--- Reuses the net/stun path. Cheaper than a guard but only fires on the plot itself.
+-- A placeable stun pad: a CARRIER who steps on it gets dropped + stunned (works
+-- while the owner is away). Touched-triggered, owner-exempt; springing it disarms
+-- the pad (grey, inert) until it re-arms after TrapRearmSeconds — Neon red is the
+-- gameplay signal for "armed" (Theme.Materials: Neon = small gameplay accents).
 local function buildTrap(plot: PlotManager.Plot)
 	local trap = Instance.new("Model")
 	trap.Name = "Trap"
 	local pad = Instance.new("Part")
+	pad.Name = "TrapPad"
 	pad.Anchored = true
 	pad.CanCollide = false
 	pad.Size = Vector3.new(8, 0.4, 8)
@@ -182,19 +185,35 @@ local function buildTrap(plot: PlotManager.Plot)
 	trap.Parent = plot.model
 	plot.trapModel = trap
 
-	-- Scan loop: stun a carrier standing on the trap (works while owner is away).
-	-- TODO(M2-trap): use a Touched signal + a per-carrier re-arm cooldown instead of
-	-- a poll, and a visual "armed/triggered" state.
-	task.spawn(function()
-		while plot.trapModel == trap and trap.Parent do
-			task.wait(GameConfig.GuardScanSeconds)
-			local carrier = nearestCarrierNear(pad.Position, GameConfig.TrapRange, plot.owner)
-			if carrier then
-				StealService.dropCarry(carrier)
-				DefenseService.stun(carrier, GameConfig.TrapStunSeconds)
-				remFeedback:FireClient(carrier, false, "You hit a trap!")
-			end
+	local armed = true
+	local function setArmed(on: boolean)
+		armed = on
+		pad.Material = if on then Enum.Material.Neon else Enum.Material.SmoothPlastic
+		pad.Color = if on then Color3.fromRGB(200, 60, 60) else Color3.fromRGB(120, 120, 120)
+		pad.Transparency = if on then 0.4 else 0.7
+	end
+
+	pad.Touched:Connect(function(hit)
+		if not armed or plot.trapModel ~= trap then
+			return
 		end
+		local char = hit.Parent
+		if not (char and char:IsA("Model")) then
+			return
+		end
+		local carrier = Players:GetPlayerFromCharacter(char)
+		if not carrier or carrier == plot.owner or not StealService.isCarrying(carrier) then
+			return
+		end
+		setArmed(false)
+		StealService.dropCarry(carrier)
+		DefenseService.stun(carrier, GameConfig.TrapStunSeconds)
+		remFeedback:FireClient(carrier, false, "You hit a trap!")
+		task.delay(GameConfig.TrapRearmSeconds, function()
+			if plot.trapModel == trap and trap.Parent then
+				setArmed(true)
+			end
+		end)
 	end)
 end
 
