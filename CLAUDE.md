@@ -70,8 +70,8 @@ src/server/Main.server.luau    Orchestrator: remotes (+Celebrate), leaderstats, 
 src/server/EnvironmentService.luau  Applies Theme.Lighting (noon + post fx + clouds) + builds the map (grass/street/dashes/sidewalks/lamps + P-E bun hills/mustard river/geyser). init() BEFORE PlotManager.build()
 src/server/DataManager.luau    DataStore load/save + cache. HARDENED for launch: load retries 3× then returns nil (Main kicks — a failed load can NEVER save defaults over real data); _v5 back-fill de-nested (was silently gated on dailyMissions); UpdateAsync stale-write guard (keeps newer lastSeen); startAutosave (60s sweep, >3min stale, 5s double-save guard); vaultPins pruned to owned keys on load; first-join starting-glizzy grant; defenses.wall→built.wall grandfather
 src/server/PlotManager.luau    Plots/stands + static floor-1 stall shell; capacity = upgrade level + bonus*Slots + BuildGrants floor slots; syncDisplay honours vaultPins (pins fill vault first, then top-up by value); walk-on PAD framework (PAD_LAYOUT incl. build/decor, updatePads green-red), BUILDERS per catalog id + spawnStructure/rebuildStructures/setGateHandler, cook station, setStove, spawnUnit = GlizzyModel, spawn CFrame, OwnerUserId attr
-src/server/StealService.luau   Grab/carry/deposit/abort (carry rig = welded GlizzyModel), charges, cooldowns, shield, alerts + stealAlarm/giantShake celebrates
-src/server/DefenseService.luau Net tool + NPC guard + trap (wall RETIRED → BuildCatalog perimeter wall)
+src/server/StealService.luau   Grab/carry/deposit/abort (carry rig = welded GlizzyModel), charges, cooldowns, shield, alerts + stealAlarm/giantShake celebrates; MutateOnSteal LIVE — stolen BASE dogs roll maybeMint at deposit with the THIEF's luck (mutated loot transfers as-is)
+src/server/DefenseService.luau Net tool + NPC guard + trap (Touched-triggered stun pad: armed Neon red, sprung grey 6s re-arm — TrapRange retired; wall RETIRED → BuildCatalog perimeter wall)
 src/server/UpgradeService.luau Buy grill / display / vault slots — tryBuy() public (menu remote + walk-on pads share it)
 src/server/RebirthService.luau Rebirth: reset coins, keep dogs+upgrades, income multiplier + prestige
 src/server/DailyService.luau   Daily login streak + rotating cook/steal/earn missions
@@ -79,7 +79,7 @@ src/server/ShopService.luau    Rotating shop: deterministic daily offers, buy va
 src/server/RateLimit.luau      Anti-exploit spine: per-player rate limiter + arg guards (EVERY OnServerEvent covered since the hardening pass)
 src/server/Telemetry.luau      Launch telemetry: onboarding funnel (Joined→FirstCook→StoveBuilt→FirstBuild→FirstSteal→FirstRebirth, stable step numbers), Telemetry.event custom counter (HandSnatch), ScriptContext.Error dedup logger — all pcall-guarded
 src/server/PickupService.luau  Pick up & hold your own DISPLAY glizzies (F prompt): cosmetic hold (inventory/income unchanged; PlotManager excludes one held-key count from the fill), hand Tool carries a Snatch prompt (rivals steal via StealService.triggerSteal — full rules), unequip/death/leave auto-return
-src/server/MutationService.luau  maybeMint(name, luckBonus)→inventory key — random mutation on cook (WIRED into doCook; luckBonus fed from data.mutationLuck; steal path gated by MutateOnSteal, TODO)
+src/server/MutationService.luau  maybeMint(name, luckBonus)→inventory key — random mutation on acquire (WIRED into doCook AND StealService deposit via MutateOnSteal; luckBonus = data.mutationLuck)
 src/server/PrestigeShopService.luau  Spend prestige on one-time premium unlocks (income%/±slots/mut-luck) — validate+charge, bank effects into _v5 fields
 src/server/FusionService.luau  Combine N dupes → same dog one variant up the ladder (SHIPPED; Giant=top)
 src/server/AutoCookerService.luau  Passive stove: coinsPerSecond + tryUpgrade (build 0→1 / upgrade); COINS only, never dogs (Phase 1 SHIPPED)
@@ -91,8 +91,8 @@ src/server/ZoneService.luau    Zone expansion SHIPPED (Phase 5): prestige-priced
 src/server/EventService.luau   Weekly events SHIPPED (M4): deterministic week-index event; modifiers consumed where the math lives (income2x→incomeMultiplier, cookHalfPrice→cook-10, Dog Rain→grantFreeCook closure); points via addPoints (cook/steal); tier claims keyed PER OCCURRENCE (eventPoints["id@week"]) so returning events offer fresh tracks; FINAL tier grants the event-exclusive rewardDog
 src/server/LeaderboardService.luau  Leaderboards SHIPPED (M4): OrderedDataStore top-N (coins/steals/rarest = best-unit income×100); periodic submit+refetch+push; session-cached UserId→name; WORLD PODIUM (coins top-3 statues + plates on the street, rebuilt only on top-3 change)
 src/server/AchievementService.luau  Achievements SHIPPED (M4): metric progress (dogs/steals/rebirths) + validated one-time coin claims into data.achievements
-src/server/CodesService.luau   Redeem promo codes for coins (mostly complete)
-src/server/PurchaseService.luau  Passes + dev products via ProcessReceipt (STUB; Extra-slots+VIP first)
+src/server/CodesService.luau   Redeem promo codes — COMPLETE: entries are coins (number) or { coins?, dogs? (composite keys), prestige?, mutationLuck? }; single validator, per-component grant pushes, empty/invalid rewards refund the mark. NATE 1B dev code (DELETE before launch)
+src/server/PurchaseService.luau  Passes + dev products REAL (M5, 2026-07-11): data.passes = last-known UserOwnsGamePassAsync per pass (join thread + PromptGamePassPurchaseFinished; StudioTestPasses fallback while ids 0; pcall-fail keeps last answer); effects DERIVE at read time (PlotManager capacity + Main VIP income — never banked in bonus*Slots); ProcessReceipt dispatches coinsSmall/coinsLarge/stealCharges (grant→mark receipt→PurchaseGranted), unmapped incl. offlineRefill stay NotProcessedYet; doubleCoins/autoCollect effects TODO(M5)
 src/server/CosmeticService.luau  Stand skins / trails / titles (STUB)
 src/server/TradeService.luau   Two-sided confirm trade + cooldown + log (STUB; ships after hardening)
 src/server/EmoteService.luau   Validated preset-emote relay/broadcast (STUB)
@@ -101,7 +101,8 @@ src/client/GlizzyFx.client.luau  Rainbow hue-cycle (10 Hz, ≤80 studs) + rarity
 src/client/Celebrate.client.luau Juice renderer (P-C): cook burst / purchase pop / build dust / steal alarm / Giant shake + coin-milestone 💰 sparkle + ambient bed
 src/client/Build.client.luau   Build window (tray): catalog owned ✅ / buildable 🏗️ / locked 🔒 on BuildUpdate
 src/client/Weapons.client.luau Blaster window (tray): Buy → Equip → equipped ✓ on WeaponUpdate (firing = the Tool)
-src/client/StealHud.client.luau  Carry banner, charge/shield meter, robbed alert + arrow, guard buy button (wall button removed — the wall is a build now)
+src/client/StealHud.client.luau  Carry banner, charge/shield meter, robbed alert + arrow, guard + 🪤 trap buy buttons (wall button removed — the wall is a build now)
+src/client/Onboarding.client.luau  First-60s guided arrows (OnboardingUpdate stage 1/2/3/0): ring arrow + target Highlight + tip banner on own plot (CookStation → Pad_stove → Pad_build); veterans derive to 0 = zero UI
 src/client/PlotPresentation.client.luau  Owner highlight/"YOUR STAND", rival label + own-prompt hiding
 src/client/Menu.client.luau    Bottom menu row + Upgrades & Rebirth panels
 src/client/Dex.client.luau     Collection grid (owned vs locked silhouettes; variant-aware via baseName) + 📌 vault-pin toggle per owned dog family
@@ -114,7 +115,7 @@ src/client/Events.client.luau  Weekly-event panel (tray): banner + modifier blur
 src/client/Leaderboards.client.luau  Ranks panel (tray): 3 tabs (coins/steals/rarest), top-10 rows, own-rank highlight
 src/client/Achievements.client.luau  Goals panel (tray): progress bars, claim gated when complete
 src/client/Codes.client.luau   Promo-code entry panel (tray)
-src/client/Passes.client.luau  Passes & perks panel (tray; STUB)
+src/client/Passes.client.luau  Passes & perks panel REAL: config-driven pass labels (owned greys via PurchaseUpdate.passes) + dev-product buttons; all buys fire PromptPurchase(kind)
 src/client/Cosmetics.client.luau  Cosmetics wardrobe panel (tray; STUB)
 src/client/Trade.client.luau   Trade window panel (tray; STUB)
 docs/HANDOFF.md                Start-here handoff for a new session
@@ -244,10 +245,28 @@ stale-write guard, ProcessReceipt no longer eats Robux for unmapped products (No
 final reward tiers; event tracks now per-occurrence so returning events are fresh). Launch
 checklist lives in `docs/HANDOFF.md §Launch checklist`.
 
+**DEV CODE + STRETCH SESSION SHIPPED 2026-07-11** (Nate picked the full menu; plan
+`~/.claude/plans/idempotent-bouncing-meerkat.md`; one commit per feature): **`NATE` dev code**
+(1B coins; Nate's calls: once-ever + OPEN + plain toast — ⚠️ DELETE the config line before public
+launch, it's launch-checklist item 7); **codes non-coin rewards** (`GameConfig.Codes` values may
+be `{ coins?, dogs?, prestige?, mutationLuck? }` tables, plain-number back-compat; dogs are
+composite keys validated via `getByKey`; per-component pushes; empty rewards refund the mark;
+`FREEGLIZZY` demo); **steal-path mutations ON** (`MutateOnSteal = true` — deposit decodes the
+carried key, BASE dogs roll `maybeMint` with the thief's `mutationLuck`, mutated loot passes
+through, upgraded toast); **traps complete** (🪤 StealHud buy button; Touched trigger replaces
+the poll — owner-exempt, carriers only; sprung pad greys for `TrapRearmSeconds` 6s then re-arms
+Neon red; `TrapRange` retired); **Tool.Grip initial pose** (`PickupService.buildTool` — length
+forward, settled in palm; LIVE TUNING ROUND WITH NATE OWED); **onboarding first-60s** (stage
+derived from `cookReadyAt`/`autoCookerLvl`/`built` — no new field; `OnboardingUpdate` in
+`pushAllState` + tick re-push on change only; new `Onboarding.client`); **M5 monetization core**
+(see the `PurchaseService` code-map line: `data.passes` derive-at-read ownership, ProcessReceipt
+product dispatch, `StudioTestPasses`, `MaxDisplaySlots` 16→18 / `MaxVaultSlots` 6→8 so pass
+slots render, real Passes panel).
+
 Static checks clean (stylua/selene/rojo). **NOT pushed (standing instruction: don't push).** The
-2-player playtest remains **waived, not passed** — now genuinely REQUIRED on the published place
-before going public (see the launch checklist). **Next up (build order):** M5 monetization —
-`PurchaseService` real logic (Extra-slots + VIP passes first, locked; needs Nate's dashboard ids),
-then cosmetics; deferred: onboarding first-60s, sounds/meshes/skybox (Nate assets), session
-locking, StreamingEnabled evaluation, traps polish, `MutateOnSteal`. See
+2-player playtest remains **waived, not passed** — genuinely REQUIRED on the published place
+before going public (see the launch checklist). **Next up (build order):** M5 remainder —
+cosmetics (`CosmeticService`), doubleCoins/autoCollect pass effects, `offlineRefill` product —
+then M6 trading. Needs Nate: dashboard pass/product ids, Tool.Grip tuning round in Studio,
+sounds/meshes/skybox assets. Deferred: session locking, StreamingEnabled evaluation. See
 `docs/NEXT_SESSION_PROMPT.md` + HANDOFF.

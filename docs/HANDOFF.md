@@ -1,6 +1,27 @@
 # HANDOFF — Steal a Glizzy 🌭
 
-**Last updated:** 2026-07-09 (**VISUAL DESIGN SYSTEM + BUILDING SHELL SHIPPED** — the design plan
+**Last updated:** 2026-07-11 (**DEV CODE + STRETCH SESSION SHIPPED** — Nate picked the full menu,
+one commit per feature, all static-clean: **`NATE` dev code** (1B coins; open + once-ever by
+Nate's call — ⚠️ DELETE before public launch, it's in the launch checklist) · **codes non-coin
+rewards** (`GameConfig.Codes` entries may be `{ coins?, dogs?, prestige?, mutationLuck? }` tables;
+plain numbers still work; `FREEGLIZZY` demo grants a Plain Dog; empty/invalid rewards refund the
+redemption mark) · **steal-path mutations ON** (`MutateOnSteal = true`: a stolen BASE dog rolls
+`maybeMint` with the THIEF's luck at deposit; mutated loot transfers as-is; upgraded toast) ·
+**traps polished + discoverable** (🪤 StealHud buy button beside Guard; poll loop → `Touched`
+trigger, owner-exempt carriers-only; sprung trap greys out for `TrapRearmSeconds` 6s then re-arms
+Neon red; `TrapRange` retired) · **Tool.Grip initial pose** for held glizzies (needs a live
+Studio tuning round with Nate) · **onboarding first-60s** (server derives stage 1/2/3/0 from
+`cookReadyAt`/`autoCookerLvl`/`built` — no new field; `OnboardingUpdate` rides `pushAllState` +
+tick-on-change; new `Onboarding.client` ring arrow + Highlight + tip banner; veterans see
+nothing) · **M5 PurchaseService REAL** (Extra-slots + VIP first: new `_v5` field `data.passes`
+caches `UserOwnsGamePassAsync` per pass — refreshed on join in its own thread + on
+`PromptGamePassPurchaseFinished`, Studio falls back to `GameConfig.StudioTestPasses` while ids
+are 0; effects DERIVE at read time — PlotManager capacity + `Main.incomeMultiplier` VIP term —
+never banked into `bonus*Slots`; `ProcessReceipt` dispatches coinsSmall/coinsLarge/stealCharges,
+unmapped incl. `offlineRefill` stay NotProcessedYet; `MaxDisplaySlots` 16→18 / `MaxVaultSlots`
+6→8 so sold slots render; Passes panel real). Previous session summary follows.)
+
+**Previously (2026-07-09):** (**VISUAL DESIGN SYSTEM + BUILDING SHELL SHIPPED** — the design plan
 `~/.claude/plans/i-want-you-to-wild-abelson.md` executed end-to-end, phases **P-A → P-E**:
 **P-A facelift** — `Theme.luau` token module (palette/semantic/materials/lighting/UI/VFX budgets);
 procedural glizzies (`GlizzyModel.luau`: 6-part hot dog, rarity fx ladder Common→Secret,
@@ -73,8 +94,9 @@ Implement feature by feature; don't re-architect. Key facts:
   (income, pedestals/vault, steal transfer, dex-completion collapses composite keys to base names),
   and `MutationService.maybeMint` is wired into `Main.doCook`. **Pattern to copy:** any future code
   that touches `data.hotDogs` keys must decode via `Variants`/`getByKey`, never assume a key is a bare
-  dog name. Still TODO: steal-path minting (`GameConfig.MutateOnSteal`, off by default). *(The
-  `luckBonus` loop is now CLOSED — prestige banks `data.mutationLuck`, fed to `maybeMint`.)*
+  dog name. ✅ Steal-path minting shipped 2026-07-11 (`MutateOnSteal` on: base dogs mint at
+  deposit with the thief's luck). *(The `luckBonus` loop is CLOSED — prestige banks
+  `data.mutationLuck`, fed to `maybeMint`.)*
 - **DataStore is `_v5`** (`DataManager.luau`) — one migration batching every later field
   (`vaultPins`, `defenses.trap`, `achievements`, `redeemedCodes`, `eventPoints`, `vip`,
   `bonus*Slots`, `receiptHistory`, `tradeCooldownUntil`, `cosmetics`, `shopBuys`). All optional +
@@ -106,23 +128,30 @@ Code-side readiness is DONE (data safety, telemetry, hardening, error logging). 
    genuinely mandatory before public: cook/steal/deposit/snatch, DataStore persistence across
    rejoin (autosave + offline earnings), leaderboards filling, event claim granting the dog.
 6. Watch the **Analytics dashboard** funnel (Joined→FirstCook→…) after launch — it's wired.
-7. Known-accepted gaps at launch: silent audio (`GameConfig.Sounds` all `""`), procedural dogs
-   (no AI meshes yet), no monetization until M5 (nothing purchasable = safe).
+7. ⚠️ **DELETE the `NATE` dev code** from `GameConfig.Codes` before going public — it's open
+   (no lockdown, Nate's call) and grants 1,000,000,000 coins to anyone who types it, once.
+8. **Create the pass/product ids on the Creator Dashboard** and fill `GameConfig.GamePassIds` /
+   `DevProductIds` — the M5 logic is live and id-agnostic (0 = "not available yet" toast; do
+   NOT configure `offlineRefill`'s id until its bespoke grant is implemented).
+9. Known-accepted gaps at launch: silent audio (`GameConfig.Sounds` all `""`), procedural dogs
+   (no AI meshes yet), cosmetics still stubs, doubleCoins/autoCollect pass effects TODO(M5).
 
 ## 👉 What the NEXT session should do
 
-**Everything through M4 (retention) is code-complete, the hardening pass is DONE, and the
-deployment audit (data safety + telemetry + launch stretch goals) SHIPPED 2026-07-09.**
-Development continues down the build order:
-1. **M5 monetization — `PurchaseService` real logic.** Locked order: **Extra-slots + VIP passes
-   first** (`GamePassIds.extraSlots`/`vip` — ids are 0 until Nate creates them on the Creator
-   Dashboard; build the logic id-agnostic and test with Studio overrides), then dev products via
-   `ProcessReceipt` (`receiptHistory` dedup already in `_v5`), then cosmetics (`CosmeticService`).
-   Effects config already exists (`ExtraSlotsPassDisplay/Vault`, `VipIncomeBonus`, `ProductGrants`).
-2. **Loose ends (any time, small):** `CodesService` finishing touches · traps polish/UI ·
-   steal-path minting (`MutateOnSteal`) · event-only dogs (content) · shop per-day cap
-   (`shopBuys`/`ShopDailyBuyCap`).
-3. **Then M6 social** — trading (now unblocked: the hardening pass shipped), parties, emotes.
+**Everything through M4 is code-complete, the hardening pass is DONE, deployment audit SHIPPED
+2026-07-09, and the 2026-07-11 stretch session closed every "loose end" (codes non-coin rewards,
+traps, `MutateOnSteal`, onboarding first-60s, Tool.Grip initial pose) plus the M5 pass/product
+core.** Development continues down the build order:
+1. **M5 remainder:** cosmetics (`CosmeticService`/`Cosmetics.client` stubs; catalog + prestige
+   prices already in `GameConfig.Cosmetics`) · doubleCoins/autoCollect pass EFFECTS (ownership
+   detection already runs; fold `DoubleCoinsMult` into `Main.incomeMultiplier`-adjacent math,
+   design auto-collect) · `offlineRefill` dev product (bespoke: refill the offline cap — do NOT
+   let Nate configure its dashboard id before this lands).
+2. **Then M6 social** — trading (`TradeService`, baseline safeguards locked: two-sided confirm +
+   cooldown + log), parties, emotes.
+3. **Interactive round with Nate in Studio (needs his eyes):** Tool.Grip tuning (initial pose is
+   in; nudge `PickupService.buildTool`'s `tool.Grip` live) · flip `StudioTestPasses` to verify
+   pass effects · watch the onboarding arrows on a fresh profile.
 4. Nate asset passes (zero code): `GameConfig.Sounds` ids · `GlizzyMeshIds` meshes ·
    `SkyboxAssetId` · **game-pass/dev-product ids on the Creator Dashboard (unblocks M5 testing
    end-to-end)**.

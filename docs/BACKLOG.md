@@ -59,9 +59,31 @@ New files: `src/client/PlotPresentation.client.luau`, `src/client/Menu.client.lu
 
 ## 🔜 Top of the list now
 
-- **Duplicates → fusion** — next code feature (`FusionService`/`Fusion.client`); combine N dupes of a
-  key into a better outcome. `GameConfig.FusionForcesMutation` can reuse `Variants.pickMint`/`MutationService`.
-- **2-player Studio playtest** of M2 + M3 + mutations + prestige (validate feel; tune `GAME_DESIGN §6`).
+- **M5 remainder** — cosmetics (`CosmeticService`/`Cosmetics.client`; catalog in
+  `GameConfig.Cosmetics`) · doubleCoins/autoCollect pass EFFECTS (detection already runs) ·
+  `offlineRefill` dev product (bespoke offline-cap refill; keep its dashboard id unset until then).
+- **M6 trading** (`TradeService`; baseline safeguards locked: confirm + cooldown + log).
+- **Nate:** create pass/product ids on the Creator Dashboard (unblocks end-to-end M5 testing) ·
+  Tool.Grip live tuning round in Studio · the published-place 2-account loop test ·
+  ⚠️ delete the `NATE` code before public launch.
+
+## ✅ Shipped 2026-07-11 (dev code + stretch session; static-clean)
+
+- **`NATE` dev code** — 1B coins for progression testing (open + once-ever by Nate's call;
+  flagged delete-before-launch in config + the HANDOFF launch checklist).
+- **Codes non-coin rewards** — `GameConfig.Codes` entries may be
+  `{ coins?, dogs?, prestige?, mutationLuck? }` tables (plain numbers back-compat); dogs ride
+  composite keys; empty/invalid rewards refund the redemption mark; `FREEGLIZZY` demo code.
+- **Steal-path mutations ON** — `MutateOnSteal = true`; stolen BASE dogs roll `maybeMint` at
+  deposit with the THIEF's mutation luck; mutated loot transfers as-is; upgraded mint toast.
+- **Traps polish + UI** — 🪤 buy button beside Guard in StealHud; `Touched` trigger replaces the
+  poll (owner-exempt, carriers only); sprung pad greys for 6s (`TrapRearmSeconds`) then re-arms
+  Neon red; `TrapRange` retired.
+- **Tool.Grip initial pose** — held glizzies point forward, settled in the palm (was sideways
+  default); live tuning round with Nate owed.
+- **Onboarding first-60s** — server-derived stage (cook → stove → build → done) from existing
+  fields, `OnboardingUpdate` push; `Onboarding.client` ring arrow + Highlight + tip banner.
+- **M5 monetization core** — see the M5 section below.
 
 ## ✅ Shipped since the Top 10 (static-clean; playtest owed)
 
@@ -77,7 +99,7 @@ New files: `src/client/PlotPresentation.client.luau`, `src/client/Menu.client.lu
   variant-aware: `HotDogDex.getByKey`, `sortedUnits→{Unit}` (carries the key), `Main.incomePerSecond`,
   dex-completion (collapses keys to base names), `PlotManager`/`StealService` (key-based transfer +
   variant labels/tint), and a variant-coloured `CookResult` reveal. No DataStore bump.
-  **Still open:** steal-path minting (`MutateOnSteal`, off). *(Real `luckBonus` now wired — prestige banks `mutationLuck`.)*
+  ✅ **Steal-path minting shipped 2026-07-11.** *(Real `luckBonus` wired — prestige banks `mutationLuck`.)*
 - **Rotating shop** (2026-07-07) — buy specific dogs for coins (targeted goal, dampens pure-cook RNG).
   Daily UTC-rotating offer set chosen deterministically server-side (same shop for everyone),
   per-rarity premium pricing, unlimited buys in v1. New: `src/server/ShopService.luau`,
@@ -95,7 +117,7 @@ to fill in — see `docs/HANDOFF.md` for the build order + the composite-key/mut
 feature by feature, don't re-architect.
 
 **M2 fast-follows**
-- 🏗️ Traps (`DefenseService` trap case + `PlotManager.trapModel`) — ~complete, needs polish/UI.
+- ✅ Traps **complete 2026-07-11** — buy button + Touched trigger + armed/re-arm visuals.
 - ✅ Manual vault selection **shipped 2026-07-09** — `PlotManager.syncDisplay` fills pinned keys
   into the vault first, then tops up by value; 📌 toggle on owned Dex tiles flips the whole dog
   family (base + variants) with an explicit desired state; pins ride `InventoryUpdate`; only owned
@@ -103,8 +125,8 @@ feature by feature, don't re-architect.
 
 **M3 remainder** (rotating shop + mutations + prestige spending shipped; ✅ per-day cap **shipped
 2026-07-09** — 3/offer/day, lazy `shopBuys` reset, "X/3 today" in-panel)
-- 🏗️ Duplicates → fusion (`FusionService`/`Fusion.client`) — **next up.** Note `GameConfig.FusionForcesMutation`
-  can reuse `Variants.pickMint`/`MutationService` now that the variant layer is live.
+- ✅ Duplicates → fusion **shipped 2026-07-08** (`FusionService`/`Fusion.client`) — 5 dupes of a
+  key → same base dog one variant up the ladder (`Variants.nextVariant`; Giant = top).
 
 **M4 retention** (daily streak/missions already shipped in M3)
 - ✅ Weekly events **shipped 2026-07-09** — deterministic week rotation; modifiers live (income2x /
@@ -116,12 +138,16 @@ feature by feature, don't re-architect.
   panel gates claims + shows progress bars.
 - ✅ Leaderboards **shipped 2026-07-09** — OrderedDataStore top-N (coins/steals/rarest), rarest =
   best variant-scaled unit income ×100, session name cache; tabbed panel, own-rank highlight.
-- 🏗️ Codes system (`CodesService`/`Codes.client`) — mostly complete. · Free battle-pass track — later.
+- ✅ Codes system **complete 2026-07-11** — non-coin rewards + `FREEGLIZZY` + `NATE` dev code
+  (⚠️ delete before launch). · Free battle-pass track — later.
 
 **M5 monetization** (all non-pay-to-win; gacha stays coin-only)
-- 🏗️ Game passes — **Extra slots + VIP first**, then 2× coins / auto-collect (`PurchaseService`).
-- 🏗️ Dev products via `ProcessReceipt` (`receiptHistory` dedup in `_v5`).
-- 🏗️ Cosmetics: stand skins, trails/auras, titles (`CosmeticService`/`Cosmetics.client`).
+- ✅ Game passes **shipped 2026-07-11** — Extra slots + VIP live (refund-safe `data.passes`
+  derive-at-read model; Studio overrides while ids are 0; anchors 18/8). doubleCoins/autoCollect
+  effects still TODO.
+- ✅ Dev products via `ProcessReceipt` **shipped 2026-07-11** — coin packs + steal charges;
+  `offlineRefill` bespoke logic still TODO (keep its id unset).
+- 🏗️ Cosmetics: stand skins, trails/auras, titles (`CosmeticService`/`Cosmetics.client`) — **next.**
 
 **Social (later)** — 🏗️ trading (baseline safeguards, `TradeService`/`Trade.client`), 🏗️ emotes
 (`EmoteService`), parties/co-op, clans.

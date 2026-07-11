@@ -41,8 +41,19 @@ Each should be independently testable in Studio. `✅ done · 🔜 next · ⏳ l
 > · **data-safety criticals** (load-failure wipe → retry+kick; `_v5` back-fill de-nest; autosave;
 > UpdateAsync stale guard; ProcessReceipt Robux-eater) · Telemetry (funnel + error logs) · shop
 > daily cap · world podium · event-exclusive dogs (per-occurrence tracks). Launch checklist in
-> `HANDOFF.md`. **NEXT: M5 monetization (Extra-slots + VIP passes first) + the published-place
-> 2-account loop test.** See `docs/NEXT_SESSION_PROMPT.md`.
+> `HANDOFF.md`.
+>
+> **2026-07-11 shipped — DEV CODE + STRETCH SESSION (Nate picked the full menu):** `NATE` dev code
+> (1B coins, open + once-ever — ⚠️ delete before launch) · codes non-coin rewards (component
+> tables: coins/dogs/prestige/mutation luck; `FREEGLIZZY` demo) · **steal-path mutations ON**
+> (base dogs mint at deposit with the thief's luck) · traps polish + UI (🪤 buy button; Touched
+> trigger; armed/re-arm visuals) · Tool.Grip initial pose (live tuning round with Nate owed) ·
+> **onboarding first-60s** (server-derived stage; ring arrow + Highlight + tip banner) ·
+> **M5 PurchaseService REAL** (Extra-slots + VIP passes, refund-safe `data.passes` derive-at-read
+> model, ProcessReceipt product dispatch, Studio test overrides, panel real; ids still 0 —
+> Nate's dashboard). **NEXT: M5 remainder (cosmetics + doubleCoins/autoCollect effects +
+> offlineRefill) → M6 trading + the published-place 2-account loop test.**
+> See `docs/NEXT_SESSION_PROMPT.md`.
 
 ---
 
@@ -69,8 +80,9 @@ The retention engine. Built 2026-07-03 (needs a 2-player Studio playtest to vali
   NPC guard (auto-nets raiders even while away) (`DefenseService.luau`).
 - Anti-grief: steal charges (recharge over time), per-target cooldown + diminishing returns,
   timed newbie shield.
-- **Fast-follows (deferred within M2):** traps (built, needs polish/UI). ✅ Manual vault selection
-  shipped 2026-07-09 (📌 pin in the Dex; `syncDisplay` fills pins first).
+- **Fast-follows:** ✅ Traps complete 2026-07-11 (🪤 buy button, Touched trigger, armed/re-arm
+  visuals). ✅ Manual vault selection shipped 2026-07-09 (📌 pin in the Dex; `syncDisplay` fills
+  pins first).
 - *Ref: `docs/roblox-reference/gameplay/` (ProximityPrompt, Humanoid, CollectionService).*
 
 ## ✅ Milestone 3 — Progression & economy depth
@@ -95,7 +107,8 @@ Built 2026-07-03 (Top-10 items 5–10; static-clean, needs a Studio playtest to 
 - ✅ **Mutations / variants (2026-07-08)** — composite-key stacks (`Variants` + `MutationService`);
   `MutationChance` roll on cook mints Gold/Rainbow/Giant with income multipliers. Every read path is
   variant-aware (income, pedestals/vault, steal transfer, dex credit); the variant rides `CookResult`
-  for a bigger reveal. *(static-clean; steal-path minting still TODO — mutation-luck now wired.)*
+  for a bigger reveal. *(static-clean; ✅ steal-path minting shipped 2026-07-11 — base dogs mint
+  at deposit with the thief's luck.)*
 - ✅ **Prestige spending (2026-07-08)** — first `prestige` sink (`PrestigeShopService`/`PrestigeShop.client`).
   One-time premium unlocks bought with banked prestige (never Robux): +10% permanent income, +1
   display slot, +1 vault slot, +50% mutation luck. Effects bank into `_v5` fields
@@ -121,13 +134,20 @@ Built 2026-07-03 (Top-10 items 5–10; static-clean, needs a Studio playtest to 
 - ✅ Leaderboards (coins / steals / rarest) via OrderedDataStore — periodic submit + cached top-N,
   UserId→name mapping (session-cached), rarest = best variant-scaled unit income
   (`LeaderboardService`/`Leaderboards.client` with three tabs + own-rank highlight).
-- 🏗️ Codes system (creator marketing lever) — `CodesService`/`Codes.client` (mostly complete).
+- ✅ Codes system — complete 2026-07-11: non-coin rewards (component tables: coins / dogs /
+  prestige / mutation luck, plain-number back-compat), `FREEGLIZZY` demo, `NATE` 1B dev code
+  (⚠️ delete before launch).
 
-## 🏗️ Milestone 5 — Monetization (scaffolded — stubs to fill in)
-- 🏗️ Game passes — **Extra slots + VIP first**, then 2× coins / auto-collect (non-pay-to-win).
-- 🏗️ Dev products (coin packs, refills, extra charges) via `ProcessReceipt`. **No paid gacha.**
-  Both in `PurchaseService`/`Passes.client`.
-- 🏗️ Cosmetics (stand skins, trails, titles) — `CosmeticService`/`Cosmetics.client`.
+## 🔨 Milestone 5 — Monetization (core SHIPPED 2026-07-11; cosmetics remain)
+- ✅ Game passes — **Extra slots + VIP live** (refund-safe `data.passes` cache of
+  `UserOwnsGamePassAsync`, effects derived at read time: capacity + VIP income; Studio test
+  overrides while ids are 0; anchors bumped 18/8 so pass slots render). doubleCoins/autoCollect:
+  detected, effects TODO(M5).
+- ✅ Dev products via `ProcessReceipt` — coinsSmall/coinsLarge/stealCharges grant → mark receipt →
+  PurchaseGranted; unmapped (incl. `offlineRefill`, bespoke logic pending) stay NotProcessedYet.
+  **No paid gacha.** Both in `PurchaseService`/`Passes.client` (panel real: owned greys out,
+  product buttons live). **Blocked on Nate:** dashboard ids.
+- 🏗️ Cosmetics (stand skins, trails, titles) — `CosmeticService`/`Cosmetics.client`. **Next up.**
 - ✅ **Anti-exploit hardening pass done early (2026-07-09):** every legacy `OnServerEvent`
   (cook/cook-10, daily claims, rebirth, shop, upgrades, defenses, vault pins) now behind
   `RateLimit.check` + arg guards; `RequestState` join bursts coalesce instead of dropping.
@@ -139,7 +159,8 @@ Built 2026-07-03 (Top-10 items 5–10; static-clean, needs a Studio playtest to 
 - Shareable "big steal / rare pull" moments engineered for clips (client juice on existing events).
 
 ## ⏳ Milestone 7 — Polish & soft launch
-- AI-generated art pass, audio/SFX, UI polish, onboarding/first-60-seconds.
+- AI-generated art pass, audio/SFX, UI polish. ✅ Onboarding first-60-seconds shipped 2026-07-11
+  (guided arrows cook → stove → build; server-derived stage, zero UI for veterans).
 - Icon + thumbnail (huge for CTR), store description, genre tags.
 - Analytics goals, playtest with friends → public soft launch.
 - *Ref: `docs/roblox-reference/publishing/`.*

@@ -202,7 +202,8 @@ Cooking and stealing are **co-equal** paths to rare dogs — players can lean ei
   steal transfer, dex-completion collapses keys to base names).
 - **Reveal** — the variant rides `CookResult`; the client plays a bigger, variant-coloured reveal and
   a "✨ N mutations!" note on cook-10.
-- *Still open:* steal-path minting (`MutateOnSteal`, off by default). *(Mutation-luck now wired via prestige.)*
+- ✅ *Steal-path minting shipped 2026-07-11* (`MutateOnSteal` on; base dogs only, thief's luck).
+  *(Mutation-luck wired via prestige.)*
 
 **Milestone 3-remainder — prestige spending** (2026-07-08; `PrestigeShopService`/`PrestigeShop.client`)
 - **First `prestige` sink** — rebirths (+1 each) and the dex reward (+3) bank prestige; this is the
@@ -384,6 +385,42 @@ validation; §6 stays reasoned-not-observed):
   **per occurrence** (`"id@week"`), so a returning event offers a fresh track + dog.
 - **Launch checklist** (Nate-facing) lives in `docs/HANDOFF.md §Launch checklist`.
 
+**Dev code + loose ends + onboarding + M5 passes — SHIPPED 2026-07-11** (Nate picked the full
+stretch menu; one commit per feature):
+- **`NATE` dev code** — 1,000,000,000 coins for progression-curve testing. Nate's calls: plain
+  once-ever code, **no lockdown**, plain toast — so it's just a `GameConfig.Codes` entry.
+  ⚠️ **Delete the line before public launch** (anyone who types it gets 1B once).
+- **Codes: non-coin rewards** — a `GameConfig.Codes` entry may now be a table
+  `{ coins?, dogs? (inventory keys, variants OK), prestige?, mutationLuck? }` (plain numbers stay
+  valid). `CodesService` stays the single validator; each component reuses its normal grant path's
+  pushes; empty/invalid rewards refund the redemption mark. Demo: `FREEGLIZZY` → 1 Plain Dog.
+- **Steal-path mutations ON** (`MutateOnSteal = true`) — at deposit, a stolen BASE dog rolls
+  `MutationService.maybeMint` with the THIEF's banked mutation luck; already-mutated loot
+  transfers as-is; the victim always loses exactly the carried key; minted deposits get an
+  upgraded toast ("…and it turned ✨ GOLD on the way out!").
+- **Traps polished + discoverable** — 🪤 buy button joins Guard in StealHud (same `BuyDefense`
+  remote/toast); the poll loop became a `Touched` trigger (owner-exempt, carriers only);
+  springing the trap disarms it (grey matte) until `TrapRearmSeconds` (6s) re-arms it (Neon red
+  = the armed signal). `TrapRange` retired with the poll.
+- **Tool.Grip initial pose** for held glizzies (length forward, settled in the palm; was default
+  identity = sideways through the fist). Needs a live Studio tuning round with Nate.
+- **Onboarding first-60s** (§4.9) — guided arrows cook → stove → build. Server DERIVES the stage
+  from existing data (`cookReadyAt`/`autoCookerLvl`/`built` — no new field) and pushes
+  `OnboardingUpdate` (rides `pushAllState`; the tick re-pushes only on change, stops at done).
+  New `Onboarding.client`: screen-edge ring arrow + target Highlight + tip banner on the
+  player's own plot; veterans derive straight to done and see nothing.
+- **M5 monetization — `PurchaseService` real** (Extra-slots + VIP first, locked order):
+  refund-safe ownership via new `_v5` field `data.passes` (last-known `UserOwnsGamePassAsync`
+  per pass, refreshed on join in its own thread + on `PromptGamePassPurchaseFinished`; pcall
+  failure keeps the last answer; **Studio overrides** `GameConfig.StudioTestPasses` while ids
+  are 0). Effects DERIVE at read time: PlotManager capacity adds the pass slots,
+  `Main.incomeMultiplier` adds `VipIncomeBonus` (tick + offline inherit). `ProcessReceipt`
+  dispatches coinsSmall/coinsLarge/stealCharges (grant → mark `receiptHistory` →
+  `PurchaseGranted`); unmapped products (incl. `offlineRefill`, bespoke logic pending) stay
+  `NotProcessedYet`. `MaxDisplaySlots` 16→18 / `MaxVaultSlots` 6→8 so sold slots render.
+  Passes panel: config-driven labels, owned greys out, dev-product buttons.
+  doubleCoins/autoCollect: detected, effects TODO(M5). Purchase telemetry via `Telemetry.event`.
+
 ## 6. Current tuning values (from `GameConfig.luau` / `HotDogDex.luau`)
 
 **Economy**
@@ -431,16 +468,22 @@ validation; §6 stays reasoned-not-observed):
 
 **New scaffold config (all reasoned placeholders, `GameConfig.luau`) — tune when each feature lands**
 - Mutations: `MutationChance` 0.04 · variant income mults Gold ×2 / Rainbow ×3.5 / Giant ×5
-  (mint weights 100/30/8 in `Variants.luau`) · `MutateOnSteal` false
+  (mint weights 100/30/8 in `Variants.luau`) · `MutateOnSteal` **true** (2026-07-11; base dogs
+  only, thief's luck applies)
 - Prestige shop (**shipped 2026-07-08**): 4 one-time unlocks 5–15 prestige (income +10% / +1 display /
   +1 vault / +50% mut-luck). Effects are permanent + additive; income folds into the rebirth multiplier.
-- Fusion: `FusionInputs` 5, forces a mutation · Trap: 450 coins, 4s stun, 10-stud range
+- Fusion: `FusionInputs` 5, forces a mutation · Trap: 450 coins, 4s stun, Touched-triggered,
+  6s re-arm (`TrapRange` retired with the old poll)
 - Events: weekly rotation, 3 modifiers, reward tiers 100/300/700/1500 pts → 250/750/2000/5000
   coins; points +10/cook +40/steal; Dog Rain every 240s; final tier grants the event dog
   (Legendary, 60/s); tracks reset per occurrence · Leaderboards: top-25, 60s refresh
 - Shop daily cap: 3 buys per offer per day · Autosave: 60s sweep, >180s stale · Load: 3 retries
-- Achievements: 5 goals (collect 10/30, steal 25/100, rebirth 3) · Codes: LAUNCH 1000, GLIZZY 500
-- Passes/products: ids 0 (unconfigured) · extra-slots +2 display/+1 vault · VIP +10% income · 2× coins
+- Achievements: 5 goals (collect 10/30, steal 25/100, rebirth 3) · Codes: LAUNCH 1000, GLIZZY 500,
+  FREEGLIZZY 1 Plain Dog, **NATE 1B (DEV — delete before launch)**; entries may be component
+  tables `{ coins?, dogs?, prestige?, mutationLuck? }`
+- Passes/products: ids 0 (unconfigured; `StudioTestPasses` overrides for testing) · extra-slots
+  +2 display/+1 vault · VIP +10% income · 2× coins · anchors `MaxDisplaySlots` 18 /
+  `MaxVaultSlots` 8 (headroom past coin-max 16/6 so pass slots render)
 - Cosmetics: 3 items (10–25 prestige) · Trade: 30s cooldown, ≤6 items · Emotes: 5 presets
 
 **Tycoon layer (overhaul, all reasoned placeholders — tune in playtest)**
@@ -496,3 +539,10 @@ validation; §6 stays reasoned-not-observed):
 | 2026-07-09 | **Event points/claims keyed per OCCURRENCE (`"id@week"`)** | Id-forever keys meant a returning event offered nothing; occurrence keys make every run fresh (incl. re-earnable event dog = fusion food); old keys are pennies of residue |
 | 2026-07-09 | **Event dogs excluded by construction** (in `byName`, not `DOGS_BY_RARITY`) | Rolls/shop/conveyor/dex-completion can't leak them and completion stays achievable off-event; no filter flags scattered across consumers |
 | 2026-07-09 | **`ProcessReceipt` returns NotProcessedYet until grants exist** | Marking unmapped receipts PurchaseGranted would eat real Robux the moment a product id is configured; Roblox retries/refunds NotProcessedYet |
+| 2026-07-11 | **`NATE` dev code = open + once-ever + plain toast** (Nate's explicit calls over the recommended allowlist/re-redeemable) | Keeps codes config a plain entry; accepted risk is bounded (1B once per guesser) and the line is flagged DELETE-BEFORE-LAUNCH in config + checklist |
+| 2026-07-11 | **Code rewards = component tables** `{ coins?, dogs?, prestige?, mutationLuck? }` with plain-number back-compat | One validator (`CodesService`) grows without breaking LAUNCH/GLIZZY; dogs ride composite keys so promo codes can grant variants |
+| 2026-07-11 | **Steal-path mint: BASE dogs only, thief's luck, at DEPOSIT** | Already-mutated loot must transfer losslessly (victim loses exactly the carried key); deposit is where the thief's ownership becomes permanent, so their `mutationLuck` is the fair input |
+| 2026-07-11 | **Trap = Touched trigger + disarm/re-arm state** (was a poll; `TrapRange` retired) | Event-driven beats a per-plot poll loop; the grey "spent" pad telegraphs counterplay (sprint through while disarmed) and Neon-red-when-armed follows the Theme.Materials signal rule |
+| 2026-07-11 | **Pass ownership = persisted `data.passes` + effects derived at read time** (never banked into `bonus*Slots`) | Refund-safe + re-check-safe (no double-grant); mirrors the BuildGrants philosophy; `bonus*Slots` stays exclusively the prestige shop's ledger |
+| 2026-07-11 | **Anchor maxima bumped to 18 display / 8 vault** (coin-max stays 16/6) | The extra-slots pass + prestige vault unlock must physically render to be worth buying; stacked build/zone bonuses beyond anchors remain accepted-unshown at the extreme |
+| 2026-07-11 | **Onboarding stage DERIVED from existing data** (`cookReadyAt`/`autoCookerLvl`/`built`), pushed as a number | No new `_v5` field, veterans auto-derive to done (zero UI), and the tick only re-pushes on change — the whole feature costs 3 field reads per tick until completed |

@@ -3,14 +3,15 @@
 ---
 
 You are continuing development of **"Steal a Glizzy"**, a server-authoritative Roblox
-steal-and-defend idle **tycoon** (repo `hot_dawg`). The game is **feature-complete through M4
-and deployment-ready on the code side**: tycoon layer + visual overhaul, M4 retention (events
-with exclusive dogs, leaderboards + world podium, achievements), manual vault pins,
-pick-up-and-hold (snatchable), the full anti-exploit hardening pass, **data-safety criticals
-fixed** (load-retry+kick, `_v5` de-nest, autosave, stale-write guard), onboarding-funnel
-telemetry + error logging, and the shop daily cap. The **launch checklist for Nate** lives in
-`docs/HANDOFF.md §Launch checklist`. Note honestly: no live validation has run — the 2-player
-test on the PUBLISHED place is the human gate before going public.
+steal-and-defend idle **tycoon** (repo `hot_dawg`). The game is **feature-complete through M4,
+deployment-ready on the code side, and the M5 monetization CORE is live** (2026-07-11): Extra-slots
++ VIP passes (refund-safe `data.passes` derive-at-read model, Studio test overrides while ids are
+0), dev products (coin packs + steal charges) through `ProcessReceipt`, plus every former "loose
+end" — codes non-coin rewards + `NATE` dev code, traps complete, steal-path mutations ON,
+onboarding first-60s arrows, Tool.Grip initial pose. The **launch checklist for Nate** lives in
+`docs/HANDOFF.md §Launch checklist` (includes: ⚠️ delete the `NATE` code + create dashboard ids).
+Note honestly: no live validation has run — the 2-player test on the PUBLISHED place is the human
+gate before going public.
 
 ## Step 0 — Read these first (all the context lives here)
 - **`CLAUDE.md`** — architecture rules, workflow, toolchain, full code map + status. READ FULLY.
@@ -21,27 +22,30 @@ test on the PUBLISHED place is the human gate before going public.
 
 ## Step 1 — What's NEXT (build order)
 
-1. **M5 monetization — make `PurchaseService` real (top priority):**
-   - **Passes first, locked order: Extra-slots + VIP** (`GameConfig.GamePassIds.extraSlots`/`vip`).
-     Ids are `0` until Nate creates them on the Creator Dashboard — build id-agnostic: check
-     `UserOwnsGamePassAsync` on join (cache into `data.vip` / fold `ExtraSlotsPassDisplay/Vault`
-     into `bonus*Slots`), `PromptGamePassPurchase` flow, skip cleanly while an id is 0.
-   - **Dev products** via `ProcessReceipt` (`coinsSmall/Large`, `offlineRefill`, `stealCharges` —
-     grants in `GameConfig.ProductGrants`). `receiptHistory` dedup exists; the handler currently
-     returns **NotProcessedYet for everything unmapped — keep that property**: only return
-     `PurchaseGranted` AFTER a real grant persists.
-   - **Then cosmetics** (`CosmeticService`/`Cosmetics.client` stubs), coin-priced first.
-   - **Never paid gacha** — cook rolls stay coin-only (locked).
+1. **M5 remainder (top priority):**
+   - **Cosmetics** — make `CosmeticService`/`Cosmetics.client` real. Catalog exists
+     (`GameConfig.Cosmetics`: stand skin / trail / title, prestige-priced first). Validate + charge
+     prestige, persist in `data.cosmetics` (owned + equipped, already in `_v5`), render the effect
+     (stand recolor via Theme, trail on the character, title on the plot sign/overhead).
+   - **doubleCoins / autoCollect pass effects** — ownership detection already runs
+     (`PurchaseService.refreshOwnership` covers all four `GamePassIds`); fold `DoubleCoinsMult`
+     into the income path (decide: multiply `incomeMultiplier` or a separate term — keep offline
+     parity) and design auto-collect (what does it collect? conveyor? stove is already passive).
+   - **`offlineRefill` dev product** — bespoke: refill/extend the offline-earnings cap. Until it's
+     implemented, its dashboard id must stay unset (unmapped products return NotProcessedYet —
+     keep that property).
 2. **Launch execution with Nate (checklist in HANDOFF):** publish → content questionnaire →
-   icon/thumbnails → server size 15–20 → **2-account loop test on the published place** →
-   watch the Analytics funnel.
-3. **Loose ends (small, slot in anywhere):** `CodesService` non-coin rewards · traps polish/UI ·
-   steal-path minting (`GameConfig.MutateOnSteal`) · Tool.Grip tune for held glizzies (visual,
-   needs eyes in Studio).
+   icon/thumbnails → server size 15–20 → **create pass/product ids + fill `GameConfig`** →
+   **⚠️ delete the `NATE` code** → **2-account loop test on the published place** → watch the
+   Analytics funnel.
+3. **Interactive round when Nate is in Studio:** Tool.Grip tuning (nudge `tool.Grip` in
+   `PickupService.buildTool` over rojo live-sync) · flip `GameConfig.StudioTestPasses` to verify
+   pass effects (extra pedestals appear, income +10%) · watch onboarding arrows on a fresh profile
+   (API Services OFF = temp profile = always fresh).
 4. **Then M6 social** — trading (unblocked: hardening shipped): `TradeService` two-sided confirm
-   + cooldown + log (baseline safeguards locked, GDD §7).
-5. Deferred: onboarding guided first-60s (GDD §4.9) · sounds/meshes/skybox (Nate assets) ·
-   full session locking · StreamingEnabled evaluation (mobile memory).
+   + cooldown + log (baseline safeguards locked, GDD §7). Then emotes, parties.
+5. Deferred: sounds/meshes/skybox (Nate assets) · full session locking · StreamingEnabled
+   evaluation (mobile memory).
 
 ## Step 2 — Non-negotiable flow (how we work)
 - **Server authoritative, client untrusted.** All economy/inventory/steal/build logic in
@@ -63,19 +67,23 @@ test on the PUBLISHED place is the human gate before going public.
 - **Design-system rules:** world colors from `Theme.Palette`, states from `Theme.Semantic`, UI via
   `MenuLayout` helpers (`styleButton` is one-shot — flip colors directly for state changes).
   World text: ONE far label per plot; everything else small/occludable/near-fade. Neon only for
-  small accents + gameplay signals (Theme.Materials comment). Rarity colors in `HotDogDex.RARITY`;
-  variant colors in `Variants.DEFS`.
-- **Grants derive at read time** (`BuildGrants`/`displayCapacity` pattern); pass effects should
-  follow the same spirit (check ownership at read/join, don't bake into unrelated fields).
+  small accents + gameplay signals (Theme.Materials comment — the trap's armed state is the
+  canonical example). Rarity colors in `HotDogDex.RARITY`; variant colors in `Variants.DEFS`.
+- **Grants derive at read time** (`BuildGrants` / `displayCapacity` / **`data.passes`** pattern —
+  pass effects check ownership at read/join, never bake into unrelated fields; `bonus*Slots` is
+  exclusively the prestige shop's ledger).
 - **Inventory is composite-key stacks** (`"Name#Gold"`); decode via `Variants`/`getByKey`.
   Event-only dogs live in `byName` but NOT `DOGS_BY_RARITY` — keep that invariant.
 - **New server→client initial-state push** goes in `Main.pushAllState` + rides `RequestState`
-  (which COALESCES over-limit bursts — don't turn that back into a plain connect).
+  (which COALESCES over-limit bursts — don't turn that back into a plain connect). Yielding work
+  (e.g. `UserOwnsGamePassAsync`) NEVER goes inline in a push path — own thread, then re-push.
 - **Telemetry:** new funnel steps append to `Telemetry.luau`'s table with the NEXT number (never
-  renumber); one-line `Telemetry.funnelStep/event` calls at the success point.
+  renumber); one-line `Telemetry.funnelStep/event` calls at the success point (purchases already
+  emit `PassBought_*` / `ProductBought_*`).
 - **Reuse, don't reinvent:** service shape = `BuildService`/`ZoneService`; buy paths =
   `UpgradeService.tryBuy`/`UpgraderService.tryUpgrade`; world juice = the `Celebrate` remote;
-  determinism = day-index (shop) / week-index (events) tricks.
+  determinism = day-index (shop) / week-index (events) tricks; screen-edge arrows = the
+  StealHud/Onboarding ring pattern.
 
 ## Step 3 — Handoff ritual (DO THIS at each milestone / when you hand off) ⭐
 **Nate's cadence note:** DON'T run the full doc-update ritual after every feature — only near a real
@@ -93,8 +101,14 @@ That's the loop: **implement a phase → validate → (at handoff) update docs +
 ## Standing caveats
 - **No live validation has ever run.** The 2-account loop test on the PUBLISHED place is the
   mandatory human gate before public (checklist in HANDOFF): cook/steal/deposit/snatch, DataStore
-  persistence across rejoin, autosave, leaderboards + podium filling, event tier-4 dog grant.
+  persistence across rejoin, autosave, leaderboards + podium filling, event tier-4 dog grant,
+  steal-mint toast, trap trigger/re-arm, onboarding arrows on a fresh account.
+- **⚠️ The `NATE` code is OPEN (no lockdown, Nate's call) and grants 1B coins once to anyone.**
+  It exists for progression testing; deleting the `GameConfig.Codes` line before public launch is
+  a launch-checklist item. In Studio without API Services the session is a temp profile, so NATE
+  can be re-tested every Play session there.
 - All `GAME_DESIGN §6` numbers are reasoned-not-observed; tune when real sessions happen. The
   Analytics funnel (wired) is the tool for that once live.
-- **M5 end-to-end testing needs Studio "API Services" + real pass/product ids** from Nate's
-  dashboard; until then validate the ids-are-0 skip paths.
+- **M5 end-to-end testing needs real pass/product ids** from Nate's dashboard; until then use
+  `GameConfig.StudioTestPasses` for effects and validate the ids-are-0 "not available yet" paths.
+  Do NOT configure `offlineRefill`'s id until its bespoke grant is implemented.
