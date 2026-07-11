@@ -141,7 +141,18 @@ Code-side readiness is DONE (data safety, telemetry, hardening, error logging). 
 **Everything through M4 is code-complete, the hardening pass is DONE, deployment audit SHIPPED
 2026-07-09, and the 2026-07-11 stretch session closed every "loose end" (codes non-coin rewards,
 traps, `MutateOnSteal`, onboarding first-60s, Tool.Grip initial pose) plus the M5 pass/product
-core.** Development continues down the build order:
+core.**
+
+**THE NEXT SESSION IS THE ADDITIONS SESSION:** Nate's 17-item wishlist lives in
+**`additions.txt`** (project root) — quick polish (commas, roof, storage counter) through majors
+(base-entry blocker, vault-unlock steal item, new top rarity, multi-floor stove tiers, map-wide
+conveyor, obby, spin-wheel grill, clipfarm hookup). Flow: read `additions.txt` → interview Nate
+on the open calls (seeded question list in `docs/NEXT_SESSION_PROMPT.md` Step 1) → plan mode →
+implement. ⚠️ #4 and #7 consciously override locked decisions (theft-access guarantee /
+vault-safety) — each confirmed override gets a GDD §7 row. **Commit cadence changed (Nate
+2026-07-11): batch commits at checkpoints, NOT one per feature; still never push.**
+
+After the additions, the build order resumes:
 1. **M5 remainder:** cosmetics (`CosmeticService`/`Cosmetics.client` stubs; catalog + prestige
    prices already in `GameConfig.Cosmetics`) · doubleCoins/autoCollect pass EFFECTS (ownership
    detection already runs; fold `DoubleCoinsMult` into `Main.incomeMultiplier`-adjacent math,

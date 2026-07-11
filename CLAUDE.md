@@ -40,9 +40,9 @@ game in a **working, validated state** (or you're low on context), before ending
    file's code map + status.
 3. **Rewrite `docs/NEXT_SESSION_PROMPT.md`** for the next session (point it at the next feature; keep
    this ritual intact so it self-perpetuates).
-4. **Commit and push to `main`** — pushing at milestone handoffs is **standing authorization** for
-   this project. Commit locally as you go mid-feature; push at the handoff. (Full detail lives in
-   `docs/NEXT_SESSION_PROMPT.md §"Handoff ritual"`.)
+4. **Commit in BATCHES, never push.** Don't commit after every feature (Nate 2026-07-11: it got
+   redundant) — commit at coherent multi-feature checkpoints and at the handoff. Push only when
+   Nate explicitly asks. (Full detail lives in `docs/NEXT_SESSION_PROMPT.md §"Handoff ritual"`.)
 
 ## Architecture rules (enforce these)
 
@@ -263,10 +263,14 @@ derived from `cookReadyAt`/`autoCookerLvl`/`built` — no new field; `Onboarding
 product dispatch, `StudioTestPasses`, `MaxDisplaySlots` 16→18 / `MaxVaultSlots` 6→8 so pass
 slots render, real Passes panel).
 
-Static checks clean (stylua/selene/rojo). **NOT pushed (standing instruction: don't push).** The
-2-player playtest remains **waived, not passed** — genuinely REQUIRED on the published place
-before going public (see the launch checklist). **Next up (build order):** M5 remainder —
-cosmetics (`CosmeticService`), doubleCoins/autoCollect pass effects, `offlineRefill` product —
-then M6 trading. Needs Nate: dashboard pass/product ids, Tool.Grip tuning round in Studio,
-sounds/meshes/skybox assets. Deferred: session locking, StreamingEnabled evaluation. See
-`docs/NEXT_SESSION_PROMPT.md` + HANDOFF.
+Static checks clean (stylua/selene/rojo). **NOT pushed (standing instruction: don't push; also
+commit in BATCHES, not per feature).** The 2-player playtest remains **waived, not passed** —
+genuinely REQUIRED on the published place before going public (see the launch checklist).
+**Next up: the ADDITIONS session** — Nate's 17-item wishlist in **`additions.txt`** (project
+root): interview Nate on the open calls → plan mode → implement the set (flow + seeded questions
+in `docs/NEXT_SESSION_PROMPT.md`). Note: some additions consciously override locked decisions
+(#4 entry blocker vs theft-access guarantee, #7 vault-unlock item vs vault-safety) — each
+confirmed override gets a GDD §7 row. After that: M5 remainder (cosmetics, doubleCoins/
+autoCollect effects, offlineRefill) → M6 trading. Needs Nate: dashboard pass/product ids,
+Tool.Grip tuning round in Studio, sounds/meshes/skybox assets. Deferred: session locking,
+StreamingEnabled evaluation. See `docs/NEXT_SESSION_PROMPT.md` + HANDOFF.

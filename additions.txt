@@ -1,0 +1,17 @@
+1. I want a grill cook working by the stove
+2. I want both the grill and the stove to look more like grills and stoves. 
+3. I want the inside of the base to be bigger and the hotdogs to be bigger on the display stands
+4. I want the theft protection to be stronger. Players should be blocked from entering peoples bases from an upgrade. This blocker disables for 30 seconds every 5 minutes
+5. I want the cooldown for making a grill hotdog to be lower and for the player to be notified when they are able to grill a new dog. 
+6. When the dogs are auto sorted on the stands make the highest rarity dogs stay in the vault, next hightest on the highest floor with lowest on the ground floor
+7. An item you can purchase to unlock a different players vault and steal their glizzy
+8. Another tier of extremely rare glizzies
+9. hot dog item shows how fraction of how many slots in storage are full
+10. Higher levels for the grill and stove with more stoves and ovens unlocked at each floor of the building. Big stove, indiustrial. Higher payoyts and different names maybe more powerful names
+11. the purchase conveyer belt is more accessable and runs across the whole map. 
+12. Increasing per second boosts per glizzy level. Currently a common costs 150 and grants 1/s boost while others cost 500 and grand a 3/s boost. The boost should increase more than the cost in proportion
+13. Include commas in large numbers 100000 to 100,000
+14. I want there to be things to do while players wait. I want to create an obby on one end of the map that players can do while they wait for things to cook. Completing the obby grants the player 100 seconds worth of glizzies. This ensures leveling doesnt make the obby obsolite
+15. I want there to be a roof on top of the building
+16. The left sidebar that shows the chances of pulling each rarity needs to become a sign next to the grill so players can see it each time. Maybe change the grill into a wheel that can be spun to add to the suspense and make players feel like they almost got a rare item
+17. The end goal is to connect this project to the clip farm clip forge project. I want to pump out content about the game onto youtube to try and boost engagement.
