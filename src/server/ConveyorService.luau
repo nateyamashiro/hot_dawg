@@ -28,10 +28,13 @@ local PlotManager = require(ServerScriptService.Server.PlotManager)
 local ConveyorService = {}
 
 -- Belt geometry: a straight run down the street's centre line (world z = 0).
-local BELT_START_X = -200
-local BELT_END_X = 200
+-- Additions #11: the belt now spans (almost) the FULL street (±620) — every plot
+-- is steps from an offer. Speed + the GameConfig cap/interval scaled with length
+-- so the longer lane doesn't ride empty.
+local BELT_START_X = -560
+local BELT_END_X = 560
 local BELT_Y = 2.4 -- ride height (dog centre) above the road
-local BELT_SPEED = 10 -- studs/sec → ~40s on the belt per dog
+local BELT_SPEED = 14 -- studs/sec → ~80s on the belt per dog
 
 local updateLeaderstats: (player: Player) -> ()
 local onInventoryChanged: (player: Player) -> ()

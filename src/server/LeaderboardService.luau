@@ -101,9 +101,10 @@ function LeaderboardService.pushLeaderboard(player: Player)
 	remLeaderboardUpdate:FireClient(player, cachedTops)
 end
 
--- === World podium (genre-standard flex): the coins top-3, physically on the ===
--- === street just past the conveyor's east end, rebuilt only when it changes ===
-local PODIUM_X = 240
+-- === World podium (genre-standard flex): the coins top-3, at the street's EAST ===
+-- === end plaza (the belt spans ±560 now — additions #11; the obby bookends the ===
+-- === west end), rebuilt only when the top-3 changes ===
+local PODIUM_X = 660
 local PODIUM_TIERS = {
 	{ dx = 0, height = 3.4, color = Theme.Palette.VaultGold, scale = 2.2, medal = "🥇" },
 	{ dx = -8, height = 2.4, color = Theme.Palette.Steel, scale = 1.7, medal = "🥈" },

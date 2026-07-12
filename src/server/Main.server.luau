@@ -49,6 +49,7 @@ local ConveyorService = require(ServerScriptService.Server.ConveyorService)
 local UpgraderService = require(ServerScriptService.Server.UpgraderService)
 local ZoneService = require(ServerScriptService.Server.ZoneService)
 local PickupService = require(ServerScriptService.Server.PickupService)
+local ObbyService = require(ServerScriptService.Server.ObbyService)
 
 -- === Set up remotes ===
 -- Created in code so there's nothing to wire up by hand in Studio. The client
@@ -455,6 +456,20 @@ ZoneService.init({
 	remotes = remotes,
 	updateLeaderstats = updateLeaderstats,
 	pushProgression = pushProgression,
+})
+ObbyService.init({
+	remotes = remotes,
+	updateLeaderstats = updateLeaderstats,
+	-- The obby pays N seconds' worth of THIS player's live income (additions #14):
+	-- dogs + stove, with the full multiplier — same math as the tick loop.
+	computeIncome = function(player: Player): number
+		local data = DataManager.get(player)
+		if not data then
+			return 0
+		end
+		local income = incomePerSecond(data) + AutoCookerService.coinsPerSecond(data)
+		return income * incomeMultiplier(data)
+	end,
 })
 
 -- === Physical tycoon stations (walk-on pads + cook grill) ===

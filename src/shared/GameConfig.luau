@@ -600,8 +600,11 @@ local GameConfig = {
 	-- === Conveyor lane (Phase 4) — Steal-a-Brainrot-style street buy lane ===
 	-- Hot dogs ride the central aisle; step on one to buy. Offers picked deterministically
 	-- (reuse ShopService's daily logic). Seconds between spawns + how many ride at once.
-	ConveyorSpawnInterval = 6,
-	ConveyorMaxOnBelt = 8,
+	-- Scaled up 2026-07-11 (additions #11): the belt runs the full street now, so the
+	-- cap/interval grew to keep it populated. Still the ONE bounded per-frame server
+	-- exception (≤18 anchored pivots per Heartbeat).
+	ConveyorSpawnInterval = 4,
+	ConveyorMaxOnBelt = 18,
 
 	-- === Cooker upgraders (Phase 4) — dropper→upgrader value chain ===
 	-- Multiplies auto-cooker output as coins travel the belt. Index = level.
@@ -611,6 +614,17 @@ local GameConfig = {
 		{ cost = 12000, outputMult = 1.6 },
 		{ cost = 60000, outputMult = 2.0 },
 	},
+
+	-- === Obby "Glizzy Run" (additions #14) — the thing to do while glizzies cook ===
+	-- A parkour course at the street's WEST end. Completing it pays this many
+	-- SECONDS' worth of the runner's own income (dogs + stove, multipliers included),
+	-- so it scales forever and never goes obsolete. Repeatable on a cooldown that
+	-- roughly matches the free-cook timer. ObbyMinRunSeconds is the anti-teleport
+	-- floor: a finish faster than a legit run is rejected (checkpoints are also
+	-- validated in order).
+	ObbyRewardSeconds = 100,
+	ObbyCooldownSeconds = 300,
+	ObbyMinRunSeconds = 25,
 
 	-- === Zone / world expansion (Phase 5, prestige-gated) ===
 	-- Spend prestige to expand your plot tier (bigger pad / more capacity). Index = level.
