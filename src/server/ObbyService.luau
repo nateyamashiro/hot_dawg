@@ -152,7 +152,7 @@ local function onFinishTouched(player: Player, finishPad: BasePart)
 	data.coins += reward
 	data.obbyReadyAt = os.time() + GameConfig.ObbyCooldownSeconds
 	updateLeaderstats(player)
-	Telemetry.event("ObbyComplete")
+	Telemetry.event(player, "ObbyComplete")
 	remCelebrate:FireAllClients("purchase", finishPad)
 	feedback(
 		player,

@@ -396,9 +396,14 @@ local GameConfig = {
 		},
 	},
 
-	-- === Trading (M6) — baseline safeguards ===
+	-- === Trading (M6) — baseline safeguards (GDD §4.8: two-sided confirm + cooldown
+	-- + server log). Items only, never coins. Max distinct stacks per SIDE.
 	TradeCooldownSeconds = 30,
 	TradeMaxItems = 6,
+	-- Both parties must stand this close (studs) for the request handshake.
+	TradeMaxDistance = 40,
+	-- An unanswered trade invite expires after this many seconds.
+	TradeInviteSeconds = 60,
 
 	-- === Emotes (M6) — preset taunts, no free text ===
 	Emotes = { "Laugh", "Cry", "Point", "Dance", "Wave" },

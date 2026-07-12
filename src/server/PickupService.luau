@@ -171,6 +171,18 @@ local function onPickup(player: Player, key: string)
 	)
 end
 
+-- The inventory key currently held in this player's hand, if any (M6 trading
+-- checks it so a traded-away stack can't linger as an orphaned hand Tool).
+function PickupService.heldKeyOf(player: Player): string?
+	local h = held[player.UserId]
+	return h and h.key or nil
+end
+
+-- Force the held glizzy back to the stand (public putBack — idempotent).
+function PickupService.forceReturn(player: Player)
+	putBack(player)
+end
+
 function PickupService.init(deps: { remotes: Folder })
 	remFeedback = deps.remotes:WaitForChild("StealFeedback") :: RemoteEvent
 	PlotManager.setPickupHandler(onPickup)

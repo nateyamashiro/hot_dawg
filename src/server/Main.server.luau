@@ -461,7 +461,7 @@ PurchaseService.init({
 	computeIncome = computeLiveIncome,
 })
 CosmeticService.init({ remotes = remotes, pushProgression = pushProgression })
-TradeService.init({ remotes = remotes })
+TradeService.init({ remotes = remotes, onInventoryChanged = pushInventory })
 EmoteService.init({ remotes = remotes })
 -- === Visual-overhaul / tycoon-layer services (scaffold stubs) ===
 AutoCookerService.init({ remotes = remotes, updateLeaderstats = updateLeaderstats })
