@@ -36,9 +36,11 @@ export type Defenses = {
 	trap: boolean,
 }
 
--- v5: cosmetics ownership + what's equipped (stand skin / trail / title).
+-- v5: cosmetics ownership + what's equipped, ONE per kind (standSkin/trail/title).
+-- Shape changed string? -> map 2026-07-12 BEFORE cosmetics ever shipped, so no real
+-- save holds the old single-string form (the service was a stub until now).
 export type Cosmetics = {
-	equipped: string?,
+	equipped: { [string]: string },
 	owned: { [string]: boolean },
 }
 
@@ -149,6 +151,10 @@ export type PlayerData = {
 	vaultBreakers: number,
 	-- os.time before which the obby can't pay out again (additions #14).
 	obbyReadyAt: number,
+	-- Offline seconds the OfflineCapSeconds cap truncated, banked at join (bounded
+	-- by OfflineRefillMaxSeconds). The offlineRefill dev product pays this out at
+	-- the buyer's live income rate and zeroes it (PurchaseService).
+	offlineMissedSeconds: number,
 }
 
 local function keyFor(player: Player): string
@@ -194,7 +200,7 @@ local function defaultData(): PlayerData
 		mutationLuck = 0,
 		receiptHistory = {},
 		tradeCooldownUntil = 0,
-		cosmetics = { equipped = nil, owned = {} },
+		cosmetics = { equipped = {}, owned = {} },
 		shopBuys = { day = 0, counts = {} },
 		-- Visual-overhaul / tycoon-layer defaults (fresh tables per call).
 		-- autoCookerLvl 0 = no stove built yet; the player builds it via a walk-on pad,
@@ -207,6 +213,7 @@ local function defaultData(): PlayerData
 		zoneLvl = 1,
 		vaultBreakers = 0,
 		obbyReadyAt = 0,
+		offlineMissedSeconds = 0,
 	}
 end
 
@@ -402,8 +409,13 @@ function DataManager.load(player: Player): PlayerData?
 			data.tradeCooldownUntil = result.tradeCooldownUntil
 		end
 		if type(result.cosmetics) == "table" then
-			if type(result.cosmetics.equipped) == "string" then
-				data.cosmetics.equipped = result.cosmetics.equipped
+			-- Per-kind equipped map (the pre-ship single-string form is just skipped).
+			if type(result.cosmetics.equipped) == "table" then
+				for k, v in result.cosmetics.equipped do
+					if type(k) == "string" and type(v) == "string" then
+						data.cosmetics.equipped[k] = v
+					end
+				end
 			end
 			copyBoolMap(result.cosmetics.owned, data.cosmetics.owned)
 		end
@@ -428,6 +440,10 @@ function DataManager.load(player: Player): PlayerData?
 		end
 		if type(result.obbyReadyAt) == "number" then
 			data.obbyReadyAt = result.obbyReadyAt
+		end
+		-- M5 offlineRefill (2026-07-12): banked cap-truncated offline seconds.
+		if type(result.offlineMissedSeconds) == "number" then
+			data.offlineMissedSeconds = math.max(0, math.floor(result.offlineMissedSeconds))
 		end
 		if type(result.shopBuys) == "table" then
 			if type(result.shopBuys.day) == "number" then

@@ -105,6 +105,9 @@ local GameConfig = {
 
 	-- Offline earnings are granted on rejoin, capped to this many seconds away.
 	OfflineCapSeconds = 8 * 60 * 60, -- 8 hours
+	-- Time the cap truncated banks in data.offlineMissedSeconds (bounded here); the
+	-- offlineRefill dev product pays the bank out at the buyer's live income rate.
+	OfflineRefillMaxSeconds = 7 * 24 * 60 * 60, -- 7 days
 
 	-- Cook: how many rolls a "cook 10" buys, and the pity counter that guarantees a
 	-- Rare-or-better once you've cooked this many times without one.
@@ -367,11 +370,30 @@ local GameConfig = {
 		autoCollect = false,
 	},
 
-	-- === Cosmetics (M5) — skins/trails/titles; cost in Robux (pass/product) or prestige ===
+	-- === Cosmetics (M5) — skins/trails/titles bought with PRESTIGE (never power) ===
+	-- Two options per kind so equipping/swapping means something. One cosmetic of
+	-- each kind can be equipped at a time (data.cosmetics.equipped[kind] = id).
+	-- Visual recipes (skin colors, trail gradients) live in CosmeticService keyed by
+	-- id; titles render their label on a chip under the owner sign.
 	Cosmetics = {
+		{ id = "skinRelish", kind = "standSkin", label = "Relish Stand", prestigeCost = 12 },
 		{ id = "skinGold", kind = "standSkin", label = "Gold Stand", prestigeCost = 20 },
 		{ id = "trailFire", kind = "trail", label = "Fire Trail", prestigeCost = 10 },
-		{ id = "titleGlizzKing", kind = "title", label = "Glizzy King", prestigeCost = 25 },
+		{ id = "trailRainbow", kind = "trail", label = "Rainbow Trail", prestigeCost = 30 },
+		{
+			id = "titleGlizzKing",
+			kind = "title",
+			label = "Glizzy King",
+			prestigeCost = 25,
+			icon = "👑",
+		},
+		{
+			id = "titleMenace",
+			kind = "title",
+			label = "Street Menace",
+			prestigeCost = 40,
+			icon = "😈",
+		},
 	},
 
 	-- === Trading (M6) — baseline safeguards ===

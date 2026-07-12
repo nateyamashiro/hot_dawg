@@ -38,6 +38,9 @@ export type Plot = {
 	center: Vector3,
 	facing: CFrame,
 	signText: TextLabel,
+	-- Cosmetic title chip under the owner-name sign (M5 cosmetics). CosmeticService
+	-- feeds it via setTitle; its BillboardGui stays disabled while no title is equipped.
+	titleText: TextLabel,
 	-- Physical drop-rates board beside the cook station (additions #16): Main feeds it
 	-- the same odds lines the old HUD sidebar showed, per grill level + pity.
 	oddsText: TextLabel,
@@ -366,6 +369,17 @@ local function buildPlot(index: number): Plot
 		maxDistance = 160,
 		alwaysOnTop = true,
 	})
+	-- Cosmetic title chip: rides the SAME sign post just under the name (still the one
+	-- far-visible identity spot per plot, not a new label location). Hidden until the
+	-- owner equips a title cosmetic (CosmeticService -> PlotManager.setTitle).
+	local titleText = makeBillboard(signPost, "", Theme.Semantic.CoinGold, 26, "TitleChip", {
+		width = 170,
+		maxDistance = 160,
+		alwaysOnTop = true,
+		offsetY = 0.9,
+	})
+	local titleBillboard = titleText.Parent :: BillboardGui
+	titleBillboard.Enabled = false
 
 	-- === Floor-1 shell (STATIC on every plot): a humble open-air stall ===
 	-- GROWN 2026-07-11 (additions #3). Envelope x ∈ [-30,30], z ∈ [-19,9], 12 tall;
@@ -639,6 +653,7 @@ local function buildPlot(index: number): Plot
 		center = center,
 		facing = facing,
 		signText = signText,
+		titleText = titleText,
 		oddsText = oddsText,
 		pedestalAnchors = pedestalAnchors,
 		vaultAnchors = vaultAnchors,
@@ -1917,6 +1932,50 @@ function PlotManager.applyZone(player: Player, mult: number)
 	end
 end
 
+-- === Cosmetics (M5) — visual-only appliers driven by CosmeticService ===
+-- The floor-1 shell's repaintable surfaces and their DEFAULT palette colors. Only
+-- direct children of the plot model are touched, so BuildCatalog structure models
+-- (which nest their parts) can never be repainted by accident.
+local SKIN_SURFACES: { [string]: "wall" | "trim" } = {
+	BackWall = "wall",
+	SideWall = "wall",
+	Counter = "wall",
+	CounterTop = "trim",
+}
+local SKIN_DEFAULTS = {
+	wall = Theme.Palette.Cream,
+	trim = Theme.Palette.Mustard,
+}
+
+export type StandSkin = { wall: Color3, trim: Color3 }
+
+-- Repaint the stall shell (nil = restore the default palette). Purely cosmetic:
+-- geometry, prompts, and steal rules are untouched.
+function PlotManager.applyStandSkin(player: Player, skin: StandSkin?)
+	local plot = ownerToPlot[player.UserId]
+	if not plot then
+		return
+	end
+	local colors: StandSkin = skin or SKIN_DEFAULTS
+	for _, child in plot.model:GetChildren() do
+		local surface = SKIN_SURFACES[child.Name]
+		if surface and child:IsA("BasePart") then
+			child.Color = colors[surface]
+		end
+	end
+end
+
+-- Show/hide the cosmetic title chip under the owner sign ("" or nil = unequipped).
+function PlotManager.setTitle(player: Player, text: string?)
+	local plot = ownerToPlot[player.UserId]
+	if not plot then
+		return
+	end
+	local billboard = plot.titleText.Parent :: BillboardGui
+	plot.titleText.Text = text or ""
+	billboard.Enabled = text ~= nil and text ~= ""
+end
+
 -- Toggle the deposit prompt on a player's own stand (shown only while carrying).
 function PlotManager.setDepositEnabled(player: Player, enabled: boolean)
 	local plot = ownerToPlot[player.UserId]
@@ -1961,6 +2020,11 @@ function PlotManager.release(player: Player)
 	end
 	plot.signText.Text = "Empty Plot"
 	plot.oddsText.Text = ""
+	-- Undo cosmetics for the next tenant (skin back to the default palette, chip off).
+	PlotManager.applyStandSkin(player, nil)
+	plot.titleText.Text = ""
+	local titleBillboard = plot.titleText.Parent :: BillboardGui
+	titleBillboard.Enabled = false
 	plot.model:SetAttribute("OwnerUserId", nil)
 	plot.owner = nil
 	heldKeys[player.UserId] = nil -- defensive; PickupService also clears on leave

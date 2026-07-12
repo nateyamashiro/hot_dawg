@@ -417,13 +417,25 @@ cookStats.OnClientEvent:Connect(
 
 -- Offline earnings popup.
 local welcomeToken = 0
-welcomeBack.OnClientEvent:Connect(function(earned: number, elapsed: number)
+welcomeBack.OnClientEvent:Connect(function(earned: number, elapsed: number, missed: number?)
 	local mins = math.floor(elapsed / 60)
 	local timeStr = if mins >= 60
 		then string.format("%dh %dm", math.floor(mins / 60), mins % 60)
 		else string.format("%dm", mins)
 	welcome.Text =
 		string.format("👋 Welcome back! +💰%s while away (%s)", Format.comma(earned), timeStr)
+	-- The offline cap truncated real time away (M5): advertise the refill product.
+	-- Only worth a line once a meaningful chunk is banked. The banner grows for the
+	-- second line (TextScaled would otherwise shrink both lines into the 44px box).
+	if type(missed) == "number" and missed >= 3600 then
+		welcome.Text ..= string.format(
+			"\n⏰ %dh past the cap — refill it in 💎 Passes!",
+			math.floor(missed / 3600)
+		)
+		welcome.Size = UDim2.fromOffset(520, 66)
+	else
+		welcome.Size = UDim2.fromOffset(520, 44)
+	end
 	welcome.Visible = true
 	welcomeToken += 1
 	local myToken = welcomeToken

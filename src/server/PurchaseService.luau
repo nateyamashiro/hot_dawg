@@ -1,11 +1,12 @@
 --!strict
 -- Monetization (M5, GDD §4.10). All non-pay-to-win — NEVER paid gacha (cook stays
 -- coin-only per Roblox's paid-random-item rules; see docs/roblox-reference/
--- monetization). First passes: EXTRA SLOTS + VIP (locked order; 2× coins +
--- auto-collect are detected but their effects stay TODO(M5)). Ids live in
--- GameConfig.GamePassIds/DevProductIds — 0 = unconfigured, so everything here is
--- id-agnostic: prompts toast "not available yet" and Studio can flip
--- GameConfig.StudioTestPasses to exercise the pass EFFECTS without real ids.
+-- monetization). Live passes: EXTRA SLOTS, VIP, and 2× COINS (multiplicative in
+-- Main.incomeMultiplier); auto-collect is detected but its effect awaits Nate's
+-- design call (income is already automatic). Ids live in GameConfig.GamePassIds/
+-- DevProductIds — 0 = unconfigured, so everything here is id-agnostic: prompts
+-- toast "not available yet" and Studio can flip GameConfig.StudioTestPasses to
+-- exercise the pass EFFECTS without real ids.
 --
 -- Ownership model (refund-safe): data.passes[kind] is the last-known
 -- UserOwnsGamePassAsync answer (refreshed on join + on purchase, kept on API
@@ -13,10 +14,11 @@
 -- incomeMultiplier — never banked into bonus*Slots, so refunds can't leave
 -- phantom slots and re-checks can't double-grant.
 --
--- Dev products (coin packs, extra steal charges) go through ProcessReceipt, made
--- idempotent via data.receiptHistory. UNMAPPED products (including offlineRefill,
--- which needs bespoke refill logic) return NotProcessedYet so Roblox retries or
--- refunds — never consume a receipt you didn't grant.
+-- Dev products (coin packs, extra steal charges, offline refill) go through
+-- ProcessReceipt, made idempotent via data.receiptHistory. UNMAPPED products
+-- return NotProcessedYet so Roblox retries or refunds — never consume a receipt
+-- you didn't grant. offlineRefill (M5, 2026-07-12) pays out the cap-truncated
+-- offline seconds banked in data.offlineMissedSeconds at the buyer's live rate.
 
 local MarketplaceService = game:GetService("MarketplaceService")
 local Players = game:GetService("Players")
@@ -24,6 +26,7 @@ local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local RunService = game:GetService("RunService")
 local ServerScriptService = game:GetService("ServerScriptService")
 
+local Format = require(ReplicatedStorage.Shared.Format)
 local GameConfig = require(ReplicatedStorage.Shared.GameConfig)
 local DataManager = require(ServerScriptService.Server.DataManager)
 local PlotManager = require(ServerScriptService.Server.PlotManager)
@@ -40,6 +43,9 @@ local PRODUCT_GRANTS = GameConfig.ProductGrants :: { [string]: number }
 local STUDIO_PASSES = GameConfig.StudioTestPasses :: { [string]: boolean }
 
 local updateLeaderstats: (player: Player) -> ()
+-- Main's live coins/sec closure ((dogs + stove) × full multiplier) — the
+-- offlineRefill grant pays banked seconds out at this rate.
+local computeIncome: (player: Player) -> number
 local remPromptPurchase: RemoteEvent
 local remPurchaseUpdate: RemoteEvent
 local remFeedback: RemoteEvent
@@ -163,6 +169,24 @@ local function processReceipt(info: { PlayerId: number, PurchaseId: string, Prod
 			true,
 			"⚡ +" .. GameConfig.ProductGrants.stealCharges .. " steal charges!"
 		)
+	elseif productKind == "offlineRefill" then
+		-- Bespoke grant (M5): pay out the offline time the cap truncated — banked at
+		-- join in data.offlineMissedSeconds — at the buyer's LIVE income rate. With
+		-- nothing banked (bought in a race), don't consume the receipt: Roblox
+		-- retries next session and auto-refunds if it never grants.
+		local seconds = data.offlineMissedSeconds
+		local earned = math.floor(computeIncome(player) * seconds)
+		if seconds <= 0 or earned <= 0 then
+			return Enum.ProductPurchaseDecision.NotProcessedYet
+		end
+		data.coins += earned
+		data.offlineMissedSeconds = 0
+		updateLeaderstats(player)
+		feedback(
+			player,
+			true,
+			"⏰ Offline refill: +" .. Format.comma(earned) .. " coins — thank you!"
+		)
 	else
 		return Enum.ProductPurchaseDecision.NotProcessedYet
 	end
@@ -175,8 +199,10 @@ end
 function PurchaseService.init(deps: {
 	remotes: Folder,
 	updateLeaderstats: (player: Player) -> (),
+	computeIncome: (player: Player) -> number,
 })
 	updateLeaderstats = deps.updateLeaderstats
+	computeIncome = deps.computeIncome
 	remPromptPurchase = deps.remotes:WaitForChild("PromptPurchase") :: RemoteEvent
 	remPurchaseUpdate = deps.remotes:WaitForChild("PurchaseUpdate") :: RemoteEvent
 	remFeedback = deps.remotes:WaitForChild("StealFeedback") :: RemoteEvent
@@ -220,6 +246,15 @@ function PurchaseService.init(deps: {
 				MarketplaceService:PromptGamePassPurchase(player, passId)
 			end)
 		elseif productId and productId ~= 0 then
+			-- offlineRefill only makes sense with banked cap-truncated time; block
+			-- the prompt up front so nobody buys an empty refill.
+			if kind == "offlineRefill" then
+				local data = DataManager.get(player)
+				if not data or data.offlineMissedSeconds <= 0 then
+					feedback(player, false, "Nothing to refill — you're all caught up!")
+					return
+				end
+			end
 			pcall(function()
 				MarketplaceService:PromptProductPurchase(player, productId)
 			end)

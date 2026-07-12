@@ -206,6 +206,12 @@ local function incomeMultiplier(data: DataManager.PlayerData): number
 		+ data.prestigeIncomeMult
 		+ BuildGrants.incomeBonus(data.built)
 		+ (if data.vip then GameConfig.VipIncomeBonus else 0)
+	-- 2× Coins pass (M5): MULTIPLICATIVE like the event doubling, so the paid pass
+	-- never dilutes as additive bonuses stack. Derives at read time from data.passes
+	-- (refreshed on join/purchase) — a refund drops it on the next session.
+	if data.passes.doubleCoins then
+		mult *= GameConfig.DoubleCoinsMult
+	end
 	-- Weekly-event modifier (M4): Double Income Weekend doubles the whole thing —
 	-- both the live tick and offline earnings call through here, so both inherit it.
 	if EventService.activeModifier() == "income2x" then
@@ -437,8 +443,24 @@ CodesService.init({
 	onInventoryChanged = pushInventory, -- code-granted dogs refresh dex + pedestals
 	pushProgression = pushProgression, -- code-granted prestige refreshes the panel
 })
-PurchaseService.init({ remotes = remotes, updateLeaderstats = updateLeaderstats })
-CosmeticService.init({ remotes = remotes })
+-- Live coins/sec for ONE player — (dogs + stove) × the full multiplier; the same
+-- math as the tick loop. Handed to every service that pays out "seconds of income"
+-- (obby reward, the offlineRefill dev product).
+local function computeLiveIncome(player: Player): number
+	local data = DataManager.get(player)
+	if not data then
+		return 0
+	end
+	local income = incomePerSecond(data) + AutoCookerService.coinsPerSecond(data)
+	return income * incomeMultiplier(data)
+end
+
+PurchaseService.init({
+	remotes = remotes,
+	updateLeaderstats = updateLeaderstats,
+	computeIncome = computeLiveIncome,
+})
+CosmeticService.init({ remotes = remotes, pushProgression = pushProgression })
 TradeService.init({ remotes = remotes })
 EmoteService.init({ remotes = remotes })
 -- === Visual-overhaul / tycoon-layer services (scaffold stubs) ===
@@ -460,16 +482,8 @@ ZoneService.init({
 ObbyService.init({
 	remotes = remotes,
 	updateLeaderstats = updateLeaderstats,
-	-- The obby pays N seconds' worth of THIS player's live income (additions #14):
-	-- dogs + stove, with the full multiplier — same math as the tick loop.
-	computeIncome = function(player: Player): number
-		local data = DataManager.get(player)
-		if not data then
-			return 0
-		end
-		local income = incomePerSecond(data) + AutoCookerService.coinsPerSecond(data)
-		return income * incomeMultiplier(data)
-	end,
+	-- The obby pays N seconds' worth of THIS player's live income (additions #14).
+	computeIncome = computeLiveIncome,
 })
 
 -- === Physical tycoon stations (walk-on pads + cook grill) ===
@@ -643,7 +657,7 @@ end)
 -- === Player lifecycle ===
 -- Offline earnings computed at join, delivered once the client asks for state (so
 -- the "welcome back" popup can't be lost to the join race).
-local pendingWelcome: { [number]: { earned: number, elapsed: number } } = {}
+local pendingWelcome: { [number]: { earned: number, elapsed: number, missed: number } } = {}
 
 -- Send every per-player state snapshot to a client (on join AND when the client
 -- signals it's ready via RequestState — the latter fixes the "server pushed before
@@ -673,7 +687,7 @@ local function pushAllState(player: Player)
 	local welcome = pendingWelcome[player.UserId]
 	if welcome then
 		pendingWelcome[player.UserId] = nil
-		welcomeBack:FireClient(player, welcome.earned, welcome.elapsed)
+		welcomeBack:FireClient(player, welcome.earned, welcome.elapsed, welcome.missed)
 	end
 end
 
@@ -711,6 +725,7 @@ local function onPlayerAdded(player: Player)
 	DefenseService.applyLoadedDefenses(player)
 	BuildService.applyLoaded(player) -- re-raise built structures (+ wall hold bonus)
 	ZoneService.applyLoaded(player) -- re-apply the expanded pad size
+	CosmeticService.applyLoaded(player) -- re-apply equipped skin/trail/title
 	-- Re-check pass ownership (UserOwnsGamePassAsync YIELDS — own thread, never
 	-- inline): stale data.passes keeps working meanwhile, then a fresh answer
 	-- re-pushes status + re-renders the stand if slot ownership changed.
@@ -719,14 +734,25 @@ local function onPlayerAdded(player: Player)
 
 	-- Capped offline earnings (item 7): pay out income for time away since last save.
 	-- Includes the passive stove (un-stealable coin floor) alongside owned-dog income.
-	local elapsed = math.clamp(os.time() - data.lastSeen, 0, GameConfig.OfflineCapSeconds)
+	local away = math.max(0, os.time() - data.lastSeen)
+	local elapsed = math.min(away, GameConfig.OfflineCapSeconds)
+	-- Time the cap truncated banks as refillable seconds (M5): the offlineRefill dev
+	-- product pays the bank out at the buyer's live rate. Bounded so it can't grow
+	-- without limit across long absences.
+	if away > elapsed then
+		data.offlineMissedSeconds = math.min(
+			data.offlineMissedSeconds + (away - elapsed),
+			GameConfig.OfflineRefillMaxSeconds
+		)
+	end
 	local perSec = incomePerSecond(data) + AutoCookerService.coinsPerSecond(data)
 	if elapsed > 0 and perSec > 0 then
 		local earned = math.floor(perSec * elapsed * incomeMultiplier(data))
 		if earned > 0 then
 			data.coins += earned
 			updateLeaderstats(player)
-			pendingWelcome[player.UserId] = { earned = earned, elapsed = elapsed }
+			pendingWelcome[player.UserId] =
+				{ earned = earned, elapsed = elapsed, missed = data.offlineMissedSeconds }
 		end
 	end
 
