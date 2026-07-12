@@ -7,6 +7,7 @@
 local Players = game:GetService("Players")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 
+local Format = require(ReplicatedStorage.Shared.Format)
 local GameConfig = require(ReplicatedStorage.Shared.GameConfig)
 local MenuLayout = require(ReplicatedStorage.Shared.MenuLayout)
 
@@ -95,8 +96,12 @@ local function refreshUpgrades()
 		local nextDef = row.levels[lvl + 1]
 		local label = upgradeLabels[row.which]
 		if nextDef then
-			label.Text =
-				string.format("%s — Lv %d → Next: 💰%d", row.label, lvl, nextDef.cost)
+			label.Text = string.format(
+				"%s — Lv %d → Next: 💰%s",
+				row.label,
+				lvl,
+				Format.comma(nextDef.cost)
+			)
 		else
 			label.Text = string.format("%s — Lv %d (MAX)", row.label, lvl)
 		end
@@ -143,12 +148,12 @@ local function refreshRebirth()
 	local curBonus = math.floor(prog.rebirths * GameConfig.RebirthIncomeBonus * 100)
 	local nextBonus = math.floor((prog.rebirths + 1) * GameConfig.RebirthIncomeBonus * 100)
 	rebirthInfo.Text = string.format(
-		"Rebirths: %d   (Prestige: %d)\nCurrent income bonus: +%d%%\n\nRebirth resets your coins but KEEPS every hot dog + upgrade, and permanently boosts income to +%d%%.\n\nCost: 💰%d coins",
+		"Rebirths: %d   (Prestige: %d)\nCurrent income bonus: +%d%%\n\nRebirth resets your coins but KEEPS every hot dog + upgrade, and permanently boosts income to +%d%%.\n\nCost: 💰%s coins",
 		prog.rebirths,
 		prog.prestige,
 		curBonus,
 		nextBonus,
-		cost
+		Format.comma(cost)
 	)
 end
 

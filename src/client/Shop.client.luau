@@ -7,6 +7,7 @@
 local Players = game:GetService("Players")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 
+local Format = require(ReplicatedStorage.Shared.Format)
 local HotDogDex = require(ReplicatedStorage.Shared.HotDogDex)
 local MenuLayout = require(ReplicatedStorage.Shared.MenuLayout)
 
@@ -127,19 +128,19 @@ local function renderOffers(offers: { Offer }, boughtToday: { [string]: number }
 		detail.Font = Enum.Font.Gotham
 		detail.Text = if cap > 0
 			then string.format(
-				"%s · +%d/s income · %d/%d today",
+				"%s · +%s/s income · %d/%d today",
 				offer.rarity,
-				offer.income,
+				Format.comma(offer.income),
 				bought,
 				cap
 			)
-			else string.format("%s · +%d/s income", offer.rarity, offer.income)
+			else string.format("%s · +%s/s income", offer.rarity, Format.comma(offer.income))
 		detail.Parent = row
 
 		local buy = Instance.new("TextButton")
 		buy.Size = UDim2.fromOffset(128, 40)
 		buy.Position = UDim2.new(1, -134, 0.5, -20)
-		buy.Text = if capped then "✅ Maxed today" else "💰 " .. offer.price
+		buy.Text = if capped then "✅ Maxed today" else "💰 " .. Format.comma(offer.price)
 		buy.Parent = row
 		MenuLayout.styleButton(buy, if capped then "danger" else "success")
 		if capped then

@@ -9,6 +9,7 @@ local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local RunService = game:GetService("RunService")
 local Workspace = game:GetService("Workspace")
 
+local Format = require(ReplicatedStorage.Shared.Format)
 local GameConfig = require(ReplicatedStorage.Shared.GameConfig)
 
 local player = Players.LocalPlayer
@@ -108,8 +109,8 @@ local function makeBuyButton(text: string, yOffset: number, which: string): Text
 end
 -- (The 🧱 Wall button is gone — the perimeter wall is a BuildCatalog structure now,
 -- bought on the 🏗️ build pad at your stand.)
-makeBuyButton(string.format("🛡️ Guard (%d)", GameConfig.GuardCost), -60, "guard")
-makeBuyButton(string.format("🪤 Trap (%d)", GameConfig.TrapCost), -110, "trap")
+makeBuyButton(string.format("🛡️ Guard (%s)", Format.comma(GameConfig.GuardCost)), -60, "guard")
+makeBuyButton(string.format("🪤 Trap (%s)", Format.comma(GameConfig.TrapCost)), -110, "trap")
 
 gui.Parent = player:WaitForChild("PlayerGui")
 

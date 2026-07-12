@@ -17,6 +17,7 @@ local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local ServerScriptService = game:GetService("ServerScriptService")
 
 local BuildGrants = require(ReplicatedStorage.Shared.BuildGrants)
+local Format = require(ReplicatedStorage.Shared.Format)
 local GameConfig = require(ReplicatedStorage.Shared.GameConfig)
 local DataManager = require(ServerScriptService.Server.DataManager)
 local PlotManager = require(ServerScriptService.Server.PlotManager)
@@ -73,7 +74,7 @@ function BuildService.tryBuild(player: Player, id: string): boolean
 		remFeedback:FireClient(
 			player,
 			false,
-			"Need " .. entry.cost .. " coins for " .. entry.label .. "."
+			"Need " .. Format.comma(entry.cost) .. " coins for " .. entry.label .. "."
 		)
 		return false
 	end

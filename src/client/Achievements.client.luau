@@ -6,6 +6,7 @@
 local Players = game:GetService("Players")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 
+local Format = require(ReplicatedStorage.Shared.Format)
 local MenuLayout = require(ReplicatedStorage.Shared.MenuLayout)
 
 local player = Players.LocalPlayer
@@ -49,13 +50,17 @@ achievementUpdate.OnClientEvent:Connect(function(list)
 		row.Font = Enum.Font.GothamBold
 		row.Text = if ach.claimed
 			then "✅ " .. ach.label
-			elseif done then "🎁 " .. ach.label .. " — claim +" .. tostring(ach.reward) .. "!"
+			elseif done then "🎁 "
+				.. ach.label
+				.. " — claim +"
+				.. Format.comma(ach.reward)
+				.. "!"
 			else string.format(
-				"%s  (%d/%d) → +%d",
+				"%s  (%d/%d) → +%s",
 				tostring(ach.label),
 				ach.progress,
 				ach.target,
-				ach.reward
+				Format.comma(ach.reward)
 			)
 		row.Parent = content
 

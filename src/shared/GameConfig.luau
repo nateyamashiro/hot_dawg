@@ -113,8 +113,9 @@ local GameConfig = {
 	-- Single Cook (button + physical cook station) is now FREE but GATED behind a
 	-- cooldown — the "wall" so glizzy acquisition can't be spammed, encouraging return
 	-- visits / longer sessions. Cook-10 stays PAID (CookCost×10) as the "pay coins to
-	-- skip the wait / bulk" bypass. Tune this to taste (300 = 5 min).
-	CookCooldownSeconds = 300,
+	-- skip the wait / bulk" bypass. Lowered 300→120 (additions #5) with a client-side
+	-- "ready!" notification (button glow + toast + CookReady sound).
+	CookCooldownSeconds = 120,
 
 	-- Dex: one-time reward for collecting every hot dog.
 	DexCompletionReward = 25000,
@@ -156,6 +157,7 @@ local GameConfig = {
 		Legendary = 5,
 		Mythic = 2,
 		Secret = 0.5,
+		Forbidden = 0.1,
 	},
 	-- Coin price to buy a dog of each rarity. Payback (price ÷ income/sec) rises with
 	-- rarity — 150s for Common up to 600s for Secret — so rarer dogs are a premium /
@@ -168,6 +170,7 @@ local GameConfig = {
 		Legendary = 22000,
 		Mythic = 75000,
 		Secret = 300000,
+		Forbidden = 1200000,
 	},
 	-- Rotating-shop per-day purchase cap PER OFFER (closes the v1 unlimited-buys
 	-- fast-follow — otherwise the shop is an infinite income printer for whales).
@@ -366,12 +369,17 @@ local GameConfig = {
 	-- A machine on every stand that emits passive coins over time. SEPARATE from the
 	-- gacha Cook: it produces NO stealable glizzies, only un-stealable coins. Index =
 	-- level; level 1 is the free default every stand ships with.
+	-- Additions #10: named tiers, and the top bands are FLOOR-GATED (`requires` names
+	-- a BuildCatalog id that must be built to buy INTO that level — existing levels
+	-- are grandfathered; AutoCookerService gates the upgrade, never the payout).
 	AutoCookerTiers = {
-		{ cost = 0, coinsPerSec = 1 },
-		{ cost = 400, coinsPerSec = 3 },
-		{ cost = 2000, coinsPerSec = 8 },
-		{ cost = 9000, coinsPerSec = 20 },
-		{ cost = 35000, coinsPerSec = 50 },
+		{ cost = 0, coinsPerSec = 1, name = "Camp Stove" },
+		{ cost = 400, coinsPerSec = 3, name = "Home Stove" },
+		{ cost = 2000, coinsPerSec = 8, name = "Diner Stove" },
+		{ cost = 9000, coinsPerSec = 22, name = "Big Stove", requires = "floor2" },
+		{ cost = 35000, coinsPerSec = 55, name = "Double-Wide Grill", requires = "floor2" },
+		{ cost = 120000, coinsPerSec = 140, name = "Industrial Range", requires = "floor3" },
+		{ cost = 400000, coinsPerSec = 350, name = "Glizzy Factory", requires = "floor3" },
 	},
 
 	-- === Starting glizzy (Phase 0) — brand-new players spawn owning one Common. ===
@@ -392,6 +400,7 @@ local GameConfig = {
 	-- fine). Sfx.play no-ops on "" so the game is silence-safe until ids land.
 	Sounds = {
 		CookReveal = "", -- every cook burst
+		CookReady = "", -- the free-cook cooldown expired (additions #5)
 		RareStinger = "", -- layered on Rare+ pulls
 		LegendaryStinger = "", -- layered on Legendary+ pulls
 		Purchase = "", -- walk-on pad purchase pop

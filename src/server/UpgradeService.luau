@@ -7,6 +7,7 @@
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local ServerScriptService = game:GetService("ServerScriptService")
 
+local Format = require(ReplicatedStorage.Shared.Format)
 local GameConfig = require(ReplicatedStorage.Shared.GameConfig)
 local DataManager = require(ServerScriptService.Server.DataManager)
 local RateLimit = require(ServerScriptService.Server.RateLimit)
@@ -76,7 +77,7 @@ function UpgradeService.tryBuy(player: Player, which: string): boolean
 		return false
 	end
 	if data.coins < nextDef.cost then
-		feedback(player, false, "Not enough coins — need " .. nextDef.cost .. ".")
+		feedback(player, false, "Not enough coins — need " .. Format.comma(nextDef.cost) .. ".")
 		return false
 	end
 

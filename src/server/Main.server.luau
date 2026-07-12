@@ -15,6 +15,7 @@ local ServerScriptService = game:GetService("ServerScriptService")
 
 local BuildGrants = require(ReplicatedStorage.Shared.BuildGrants)
 local GameConfig = require(ReplicatedStorage.Shared.GameConfig)
+local Format = require(ReplicatedStorage.Shared.Format)
 local HotDogDex = require(ReplicatedStorage.Shared.HotDogDex)
 local Variants = require(ReplicatedStorage.Shared.Variants)
 local DataManager = require(ServerScriptService.Server.DataManager)
@@ -77,6 +78,7 @@ makeRemote("ClaimDaily") -- client -> server: claim streak reward (DailyService)
 makeRemote("ClaimMission") -- client -> server: claim a mission (DailyService)
 local welcomeBack = makeRemote("WelcomeBack") -- server -> client: offline earnings popup
 local inventoryUpdate = makeRemote("InventoryUpdate") -- server -> client: owned dogs snapshot
+local storageUpdate = makeRemote("StorageUpdate") -- server -> client: slots-filled/capacity HUD
 local cookTen = makeRemote("CookTen") -- client -> server: "cook ten"
 local cookTenResult = makeRemote("CookTenResult") -- server -> client: 10-roll summary
 local cookStats = makeRemote("CookStats") -- server -> client: grill level + pity progress
@@ -216,7 +218,15 @@ local function pushCookStats(player: Player)
 	if not data then
 		return
 	end
-	cookStats:FireClient(player, data.grillLvl, data.cooksSinceRare, GameConfig.PityCooks)
+	-- 4th arg (additions #5): seconds until the free cook is ready — the client turns
+	-- it into a local deadline for the button countdown + "ready!" glow/toast/sound.
+	cookStats:FireClient(
+		player,
+		data.grillLvl,
+		data.cooksSinceRare,
+		GameConfig.PityCooks,
+		math.max(0, data.cookReadyAt - os.time())
+	)
 	-- Physical drop-rates board (additions #16): the lines the HUD sidebar used to
 	-- show now live on the sign beside the owner's grill. Same callers keep it fresh
 	-- (join handshake, every cook, grill upgrades via UpgradeService).
@@ -231,6 +241,16 @@ local function pushCookStats(player: Player)
 	PlotManager.setOddsSign(player, table.concat(lines, "\n"))
 end
 
+-- Storage fraction for the HUD (additions #9): shown/capacity for display + vault.
+-- Fired with every inventory snapshot AND every progression push (capacity buys —
+-- display/vault upgrades, prestige slots, zone tiers — all route through the latter).
+local function pushStorage(player: Player)
+	local storage = PlotManager.getStorageInfo(player)
+	if storage then
+		storageUpdate:FireClient(player, storage)
+	end
+end
+
 local function pushProgression(player: Player)
 	local data = DataManager.get(player)
 	if not data then
@@ -243,6 +263,7 @@ local function pushProgression(player: Player)
 		rebirths = data.rebirths,
 		prestige = data.prestige,
 	})
+	pushStorage(player)
 end
 
 -- === Onboarding first-60s (GDD §4.9): guided arrows cook → stove → build ===
@@ -300,6 +321,7 @@ local function pushInventory(player: Player)
 	end
 	-- Pins ride along so the Dex can show which keys are vault-pinned.
 	inventoryUpdate:FireClient(player, data.hotDogs, data.vaultPins)
+	pushStorage(player)
 	if not data.dexRewarded and ownsEveryDog(data) then
 		data.dexRewarded = true
 		data.coins += GameConfig.DexCompletionReward
@@ -473,30 +495,40 @@ local function syncPads(player: Player)
 	local info: { [string]: { text: string, affordable: boolean } } = {}
 	local stoveNext = GameConfig.AutoCookerTiers[data.autoCookerLvl + 1]
 	if stoveNext then
+		-- Additions #10: tiers carry names, and the top bands are floor-gated. A
+		-- locked tier shows WHY (red pad) instead of hiding.
+		local requires = (stoveNext :: any).requires :: string?
+		local locked = requires ~= nil and not data.built[requires]
 		local verb = if data.autoCookerLvl == 0
 			then "🔥 Build Stove"
-			else "🔥 Stove Lv " .. (data.autoCookerLvl + 1)
-		local cost = if stoveNext.cost > 0 then "$" .. stoveNext.cost else "FREE"
-		info.stove = { text = verb .. "\n" .. cost, affordable = data.coins >= stoveNext.cost }
+			else "🔥 " .. stoveNext.name
+		local cost = if locked
+			then (if requires == "floor3" then "needs 3rd Floor" else "needs 2nd Floor")
+			elseif stoveNext.cost > 0 then "$" .. Format.comma(stoveNext.cost)
+			else "FREE"
+		info.stove = {
+			text = verb .. "\n" .. cost,
+			affordable = not locked and data.coins >= stoveNext.cost,
+		}
 	end
 	local grillNext = GameConfig.GrillLevels[data.grillLvl + 1]
 	if grillNext then
 		info.grill = {
-			text = "🔥 Grill Lv " .. (data.grillLvl + 1) .. "\n$" .. grillNext.cost,
+			text = "🔥 Grill Lv " .. (data.grillLvl + 1) .. "\n$" .. Format.comma(grillNext.cost),
 			affordable = data.coins >= grillNext.cost,
 		}
 	end
 	local displayNext = GameConfig.DisplaySlotLevels[data.displaySlotsLvl + 1]
 	if displayNext then
 		info.display = {
-			text = "🅿️ +Display\n$" .. displayNext.cost,
+			text = "🅿️ +Display\n$" .. Format.comma(displayNext.cost),
 			affordable = data.coins >= displayNext.cost,
 		}
 	end
 	local vaultNext = GameConfig.VaultSlotLevels[data.vaultSlotsLvl + 1]
 	if vaultNext then
 		info.vault = {
-			text = "🔒 +Vault\n$" .. vaultNext.cost,
+			text = "🔒 +Vault\n$" .. Format.comma(vaultNext.cost),
 			affordable = data.coins >= vaultNext.cost,
 		}
 	end
@@ -506,14 +538,14 @@ local function syncPads(player: Player)
 	local buildNext = BuildService.nextEntry(data, "build")
 	if buildNext then
 		info.build = {
-			text = "🏗️ " .. buildNext.label .. "\n$" .. buildNext.cost,
+			text = "🏗️ " .. buildNext.label .. "\n$" .. Format.comma(buildNext.cost),
 			affordable = data.coins >= buildNext.cost,
 		}
 	end
 	local decorNext = BuildService.nextEntry(data, "decor")
 	if decorNext then
 		info.decor = {
-			text = "🎪 " .. decorNext.label .. "\n$" .. decorNext.cost,
+			text = "🎪 " .. decorNext.label .. "\n$" .. Format.comma(decorNext.cost),
 			affordable = data.coins >= decorNext.cost,
 		}
 	end
@@ -522,10 +554,9 @@ local function syncPads(player: Player)
 		local upgraderNext = GameConfig.UpgraderTiers[data.upgraderLvl + 1]
 		if upgraderNext then
 			info.upgrader = {
-				text = "⚙️ Upgrader Lv "
-					.. (data.upgraderLvl + 1)
-					.. "\n$"
-					.. upgraderNext.cost,
+				text = "⚙️ Upgrader Lv " .. (data.upgraderLvl + 1) .. "\n$" .. Format.comma(
+					upgraderNext.cost
+				),
 				affordable = data.coins >= upgraderNext.cost,
 			}
 		end
@@ -763,7 +794,7 @@ cookTen.OnServerEvent:Connect(function(player: Player)
 		stealFeedback:FireClient(
 			player,
 			false,
-			"Need " .. totalCost .. " coins to cook " .. n .. "."
+			"Need " .. Format.comma(totalCost) .. " coins to cook " .. n .. "."
 		)
 		return
 	end

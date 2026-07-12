@@ -9,7 +9,15 @@ local Variants = require(script.Parent.Variants)
 
 local HotDogDex = {}
 
-export type Rarity = "Common" | "Uncommon" | "Rare" | "Epic" | "Legendary" | "Mythic" | "Secret"
+export type Rarity =
+	"Common"
+	| "Uncommon"
+	| "Rare"
+	| "Epic"
+	| "Legendary"
+	| "Mythic"
+	| "Secret"
+	| "Forbidden"
 
 export type HotDog = {
 	name: string,
@@ -22,6 +30,10 @@ export type HotDog = {
 
 -- Rarity tiers, ordered common -> rare. `weight` is the relative chance of
 -- rolling this tier; `income` is coins/sec per hot dog of the tier.
+-- Incomes rebalanced 2026-07-11 (additions #12): payback FALLS with rarity now
+-- (Common 150s → Secret 67s against fixed ShopRarityPrices), so rarer dogs are
+-- strictly better per coin — the chase is worth it. Reasoned, not observed (§6).
+-- "Forbidden" (additions #8) is the new chase tier above Secret.
 local RARITY = {
 	{
 		rarity = "Common" :: Rarity,
@@ -29,26 +41,32 @@ local RARITY = {
 		income = 1,
 		color = Color3.fromRGB(200, 200, 200),
 	},
-	{ rarity = "Uncommon" :: Rarity, weight = 40, income = 3, color = Color3.fromRGB(90, 200, 90) },
-	{ rarity = "Rare" :: Rarity, weight = 12, income = 8, color = Color3.fromRGB(70, 140, 240) },
-	{ rarity = "Epic" :: Rarity, weight = 4, income = 20, color = Color3.fromRGB(170, 90, 230) },
+	{ rarity = "Uncommon" :: Rarity, weight = 40, income = 4, color = Color3.fromRGB(90, 200, 90) },
+	{ rarity = "Rare" :: Rarity, weight = 12, income = 16, color = Color3.fromRGB(70, 140, 240) },
+	{ rarity = "Epic" :: Rarity, weight = 4, income = 60, color = Color3.fromRGB(170, 90, 230) },
 	{
 		rarity = "Legendary" :: Rarity,
 		weight = 1.5,
-		income = 55,
+		income = 250,
 		color = Color3.fromRGB(240, 170, 40),
 	},
 	{
 		rarity = "Mythic" :: Rarity,
 		weight = 0.4,
-		income = 150,
+		income = 1000,
 		color = Color3.fromRGB(240, 70, 70),
 	},
 	{
 		rarity = "Secret" :: Rarity,
 		weight = 0.06,
-		income = 500,
+		income = 4500,
 		color = Color3.fromRGB(15, 15, 15),
+	},
+	{
+		rarity = "Forbidden" :: Rarity,
+		weight = 0.01,
+		income = 15000,
+		color = Color3.fromRGB(180, 40, 255),
 	},
 }
 
@@ -76,6 +94,7 @@ local DOGS_BY_RARITY: { [string]: { string } } = {
 	Legendary = { "Footlong Phantom", "Glizzy Gladiator", "Sizzler Supreme", "Danger Dog Diablo" },
 	Mythic = { "Golden Glizzy", "Cosmic Corndog", "Rizz Dog" },
 	Secret = { "404 Dog Not Found", "The Eternal Weenie", "Glizzus Maximus" },
+	Forbidden = { "The Forbidden Glizzy", "Glizzy Prime", "The Omega Wiener" },
 }
 
 -- Flat lookup by name, built once at load. Lets us find a dog's income/rarity
@@ -93,9 +112,10 @@ end
 -- and dex COMPLETION never include them — but they ARE in byName, so income,
 -- stealing, fusion, and display treat them as perfectly normal dogs.
 local EVENT_DOGS: { HotDog } = {
-	{ name = "Payday Dog", rarity = "Legendary", income = 60, eventOnly = true },
-	{ name = "Rainmaker Wiener", rarity = "Legendary", income = 60, eventOnly = true },
-	{ name = "Half-Price Hero", rarity = "Legendary", income = 60, eventOnly = true },
+	-- 250/s = Legendary parity under the #12 income ladder (they rode 60 ≈ old-L before).
+	{ name = "Payday Dog", rarity = "Legendary", income = 250, eventOnly = true },
+	{ name = "Rainmaker Wiener", rarity = "Legendary", income = 250, eventOnly = true },
+	{ name = "Half-Price Hero", rarity = "Legendary", income = 250, eventOnly = true },
 }
 for _, dog in EVENT_DOGS do
 	byName[dog.name] = dog

@@ -12,6 +12,7 @@ local Players = game:GetService("Players")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local ServerScriptService = game:GetService("ServerScriptService")
 
+local Format = require(ReplicatedStorage.Shared.Format)
 local GameConfig = require(ReplicatedStorage.Shared.GameConfig)
 local Theme = require(ReplicatedStorage.Shared.Theme)
 local DataManager = require(ServerScriptService.Server.DataManager)
@@ -247,7 +248,7 @@ local function onBuy(player: Player, id: string)
 		remFeedback:FireClient(
 			player,
 			false,
-			"Need " .. entry.cost .. " coins for the " .. entry.label .. "."
+			"Need " .. Format.comma(entry.cost) .. " coins for the " .. entry.label .. "."
 		)
 		return
 	end

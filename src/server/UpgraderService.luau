@@ -10,6 +10,7 @@
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local ServerScriptService = game:GetService("ServerScriptService")
 
+local Format = require(ReplicatedStorage.Shared.Format)
 local GameConfig = require(ReplicatedStorage.Shared.GameConfig)
 local DataManager = require(ServerScriptService.Server.DataManager)
 local RateLimit = require(ServerScriptService.Server.RateLimit)
@@ -54,7 +55,7 @@ function UpgraderService.tryUpgrade(player: Player): boolean
 		remFeedback:FireClient(
 			player,
 			false,
-			"Need " .. nextTier.cost .. " coins for the upgrader."
+			"Need " .. Format.comma(nextTier.cost) .. " coins for the upgrader."
 		)
 		return false
 	end

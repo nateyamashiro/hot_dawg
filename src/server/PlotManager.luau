@@ -15,6 +15,7 @@ local ServerScriptService = game:GetService("ServerScriptService")
 local TweenService = game:GetService("TweenService")
 
 local BuildGrants = require(ReplicatedStorage.Shared.BuildGrants)
+local Format = require(ReplicatedStorage.Shared.Format)
 local GameConfig = require(ReplicatedStorage.Shared.GameConfig)
 local GlizzyModel = require(ReplicatedStorage.Shared.GlizzyModel)
 local HotDogDex = require(ReplicatedStorage.Shared.HotDogDex)
@@ -195,9 +196,16 @@ local function makeUnitPlate(parent: BasePart, dog: HotDogDex.Unit, offsetY: num
 		else dog.rarity
 	-- Fractional incomes (variant multipliers) show one decimal, whole ones stay whole.
 	local income = math.floor(dog.income * 10 + 0.5) / 10
+	local incomeText = Format.comma(income, if income % 1 == 0 then 0 else 1)
 	line(dog.name, Color3.fromRGB(255, 255, 255), 0, 0.42, Theme.UI.TitleFont)
 	line(tierText, tierColor, 0.42, 0.3, Theme.UI.TitleFont)
-	line("💰 " .. income .. "/s", Color3.fromRGB(170, 255, 170), 0.72, 0.28, Theme.UI.NumberFont)
+	line(
+		"💰 " .. incomeText .. "/s",
+		Color3.fromRGB(170, 255, 170),
+		0.72,
+		0.28,
+		Theme.UI.NumberFont
+	)
 end
 
 -- Walk-on tycoon pads laid across the front apron of the pad (local offsets; +Z is the
@@ -1474,6 +1482,34 @@ function PlotManager.syncDisplay(player: Player)
 	end
 end
 
+-- Storage-fullness snapshot for the HUD (additions #9): how many display pedestals
+-- and vault shelves are filled vs the player's current capacity. Mirrors syncDisplay's
+-- fill math (vault always tops up to capacity first; one held copy excluded) without
+-- touching instances. Pins only choose WHICH dogs sit in the vault, never how many.
+function PlotManager.getStorageInfo(player: Player): {
+	shown: number,
+	displayCap: number,
+	vaultUsed: number,
+	vaultCap: number,
+}?
+	local data = DataManager.get(player)
+	if not data then
+		return nil
+	end
+	local vaultCap = vaultCapacity(data)
+	local displayCap = displayCapacity(data)
+	local total = 0
+	for _, count in data.hotDogs do
+		total += count
+	end
+	if heldKeys[player.UserId] then
+		total = math.max(0, total - 1)
+	end
+	local vaultUsed = math.min(total, vaultCap)
+	local shown = math.min(total - vaultUsed, displayCap)
+	return { shown = shown, displayCap = displayCap, vaultUsed = vaultUsed, vaultCap = vaultCap }
+end
+
 -- Show/hide the owner's walk-on pads, set each one's cost label, and colour it GREEN
 -- when the player can afford it / RED when it's too expensive. `info[id]` present =>
 -- reveal that pad; absent => hide it (e.g. a maxed upgrade). Main computes `info`.
@@ -1689,7 +1725,10 @@ function PlotManager.setStove(player: Player, level: number, coinsPerSec: number
 	if label and label:IsA("TextLabel") then
 		-- Cooker-slot bonuses make the rate fractional; show one decimal, cleanly.
 		local shown = math.floor(coinsPerSec * 10 + 0.5) / 10
-		label.Text = "🔥 Stove Lv " .. level .. "  (+" .. shown .. "/s)"
+		local shownText = Format.comma(shown, if shown % 1 == 0 then 0 else 1)
+		local tier = GameConfig.AutoCookerTiers[level]
+		local tierName = if tier then tier.name else "Stove"
+		label.Text = "🔥 " .. tierName .. " Lv " .. level .. "  (+" .. shownText .. "/s)"
 	end
 end
 

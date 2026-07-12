@@ -10,6 +10,7 @@ local Players = game:GetService("Players")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local ServerScriptService = game:GetService("ServerScriptService")
 
+local Format = require(ReplicatedStorage.Shared.Format)
 local GameConfig = require(ReplicatedStorage.Shared.GameConfig)
 local HotDogDex = require(ReplicatedStorage.Shared.HotDogDex)
 local DataManager = require(ServerScriptService.Server.DataManager)
@@ -127,7 +128,11 @@ local function onBuy(player: Player, name: string)
 		return
 	end
 	if data.coins < offer.price then
-		remFeedback:FireClient(player, false, "Not enough coins — need " .. offer.price .. ".")
+		remFeedback:FireClient(
+			player,
+			false,
+			"Not enough coins — need " .. Format.comma(offer.price) .. "."
+		)
 		return
 	end
 
@@ -157,7 +162,7 @@ local function onBuy(player: Player, name: string)
 	remFeedback:FireClient(
 		player,
 		true,
-		"🛒 Bought " .. name .. " for " .. offer.price .. " coins!"
+		"🛒 Bought " .. name .. " for " .. Format.comma(offer.price) .. " coins!"
 	)
 end
 

@@ -7,6 +7,7 @@
 local Players = game:GetService("Players")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 
+local Format = require(ReplicatedStorage.Shared.Format)
 local GameConfig = require(ReplicatedStorage.Shared.GameConfig)
 local MenuLayout = require(ReplicatedStorage.Shared.MenuLayout)
 
@@ -77,10 +78,10 @@ for i, need in GameConfig.EventRewardTiers do
 	row.TextScaled = true
 	row.Font = Enum.Font.Gotham
 	row.Text = string.format(
-		"Tier %d — %d pts → +%d coins",
+		"Tier %d — %d pts → +%s coins",
 		i,
 		need,
-		GameConfig.EventRewardCoins[i] or 0
+		Format.comma(GameConfig.EventRewardCoins[i] or 0)
 	)
 	row.Parent = content
 	MenuLayout.addChrome(row, 8)
@@ -131,19 +132,19 @@ local function render()
 			row.TextColor3 = MenuLayout.BodyText
 			row.BackgroundColor3 = MenuLayout.SuccessBg
 			row.Text = string.format(
-				"🎁 Tier %d READY — +%d coins",
+				"🎁 Tier %d READY — +%s coins",
 				i,
-				GameConfig.EventRewardCoins[i] or 0
+				Format.comma(GameConfig.EventRewardCoins[i] or 0)
 			)
 			claimable += GameConfig.EventRewardCoins[i] or 0
 		else
 			row.TextColor3 = MenuLayout.BodyText
 			row.BackgroundColor3 = MenuLayout.RowBg
 			row.Text = string.format(
-				"Tier %d — %d pts → +%d coins",
+				"Tier %d — %d pts → +%s coins",
 				i,
 				need,
-				GameConfig.EventRewardCoins[i] or 0
+				Format.comma(GameConfig.EventRewardCoins[i] or 0)
 			)
 		end
 		-- The final tier ALSO grants this event's exclusive dog — say so.
@@ -152,7 +153,7 @@ local function render()
 		end
 	end
 	claimBtn.Text = if claimable > 0
-		then string.format("Claim rewards (+%d coins)", claimable)
+		then string.format("Claim rewards (+%s coins)", Format.comma(claimable))
 		else "Nothing to claim yet"
 end
 

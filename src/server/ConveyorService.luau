@@ -17,6 +17,7 @@ local RunService = game:GetService("RunService")
 local ServerScriptService = game:GetService("ServerScriptService")
 local Workspace = game:GetService("Workspace")
 
+local Format = require(ReplicatedStorage.Shared.Format)
 local GameConfig = require(ReplicatedStorage.Shared.GameConfig)
 local GlizzyModel = require(ReplicatedStorage.Shared.GlizzyModel)
 local HotDogDex = require(ReplicatedStorage.Shared.HotDogDex)
@@ -57,7 +58,7 @@ end)
 -- Roll a belt offer from the shop's flatter weights (surfaces mid-tier dogs;
 -- Legendary+ riding past is a "lucky belt" moment).
 local RARITY_ORDER: { HotDogDex.Rarity } =
-	{ "Common", "Uncommon", "Rare", "Epic", "Legendary", "Mythic", "Secret" }
+	{ "Common", "Uncommon", "Rare", "Epic", "Legendary", "Mythic", "Secret", "Forbidden" }
 local function pickOffer(): (HotDogDex.HotDog?, number)
 	local weights = GameConfig.ShopRarityWeights :: { [string]: number }
 	local prices = GameConfig.ShopRarityPrices :: { [string]: number }
@@ -92,7 +93,11 @@ local function onBuy(buyer: Player, unit: BeltUnit)
 		return
 	end
 	if data.coins < unit.price then
-		remFeedback:FireClient(buyer, false, "Need " .. unit.price .. " coins for that glizzy!")
+		remFeedback:FireClient(
+			buyer,
+			false,
+			"Need " .. Format.comma(unit.price) .. " coins for that glizzy!"
+		)
 		return
 	end
 
@@ -153,7 +158,7 @@ local function spawnUnit()
 	tagLine(dog.name, Color3.fromRGB(255, 255, 255), 0, 0.42, Theme.UI.TitleFont)
 	tagLine(dog.rarity, HotDogDex.colorFor(dog.rarity), 0.42, 0.3, Theme.UI.TitleFont)
 	tagLine(
-		"💰" .. price .. " · +" .. dog.income .. "/s",
+		"💰" .. Format.comma(price) .. " · +" .. Format.comma(dog.income) .. "/s",
 		Color3.fromRGB(170, 255, 170),
 		0.72,
 		0.28,
@@ -171,7 +176,7 @@ local function spawnUnit()
 	}
 
 	local prompt = Instance.new("ProximityPrompt")
-	prompt.ActionText = "Buy 💰" .. price
+	prompt.ActionText = "Buy 💰" .. Format.comma(price)
 	prompt.ObjectText = dog.name
 	prompt.HoldDuration = 0.35
 	prompt.MaxActivationDistance = 9

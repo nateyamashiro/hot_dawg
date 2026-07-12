@@ -9,6 +9,7 @@ local Players = game:GetService("Players")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 
 local BuildGrants = require(ReplicatedStorage.Shared.BuildGrants)
+local Format = require(ReplicatedStorage.Shared.Format)
 local MenuLayout = require(ReplicatedStorage.Shared.MenuLayout)
 
 local player = Players.LocalPlayer
@@ -62,7 +63,8 @@ local function render(built: { [string]: boolean }, coins: number)
 			label.Text = string.format("✅ %s", entry.label)
 		elseif prereqOk then
 			label.TextColor3 = MenuLayout.BodyText
-			label.Text = string.format("%s %s — 💰%d", kindIcon, entry.label, entry.cost)
+			label.Text =
+				string.format("%s %s — 💰%s", kindIcon, entry.label, Format.comma(entry.cost))
 
 			local buy = Instance.new("TextButton")
 			buy.Size = UDim2.fromOffset(96, 36)

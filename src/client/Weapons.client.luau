@@ -7,6 +7,7 @@
 local Players = game:GetService("Players")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 
+local Format = require(ReplicatedStorage.Shared.Format)
 local MenuLayout = require(ReplicatedStorage.Shared.MenuLayout)
 
 local player = Players.LocalPlayer
@@ -98,7 +99,7 @@ weaponUpdate.OnClientEvent:Connect(
 						equipWeapon:FireServer(tier.id)
 					end)
 				else
-					action.Text = "💰 " .. tier.cost
+					action.Text = "💰 " .. Format.comma(tier.cost)
 					MenuLayout.styleButton(
 						action,
 						if balance >= tier.cost then "success" else "primary"

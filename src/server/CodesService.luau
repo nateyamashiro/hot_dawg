@@ -12,6 +12,7 @@
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local ServerScriptService = game:GetService("ServerScriptService")
 
+local Format = require(ReplicatedStorage.Shared.Format)
 local GameConfig = require(ReplicatedStorage.Shared.GameConfig)
 local HotDogDex = require(ReplicatedStorage.Shared.HotDogDex)
 local Variants = require(ReplicatedStorage.Shared.Variants)
@@ -55,7 +56,7 @@ local function onRedeem(player: Player, code: string)
 	local parts: { string } = {}
 	if reward.coins and reward.coins > 0 then
 		data.coins += reward.coins
-		table.insert(parts, "+" .. reward.coins .. " coins")
+		table.insert(parts, "+" .. Format.comma(reward.coins) .. " coins")
 	end
 	local grantedDog = false
 	for _, key in reward.dogs or {} do

@@ -7,6 +7,7 @@
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local ServerScriptService = game:GetService("ServerScriptService")
 
+local Format = require(ReplicatedStorage.Shared.Format)
 local GameConfig = require(ReplicatedStorage.Shared.GameConfig)
 local DataManager = require(ServerScriptService.Server.DataManager)
 local RateLimit = require(ServerScriptService.Server.RateLimit)
@@ -140,7 +141,7 @@ local function onClaimDaily(player: Player)
 	remFeedback:FireClient(
 		player,
 		true,
-		"📅 Day " .. data.streak .. " streak! +" .. reward .. " coins."
+		"📅 Day " .. data.streak .. " streak! +" .. Format.comma(reward) .. " coins."
 	)
 	pushDaily(player)
 end
@@ -164,7 +165,11 @@ local function onClaimMission(player: Player, id: string)
 			local reward = def and def.reward or 0
 			data.coins += reward
 			updateLeaderstats(player)
-			remFeedback:FireClient(player, true, "✅ Mission complete! +" .. reward .. " coins.")
+			remFeedback:FireClient(
+				player,
+				true,
+				"✅ Mission complete! +" .. Format.comma(reward) .. " coins."
+			)
 			pushDaily(player)
 			return
 		end

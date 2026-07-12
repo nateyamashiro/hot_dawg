@@ -7,6 +7,7 @@
 local Players = game:GetService("Players")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 
+local Format = require(ReplicatedStorage.Shared.Format)
 local MenuLayout = require(ReplicatedStorage.Shared.MenuLayout)
 
 local player = Players.LocalPlayer
@@ -128,7 +129,13 @@ local function renderMissions(missions: { Mission })
 		text.TextXAlignment = Enum.TextXAlignment.Left
 		text.TextScaled = true
 		text.Font = Enum.Font.Gotham
-		text.Text = string.format("%s  (%d/%d)  +💰%d", m.label, m.progress, m.target, m.reward)
+		text.Text = string.format(
+			"%s  (%d/%d)  +💰%s",
+			m.label,
+			m.progress,
+			m.target,
+			Format.comma(m.reward)
+		)
 		text.Parent = row
 
 		local claim = Instance.new("TextButton")
@@ -160,8 +167,11 @@ end
 dailyUpdate.OnClientEvent:Connect(function(state: DailyState)
 	streakLabel.Text = string.format("🔥 Streak: %d days", state.streak)
 	if state.canClaimStreak then
-		claimStreakBtn.Text =
-			string.format("Claim +💰%d (Day %d)", state.nextReward, state.streak + 1)
+		claimStreakBtn.Text = string.format(
+			"Claim +💰%s (Day %d)",
+			Format.comma(state.nextReward),
+			state.streak + 1
+		)
 		claimStreakBtn.BackgroundColor3 = MenuLayout.SuccessBg
 		claimStreakBtn.TextColor3 = Color3.fromRGB(255, 255, 255)
 		claimStreakBtn.Active = true

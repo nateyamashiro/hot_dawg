@@ -6,6 +6,7 @@
 local Players = game:GetService("Players")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 
+local Format = require(ReplicatedStorage.Shared.Format)
 local MenuLayout = require(ReplicatedStorage.Shared.MenuLayout)
 
 local player = Players.LocalPlayer
@@ -76,9 +77,9 @@ end
 local function formatValue(tab: string, value: number): string
 	if tab == "rarest" then
 		-- The server stores best-unit income ×100 (OrderedDataStore is integer-only).
-		return string.format("%.1f/s", value / 100)
+		return Format.comma(value / 100, 1) .. "/s"
 	end
-	return tostring(value)
+	return Format.comma(value)
 end
 
 local function render()

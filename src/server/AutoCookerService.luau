@@ -16,6 +16,7 @@ local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local ServerScriptService = game:GetService("ServerScriptService")
 
 local BuildGrants = require(ReplicatedStorage.Shared.BuildGrants)
+local Format = require(ReplicatedStorage.Shared.Format)
 local GameConfig = require(ReplicatedStorage.Shared.GameConfig)
 local DataManager = require(ServerScriptService.Server.DataManager)
 local RateLimit = require(ServerScriptService.Server.RateLimit)
@@ -59,7 +60,9 @@ function AutoCookerService.pushState(player: Player)
 	)
 end
 
--- Build (0→1) or upgrade (N→N+1) the stove: validate the next tier exists + affordable,
+-- Build (0→1) or upgrade (N→N+1) the stove: validate the next tier exists + is
+-- floor-unlocked (additions #10: `requires` names a BuildCatalog id — gate the
+-- UPGRADE only, never the payout, so existing levels are grandfathered) + affordable,
 -- charge, bump the level, push. Returns true on success. Called by the walk-on pad
 -- (via Main's pad handler) and the BuyAutoCooker remote. Caller re-syncs the plot.
 function AutoCookerService.tryUpgrade(player: Player): boolean
@@ -73,8 +76,22 @@ function AutoCookerService.tryUpgrade(player: Player): boolean
 		remFeedback:FireClient(player, false, "🔥 Stove is fully upgraded!")
 		return false
 	end
+	local requires = (nextTier :: any).requires :: string?
+	if requires and not data.built[requires] then
+		local floorName = if requires == "floor3" then "3rd Floor" else "2nd Floor"
+		remFeedback:FireClient(
+			player,
+			false,
+			"🔥 " .. nextTier.name .. " needs the " .. floorName .. " built first."
+		)
+		return false
+	end
 	if data.coins < nextTier.cost then
-		remFeedback:FireClient(player, false, "Need " .. nextTier.cost .. " coins for the stove.")
+		remFeedback:FireClient(
+			player,
+			false,
+			"Need " .. Format.comma(nextTier.cost) .. " coins for the " .. nextTier.name .. "."
+		)
 		return false
 	end
 	data.coins -= nextTier.cost
@@ -86,7 +103,7 @@ function AutoCookerService.tryUpgrade(player: Player): boolean
 	end
 	local msg = if nextLvl == 1
 		then "🔥 Stove built — passive coins flowing!"
-		else "🔥 Stove upgraded to Lv " .. nextLvl .. "!"
+		else "🔥 " .. nextTier.name .. " installed (Lv " .. nextLvl .. ")!"
 	remFeedback:FireClient(player, true, msg)
 	return true
 end

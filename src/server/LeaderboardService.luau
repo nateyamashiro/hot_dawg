@@ -11,6 +11,7 @@ local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local ServerScriptService = game:GetService("ServerScriptService")
 local Workspace = game:GetService("Workspace")
 
+local Format = require(ReplicatedStorage.Shared.Format)
 local GameConfig = require(ReplicatedStorage.Shared.GameConfig)
 local GlizzyModel = require(ReplicatedStorage.Shared.GlizzyModel)
 local HotDogDex = require(ReplicatedStorage.Shared.HotDogDex)
@@ -187,7 +188,10 @@ local function rebuildPodium()
 				)
 				statue.Parent = model
 			end
-			podiumPlate(block, tier.medal .. " " .. entry.name .. "\n💰 " .. entry.value)
+			podiumPlate(
+				block,
+				tier.medal .. " " .. entry.name .. "\n💰 " .. Format.comma(entry.value)
+			)
 		else
 			podiumPlate(block, tier.medal .. " Unclaimed!")
 		end

@@ -8,9 +8,11 @@ local Players = game:GetService("Players")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local TweenService = game:GetService("TweenService")
 
+local Format = require(ReplicatedStorage.Shared.Format)
 local GameConfig = require(ReplicatedStorage.Shared.GameConfig)
 local GlizzyModel = require(ReplicatedStorage.Shared.GlizzyModel)
 local HotDogDex = require(ReplicatedStorage.Shared.HotDogDex)
+local Sfx = require(ReplicatedStorage.Shared.Sfx)
 local Variants = require(ReplicatedStorage.Shared.Variants)
 
 local player = Players.LocalPlayer
@@ -21,6 +23,7 @@ local cookResult = remotes:WaitForChild("CookResult") :: RemoteEvent
 local cookTen = remotes:WaitForChild("CookTen") :: RemoteEvent
 local cookTenResult = remotes:WaitForChild("CookTenResult") :: RemoteEvent
 local cookStats = remotes:WaitForChild("CookStats") :: RemoteEvent
+local storageUpdate = remotes:WaitForChild("StorageUpdate") :: RemoteEvent
 local welcomeBack = remotes:WaitForChild("WelcomeBack") :: RemoteEvent
 local requestState = remotes:WaitForChild("RequestState") :: RemoteEvent
 
@@ -34,9 +37,9 @@ local gui = Instance.new("ScreenGui")
 gui.Name = "GlizzyUI"
 gui.ResetOnSpawn = false
 
--- Stats readout (coins + dogs owned).
+-- Stats readout (coins + storage fullness — additions #9/#13).
 local stats = Instance.new("TextLabel")
-stats.Size = UDim2.fromOffset(260, 48)
+stats.Size = UDim2.fromOffset(300, 48)
 stats.Position = UDim2.fromOffset(20, 20)
 stats.BackgroundColor3 = Color3.fromRGB(0, 0, 0)
 stats.BackgroundTransparency = 0.3
@@ -45,7 +48,8 @@ stats.TextScaled = true
 stats.Font = Enum.Font.GothamBold
 stats.Parent = gui
 
--- Cook button.
+-- Cook button. The single cook is FREE but cooldown-gated (additions #5): the label
+-- counts down and the button glows + toasts + plays CookReady when the wait ends.
 local button = Instance.new("TextButton")
 button.Size = UDim2.fromOffset(260, 50)
 button.Position = UDim2.fromOffset(20, 76)
@@ -53,8 +57,12 @@ button.BackgroundColor3 = Color3.fromRGB(220, 120, 40)
 button.TextColor3 = Color3.fromRGB(255, 255, 255)
 button.TextScaled = true
 button.Font = Enum.Font.GothamBold
-button.Text = string.format("🌭 Cook (%d)", GameConfig.CookCost)
+button.Text = "🌭 Cook"
 button.Parent = gui
+local buttonStroke = Instance.new("UIStroke")
+buttonStroke.Color = Color3.fromRGB(150, 255, 160)
+buttonStroke.Thickness = 0
+buttonStroke.Parent = button
 
 -- Cook-10 button.
 local buttonTen = Instance.new("TextButton")
@@ -65,9 +73,9 @@ buttonTen.TextColor3 = Color3.fromRGB(255, 255, 255)
 buttonTen.TextScaled = true
 buttonTen.Font = Enum.Font.GothamBold
 buttonTen.Text = string.format(
-	"🍳 Cook ×%d (%d)",
+	"🍳 Cook ×%d (%s)",
 	GameConfig.CookTenCount,
-	GameConfig.CookCost * GameConfig.CookTenCount
+	Format.comma(GameConfig.CookCost * GameConfig.CookTenCount)
 )
 buttonTen.Parent = gui
 
@@ -110,13 +118,32 @@ welcome.Text = ""
 welcome.Visible = false
 welcome.Parent = gui
 
+-- Storage fullness (additions #9): the server pushes shown/capacity for display +
+-- vault; until it arrives the plain dog count renders.
+type StorageInfo = { shown: number, displayCap: number, vaultUsed: number, vaultCap: number }
+local lastStorage: StorageInfo? = nil
+
 local function refreshStats()
-	stats.Text = string.format("💰 %d    🌭 %d", coins.Value, dogs.Value)
+	local storage = lastStorage
+	local dogsText = if storage
+		then string.format(
+			"🌭 %d/%d  🔒 %d/%d",
+			storage.shown,
+			storage.displayCap,
+			storage.vaultUsed,
+			storage.vaultCap
+		)
+		else "🌭 " .. Format.comma(dogs.Value)
+	stats.Text = "💰 " .. Format.comma(coins.Value) .. "   " .. dogsText
 end
 
 coins.Changed:Connect(refreshStats)
 dogs.Changed:Connect(refreshStats)
 refreshStats()
+storageUpdate.OnClientEvent:Connect(function(storage: StorageInfo)
+	lastStorage = storage
+	refreshStats()
+end)
 
 button.Activated:Connect(function()
 	cookHotDog:FireServer()
@@ -198,7 +225,7 @@ cookResult.OnClientEvent:Connect(
 
 -- Summarize a 10-roll as "3× Common, 2× Rare…", coloured by the best pull.
 local RARITY_ORDER: { HotDogDex.Rarity } =
-	{ "Secret", "Mythic", "Legendary", "Epic", "Rare", "Uncommon", "Common" }
+	{ "Forbidden", "Secret", "Mythic", "Legendary", "Epic", "Rare", "Uncommon", "Common" }
 cookTenResult.OnClientEvent:Connect(
 	function(results: { { name: string, rarity: HotDogDex.Rarity, variant: Variants.Variant? } })
 		local counts: { [string]: number } = {}
@@ -241,9 +268,60 @@ local function refreshOdds(grillLvl: number, cooksSinceRare: number, pityMax: nu
 	oddsLabel.Text = table.concat(lines, "\n")
 end
 refreshOdds(1, 0, GameConfig.PityCooks)
-cookStats.OnClientEvent:Connect(function(grillLvl: number, cooksSinceRare: number, pityMax: number)
-	refreshOdds(grillLvl, cooksSinceRare, pityMax)
+
+-- === Free-cook cooldown countdown + "ready!" notification (additions #5) ===
+-- The server sends seconds-remaining on CookStats; the client keeps a local deadline
+-- and renders the button state. On the not-ready → ready transition: glow pulse +
+-- toast + CookReady sound (silence-safe until Nate fills the id).
+local COOK_READY_COLOR = Color3.fromRGB(70, 175, 80)
+local COOK_WAIT_COLOR = Color3.fromRGB(125, 125, 125)
+local cookDeadline = 0 -- os.clock() when the free cook unlocks
+local cookWasReady = true -- true so a join that's already ready doesn't notify
+
+local function updateCookButton()
+	local remaining = math.ceil(cookDeadline - os.clock())
+	if remaining > 0 then
+		button.Text = "🌭 Cook (" .. remaining .. "s)"
+		button.BackgroundColor3 = COOK_WAIT_COLOR
+		buttonStroke.Thickness = 0
+		cookWasReady = false
+	else
+		button.Text = "🌭 Cook — FREE!"
+		button.BackgroundColor3 = COOK_READY_COLOR
+		if not cookWasReady then
+			cookWasReady = true
+			buttonStroke.Thickness = 4
+			buttonStroke.Transparency = 0
+			TweenService:Create(
+				button,
+				TweenInfo.new(0.35, Enum.EasingStyle.Back, Enum.EasingDirection.Out),
+				{ BackgroundColor3 = COOK_READY_COLOR }
+			):Play()
+			showReveal("🌭 Glizzy ready to cook!", COOK_READY_COLOR)
+			Sfx.play("CookReady")
+		end
+	end
+end
+
+task.spawn(function()
+	while true do
+		updateCookButton()
+		task.wait(0.5)
+	end
 end)
+
+cookStats.OnClientEvent:Connect(
+	function(grillLvl: number, cooksSinceRare: number, pityMax: number, cookRemaining: number?)
+		refreshOdds(grillLvl, cooksSinceRare, pityMax)
+		if type(cookRemaining) == "number" then
+			cookDeadline = os.clock() + cookRemaining
+			if cookRemaining > 0 then
+				cookWasReady = false
+			end
+			updateCookButton()
+		end
+	end
+)
 
 -- Offline earnings popup.
 local welcomeToken = 0
@@ -252,7 +330,8 @@ welcomeBack.OnClientEvent:Connect(function(earned: number, elapsed: number)
 	local timeStr = if mins >= 60
 		then string.format("%dh %dm", math.floor(mins / 60), mins % 60)
 		else string.format("%dm", mins)
-	welcome.Text = string.format("👋 Welcome back! +💰%d while away (%s)", earned, timeStr)
+	welcome.Text =
+		string.format("👋 Welcome back! +💰%s while away (%s)", Format.comma(earned), timeStr)
 	welcome.Visible = true
 	welcomeToken += 1
 	local myToken = welcomeToken

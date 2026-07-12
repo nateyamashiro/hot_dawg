@@ -7,6 +7,7 @@
 local Players = game:GetService("Players")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 
+local Format = require(ReplicatedStorage.Shared.Format)
 local GameConfig = require(ReplicatedStorage.Shared.GameConfig)
 local MenuLayout = require(ReplicatedStorage.Shared.MenuLayout)
 
@@ -74,8 +75,14 @@ end
 -- Dev products: consumables the server grants through ProcessReceipt.
 makeHeader("Boosts", 10)
 local productOffers = {
-	{ "coinsSmall", string.format("💰 %d Coins", GameConfig.ProductGrants.coinsSmall) },
-	{ "coinsLarge", string.format("💰 %d Coins", GameConfig.ProductGrants.coinsLarge) },
+	{
+		"coinsSmall",
+		string.format("💰 %s Coins", Format.comma(GameConfig.ProductGrants.coinsSmall)),
+	},
+	{
+		"coinsLarge",
+		string.format("💰 %s Coins", Format.comma(GameConfig.ProductGrants.coinsLarge)),
+	},
 	{
 		"stealCharges",
 		string.format("⚡ +%d Steal Charges", GameConfig.ProductGrants.stealCharges),

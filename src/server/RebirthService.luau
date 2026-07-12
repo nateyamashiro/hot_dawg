@@ -7,6 +7,7 @@
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local ServerScriptService = game:GetService("ServerScriptService")
 
+local Format = require(ReplicatedStorage.Shared.Format)
 local GameConfig = require(ReplicatedStorage.Shared.GameConfig)
 local DataManager = require(ServerScriptService.Server.DataManager)
 local RateLimit = require(ServerScriptService.Server.RateLimit)
@@ -33,7 +34,7 @@ local function onRebirth(player: Player)
 
 	local cost = RebirthService.costFor(data.rebirths)
 	if data.coins < cost then
-		remFeedback:FireClient(player, false, "Need " .. cost .. " coins to rebirth.")
+		remFeedback:FireClient(player, false, "Need " .. Format.comma(cost) .. " coins to rebirth.")
 		return
 	end
 

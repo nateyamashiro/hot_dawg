@@ -33,6 +33,10 @@ local SMOKE = "rbxasset://textures/particles/smoke_main.dds"
 local SECRET_SAUSAGE = Color3.fromRGB(25, 22, 30)
 local SECRET_BUN = Color3.fromRGB(70, 56, 66)
 local SECRET_DRIZZLE = Color3.fromRGB(120, 80, 200)
+-- Forbidden-tier overrides (additions #8): void meat, electric-violet everything.
+local FORBIDDEN_SAUSAGE = Color3.fromRGB(40, 18, 60)
+local FORBIDDEN_BUN = Color3.fromRGB(84, 50, 110)
+local FORBIDDEN_DRIZZLE = Color3.fromRGB(200, 80, 255)
 local MYTHIC_LIGHT = Color3.fromRGB(255, 90, 60)
 local GOLD_SAUSAGE = Color3.fromRGB(240, 200, 60)
 local GOLD_BUN = Color3.fromRGB(255, 220, 90)
@@ -92,6 +96,10 @@ function GlizzyModel.build(dogName: string, opts: BuildOpts?): Model
 		sausageColor = SECRET_SAUSAGE
 		bunColor = SECRET_BUN
 		drizzleColor = SECRET_DRIZZLE
+	elseif rarity == "Forbidden" then
+		sausageColor = FORBIDDEN_SAUSAGE
+		bunColor = FORBIDDEN_BUN
+		drizzleColor = FORBIDDEN_DRIZZLE
 	end
 	if variant == "Gold" then
 		sausageColor = GOLD_SAUSAGE
@@ -186,6 +194,10 @@ function GlizzyModel.build(dogName: string, opts: BuildOpts?): Model
 				light.Brightness = 1.5
 				light.Range = 10
 				light.Color = MYTHIC_LIGHT
+			elseif rarity == "Forbidden" then
+				light.Brightness = 1.8
+				light.Range = 10
+				light.Color = FORBIDDEN_DRIZZLE
 			else -- Secret
 				light.Brightness = 1.2
 				light.Range = 10
@@ -199,6 +211,8 @@ function GlizzyModel.build(dogName: string, opts: BuildOpts?): Model
 			addEmitter(sausage, EMBERS, 6, MYTHIC_LIGHT, s)
 		elseif rarity == "Secret" then
 			addEmitter(sausage, SMOKE, 4, SECRET_DRIZZLE, s)
+		elseif rarity == "Forbidden" then
+			addEmitter(sausage, SPARKLES, 6, FORBIDDEN_DRIZZLE, s)
 		elseif variant == "Gold" then
 			-- Gold's sparkle rides the same one-emitter budget: only when the rarity
 			-- ladder didn't already claim it.
