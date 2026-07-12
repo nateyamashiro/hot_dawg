@@ -91,19 +91,8 @@ reveal.Font = Enum.Font.GothamBlack
 reveal.Text = ""
 reveal.Parent = gui
 
--- Disclosed odds + pity progress (static info panel; coin-only gacha so we show all).
-local oddsLabel = Instance.new("TextLabel")
-oddsLabel.Size = UDim2.fromOffset(260, 168)
-oddsLabel.Position = UDim2.fromOffset(20, 220)
-oddsLabel.BackgroundColor3 = Color3.fromRGB(0, 0, 0)
-oddsLabel.BackgroundTransparency = 0.45
-oddsLabel.TextColor3 = Color3.fromRGB(235, 235, 235)
-oddsLabel.TextXAlignment = Enum.TextXAlignment.Left
-oddsLabel.TextYAlignment = Enum.TextYAlignment.Top
-oddsLabel.TextSize = 14
-oddsLabel.Font = Enum.Font.Gotham
-oddsLabel.Text = "🎲 Drop rates loading…"
-oddsLabel.Parent = gui
+-- (The old odds sidebar is GONE — additions #16: drop rates + pity now live on the
+-- physical sign beside your grill, fed server-side via PlotManager.setOddsSign.)
 
 -- Welcome-back (offline earnings) popup, top-center.
 local welcome = Instance.new("TextLabel")
@@ -169,7 +158,7 @@ end
 -- is built locally from the same recipe as the real pedestal unit.
 local viewport = Instance.new("ViewportFrame")
 viewport.Size = UDim2.fromOffset(260, 140)
-viewport.Position = UDim2.fromOffset(20, 392)
+viewport.Position = UDim2.fromOffset(20, 224)
 viewport.BackgroundColor3 = Color3.fromRGB(0, 0, 0)
 viewport.BackgroundTransparency = 0.35
 viewport.Visible = false
@@ -209,17 +198,129 @@ local function showRevealModel(name: string, rarity: HotDogDex.Rarity, variant: 
 	end)
 end
 
+-- === Spin-wheel reveal (additions #16) ===
+-- The single-cook reveal is a case-opening spinner strip: rarity cells (sampled from
+-- the REAL disclosed odds) scroll under a pointer and land EXACTLY on the server's
+-- pre-decided rarity — CookResult arrives before any animation, so the wheel is pure
+-- presentation; the roll stays server-authoritative and coin-only (locked). A juicy
+-- tier is seeded right after the landing cell for the "almost!" near-miss feel.
+local WHEEL_CELLS = 36
+local WHEEL_TARGET = 30 -- landing cell index (leaves run-out past the pointer)
+local CELL_W = 60
+local CELL_GAP = 6
+local WHEEL_W = 460
+local NEAR_MISS: { HotDogDex.Rarity } = { "Legendary", "Mythic", "Secret", "Forbidden" }
+
+local lastGrillLvl = 1 -- tracked from CookStats; feeds the wheel's cell weights
+
+local wheelFrame = Instance.new("Frame")
+wheelFrame.Size = UDim2.fromOffset(WHEEL_W, 74)
+wheelFrame.Position = UDim2.new(0.5, -WHEEL_W / 2, 0, 150)
+wheelFrame.BackgroundColor3 = Color3.fromRGB(0, 0, 0)
+wheelFrame.BackgroundTransparency = 0.25
+wheelFrame.ClipsDescendants = true
+wheelFrame.Visible = false
+wheelFrame.Parent = gui
+local pointer = Instance.new("TextLabel")
+pointer.Size = UDim2.fromOffset(30, 20)
+pointer.Position = UDim2.new(0.5, -15, 0, 0)
+pointer.BackgroundTransparency = 1
+pointer.Text = "▼"
+pointer.TextScaled = true
+pointer.Font = Enum.Font.GothamBlack
+pointer.TextColor3 = Color3.fromRGB(255, 255, 255)
+pointer.ZIndex = 3
+pointer.Parent = wheelFrame
+
+local wheelToken = 0
+local function spinWheel(resultRarity: HotDogDex.Rarity, onLanded: () -> ())
+	wheelToken += 1
+	local myToken = wheelToken
+	for _, child in wheelFrame:GetChildren() do
+		if child.Name == "Tape" then
+			child:Destroy()
+		end
+	end
+	local pitch = CELL_W + CELL_GAP
+	local tape = Instance.new("Frame")
+	tape.Name = "Tape"
+	tape.BackgroundTransparency = 1
+	tape.Size = UDim2.fromOffset(WHEEL_CELLS * pitch, 58)
+	tape.Position = UDim2.fromOffset(0, 12)
+	tape.Parent = wheelFrame
+
+	local odds = HotDogDex.odds(lastGrillLvl)
+	local function sampleRarity(): HotDogDex.Rarity
+		local pick = math.random()
+		local acc = 0
+		for _, o in odds do
+			acc += o.chance
+			if pick <= acc then
+				return o.rarity
+			end
+		end
+		return odds[1].rarity
+	end
+	for i = 1, WHEEL_CELLS do
+		local rarity: HotDogDex.Rarity
+		if i == WHEEL_TARGET then
+			rarity = resultRarity
+		elseif i == WHEEL_TARGET + 1 then
+			rarity = NEAR_MISS[math.random(#NEAR_MISS)]
+		else
+			rarity = sampleRarity()
+		end
+		local cell = Instance.new("TextLabel")
+		cell.Size = UDim2.fromOffset(CELL_W, 58)
+		cell.Position = UDim2.fromOffset((i - 1) * pitch, 0)
+		cell.BackgroundColor3 = HotDogDex.colorFor(rarity)
+		cell.BackgroundTransparency = 0.15
+		cell.TextColor3 = Color3.fromRGB(255, 255, 255)
+		cell.TextStrokeTransparency = 0.2
+		cell.TextScaled = true
+		cell.Font = Enum.Font.GothamBold
+		cell.Text = "🌭"
+		cell.Parent = tape
+	end
+
+	-- Land the target cell's centre under the pointer, with a little jitter so it
+	-- never looks dead-centre scripted.
+	local targetX = -((WHEEL_TARGET - 1) * pitch + CELL_W / 2 - WHEEL_W / 2)
+	local jitter = math.random(-14, 14)
+	wheelFrame.Visible = true
+	local tween = TweenService:Create(
+		tape,
+		TweenInfo.new(2.4, Enum.EasingStyle.Quint, Enum.EasingDirection.Out),
+		{ Position = UDim2.fromOffset(targetX + jitter, 12) }
+	)
+	tween:Play()
+	tween.Completed:Once(function()
+		if myToken ~= wheelToken then
+			return
+		end
+		onLanded()
+		task.delay(1, function()
+			if myToken == wheelToken then
+				wheelFrame.Visible = false
+			end
+		end)
+	end)
+end
+
 cookResult.OnClientEvent:Connect(
 	function(name: string, rarity: HotDogDex.Rarity, variant: Variants.Variant?)
 		local v = variant or "base"
-		local def = Variants.def(v)
-		if def and v ~= "base" then
-			-- Mutation: bigger, variant-coloured reveal to sell the rare pull.
-			showReveal(string.format("✨ %s %s! [%s]", def.label, name, rarity), def.color)
-		else
-			showReveal(string.format("%s  [%s]", name, rarity), HotDogDex.colorFor(rarity))
-		end
-		showRevealModel(name, rarity, v)
+		-- The wheel spins first; the name + spinning-model reveal fires on landing.
+		spinWheel(rarity, function()
+			local def = Variants.def(v)
+			if def and v ~= "base" then
+				-- Mutation: bigger, variant-coloured reveal to sell the rare pull.
+				showReveal(string.format("✨ %s %s! [%s]", def.label, name, rarity), def.color)
+			else
+				showReveal(string.format("%s  [%s]", name, rarity), HotDogDex.colorFor(rarity))
+			end
+			showRevealModel(name, rarity, v)
+		end)
 	end
 )
 
@@ -257,17 +358,6 @@ cookTenResult.OnClientEvent:Connect(
 		showReveal(summary, HotDogDex.colorFor(best or "Common"))
 	end
 )
-
--- Rebuild the odds + pity readout for the current grill level.
-local function refreshOdds(grillLvl: number, cooksSinceRare: number, pityMax: number)
-	local lines = { string.format("🎲 Drop rates — Grill Lv %d", grillLvl) }
-	for _, o in HotDogDex.odds(grillLvl) do
-		table.insert(lines, string.format("%s   %.2f%%", o.rarity, o.chance * 100))
-	end
-	table.insert(lines, string.format("⏳ Pity: %d/%d cooks → Rare+", cooksSinceRare, pityMax))
-	oddsLabel.Text = table.concat(lines, "\n")
-end
-refreshOdds(1, 0, GameConfig.PityCooks)
 
 -- === Free-cook cooldown countdown + "ready!" notification (additions #5) ===
 -- The server sends seconds-remaining on CookStats; the client keeps a local deadline
@@ -311,8 +401,10 @@ task.spawn(function()
 end)
 
 cookStats.OnClientEvent:Connect(
-	function(grillLvl: number, cooksSinceRare: number, pityMax: number, cookRemaining: number?)
-		refreshOdds(grillLvl, cooksSinceRare, pityMax)
+	function(grillLvl: number, _cooksSinceRare: number, _pityMax: number, cookRemaining: number?)
+		-- Odds + pity render on the physical sign now (additions #16); the client
+		-- keeps only the grill level (wheel cell weights) and the cook deadline.
+		lastGrillLvl = grillLvl
 		if type(cookRemaining) == "number" then
 			cookDeadline = os.clock() + cookRemaining
 			if cookRemaining > 0 then

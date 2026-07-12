@@ -1467,13 +1467,31 @@ function PlotManager.syncDisplay(player: Player)
 			spawnUnit(plot, anchor, unit, false)
 		end
 	end
-	-- The next `displayCap` overflow units -> stealable pedestals; the rest are
-	-- "in storage" (not shown).
+	-- Rarity auto-sort (additions #6): the best overflow dogs go HIGH. Anchors are
+	-- ordered floor DESC (3 → 2 → ground; the PlotFloor attribute set at build time),
+	-- stable by build order within a floor — so floor 3's pedestals hold the top
+	-- units, floor 2 the next, and the ground floor the rest. Height = defense value:
+	-- thieves pay climb time for the good stuff. (Vault pins above still win first.)
+	local anchorIndex: { [BasePart]: number } = {}
+	for i, anchor in plot.pedestalAnchors do
+		anchorIndex[anchor] = i
+	end
+	local orderedAnchors = table.clone(plot.pedestalAnchors)
+	table.sort(orderedAnchors, function(a, b)
+		local fa = (a:GetAttribute("PlotFloor") :: number?) or 1
+		local fb = (b:GetAttribute("PlotFloor") :: number?) or 1
+		if fa ~= fb then
+			return fa > fb
+		end
+		return (anchorIndex[a] or 0) < (anchorIndex[b] or 0)
+	end)
+	-- The next `displayCap` overflow units -> stealable pedestals (best-first onto
+	-- the highest floors); the rest are "in storage" (not shown).
 	for i, unit in overflow do
 		if i > displayCap then
 			break
 		end
-		local anchor = plot.pedestalAnchors[i]
+		local anchor = orderedAnchors[i]
 		if anchor then
 			spawnUnit(plot, anchor, unit, true)
 		else
