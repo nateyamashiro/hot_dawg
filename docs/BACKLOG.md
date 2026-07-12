@@ -59,13 +59,30 @@ New files: `src/client/PlotPresentation.client.luau`, `src/client/Menu.client.lu
 
 ## 🔜 Top of the list now
 
+- **Studio smoke pass of the ADDITIONS** (shipped 2026-07-12, never seen live): new 76×58
+  layout/roof/chef/stations render sane · spinner reveal · 120s cook notify · odds board ·
+  storage HUD · stove floor-gating · full-street belt + east podium · Glizzy Run payout ·
+  commas. 2-account items: Security Field cycle/owner-pass/eject · Vault Breaker drill +
+  alarm + cancel · floor-sorted steal reach.
 - **M5 remainder** — cosmetics (`CosmeticService`/`Cosmetics.client`; catalog in
   `GameConfig.Cosmetics`) · doubleCoins/autoCollect pass EFFECTS (detection already runs) ·
   `offlineRefill` dev product (bespoke offline-cap refill; keep its dashboard id unset until then).
 - **M6 trading** (`TradeService`; baseline safeguards locked: confirm + cooldown + log).
 - **Nate:** create pass/product ids on the Creator Dashboard (unblocks end-to-end M5 testing) ·
   Tool.Grip live tuning round in Studio · the published-place 2-account loop test ·
-  ⚠️ delete the `NATE` code before public launch.
+  ⚠️ delete the `NATE` code before public launch · clipfarm gates (`docs/CONTENT_PLAN.md` §5:
+  OAuth, AUTO_UPLOAD, footage capture).
+
+## ✅ Shipped 2026-07-11/12 (THE ADDITIONS SESSION; static-clean, no live validation)
+
+All 17 `additions.txt` items — full inventory in `GAME_DESIGN.md §5` + the HANDOFF header.
+Headlines: 76×58 plots + 12-tall shell + roofs + 1.8× display dogs · real grill/stove + chef ·
+odds board + spinner-strip reveal (HUD sidebar gone) · **Forbidden** tier + steepened income
+ladder (payback falls with rarity) · 7 named floor-gated stove tiers · 120s cook + ready notify ·
+storage HUD + `Format.comma` everywhere · rarity auto-sort (best dogs HIGH) · ⚠️ **Security
+Field** + **Vault Breaker** (locked-rule overrides, GDD §7) · full-street conveyor + east podium ·
+**Glizzy Run** obby (100s of live income) · `docs/CONTENT_PLAN.md`. Data: `_v5` +`vaultBreakers`
++`obbyReadyAt`; remotes +`StorageUpdate` +`VaultBreach`.
 
 ## ✅ Shipped 2026-07-11 (dev code + stretch session; static-clean)
 

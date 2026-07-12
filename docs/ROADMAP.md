@@ -51,9 +51,22 @@ Each should be independently testable in Studio. `✅ done · 🔜 next · ⏳ l
 > **onboarding first-60s** (server-derived stage; ring arrow + Highlight + tip banner) ·
 > **M5 PurchaseService REAL** (Extra-slots + VIP passes, refund-safe `data.passes` derive-at-read
 > model, ProcessReceipt product dispatch, Studio test overrides, panel real; ids still 0 —
-> Nate's dashboard). **NEXT: M5 remainder (cosmetics + doubleCoins/autoCollect effects +
-> offlineRefill) → M6 trading + the published-place 2-account loop test.**
-> See `docs/NEXT_SESSION_PROMPT.md`.
+> Nate's dashboard).
+>
+> **2026-07-11/12 shipped — THE ADDITIONS SESSION (all 17 `additions.txt` items):** plots grown to
+> **76×58** (full relayout: 12-tall shell, floor2 y13/floor3 y26, 1.8× display dogs, 1240×60
+> street) · real grill/stove models + a cosmetic spatula-flipping **chef** · **roofs** above the
+> topmost floor · physical **odds board** per grill (HUD sidebar removed) + **spinner-strip cook
+> reveal** landing on the server's roll · new top rarity **Forbidden** (15,000/s @ 0.01) ·
+> income ladder steepened (payback falls with rarity) · **7 named floor-gated stove tiers**
+> (→ Glizzy Factory 350/s) · cook cooldown **120s** + ready notify · storage-fraction HUD ·
+> comma formatting everywhere (`Format.comma`) · rarity auto-sort (best dogs on the top floor) ·
+> ⚠️ two locked-rule OVERRIDES (GDD §7): **Security Field** timed full-block (30s open / 300s,
+> telegraphed) + **Vault Breaker** coin consumable (10s loud drill extracts ONE vault dog) ·
+> full-street conveyor (≤18) + podium to the east plaza · **Glizzy Run obby** paying 100s of
+> live income · `docs/CONTENT_PLAN.md` (clipfarm hookup plan). **NEXT: Studio smoke pass of the
+> additions → M5 remainder (cosmetics + doubleCoins/autoCollect effects + offlineRefill) → M6
+> trading + the published-place 2-account loop test.** See `docs/NEXT_SESSION_PROMPT.md`.
 
 ---
 

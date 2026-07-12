@@ -1,6 +1,38 @@
 # HANDOFF — Steal a Glizzy 🌭
 
-**Last updated:** 2026-07-11 (**DEV CODE + STRETCH SESSION SHIPPED** — Nate picked the full menu,
+**Last updated:** 2026-07-12 (**THE ADDITIONS SESSION SHIPPED** — all 17 items from Nate's
+`additions.txt`, interviewed → planned (`~/.claude/plans/bright-jumping-comet.md`, approved) →
+implemented in 5 batch commits + this docs commit, every batch static-clean:
+**A geometry** — plots 60×46→**76×58** (spacing 120 / separation 140 / street 1240×60), stall
+shell 60×27×12 with floor2 y13 / floor3 y26, ALL BUILDERS re-laid (wall+gate config-derived),
+display dogs **1.8×** (pitch 3.0), real kettle-grill + range-with-burners stations, cosmetic
+spatula-flipping **chef** at the stove, striped **roof** above the topmost floor (y13/26/39,
+recomputed on build), physical **odds board** beside each grill fed by `pushCookStats` ·
+**B economy** — shared `Format.comma` swept ~30 render sites; new top rarity **Forbidden**
+(0.01 w, 15,000/s, violet, 3 dogs); income ladder steepened so payback FALLS with rarity
+(C1/U4/R16/E60/L250/M1,000/S4,500; event dogs 250); **7 named stove tiers** (Camp Stove→Glizzy
+Factory, Lv4-5 need floor2, Lv6-7 floor3 — upgrade-gated only); cook cooldown **300→120s** with
+a button countdown + ready glow/toast/`CookReady` sfx (CookStats carries cookRemaining);
+storage-fraction HUD via new `StorageUpdate` ·
+**C display** — rarity auto-sort fills anchors floor-DESC (best dogs HIGH; 📌 pins still own the
+vault); HUD odds sidebar REMOVED; single-cook reveal is a case-opening **spinner strip** landing
+on the server's pre-decided rarity (near-miss seeded; cook-10 summary untouched) ·
+**D overrides (GDD §7 rows)** — **Security Field** (BuildCatalog, 25k, prereq gate): force-field
+panels seal the plot to y14, DOWN 30s/300s phase-staggered + telegraphed (countdown/color/sfx),
+owner passes via client-side collision exemption, anti-cage valve ejects trapped raiders;
+**Vault Breaker** (coin consumable 50k/cap 3 on the StealHud bar): 10s drill on ONE vault dog
+with victim alarm+arrow countdown, cancels on stun/death/leave/step-away (no refund), success
+detaches into the normal carry pipeline, 600s per-pair cooldown ·
+**E world** — conveyor spans ±560 (speed 14, ≤18, 4s), podium → east plaza x=660; **Glizzy Run
+obby** at the west end (ObbyService): pays 100s of the runner's LIVE income, 300s cooldown
+(`obbyReadyAt`), ordered checkpoints + 25s min-run anti-teleport ·
+**F docs** — GDD §5/§6/§7 (incl. both override rows), `docs/CONTENT_PLAN.md` (clipfarm hookup,
+#17), this file, ROADMAP/BACKLOG, CLAUDE.md, NEXT_SESSION_PROMPT rewritten.
+Data: `_v5` back-fill adds `vaultBreakers` + `obbyReadyAt` (no `_vN` bump). New remotes
+`StorageUpdate`/`VaultBreach`; extended `CookStats`/`StatsUpdate`/`BuyDefense`. Previous
+session summary follows.)
+
+**Previously (2026-07-11):** (**DEV CODE + STRETCH SESSION SHIPPED** — Nate picked the full menu,
 one commit per feature, all static-clean: **`NATE` dev code** (1B coins; open + once-ever by
 Nate's call — ⚠️ DELETE before public launch, it's in the launch checklist) · **codes non-coin
 rewards** (`GameConfig.Codes` entries may be `{ coins?, dogs?, prestige?, mutationLuck? }` tables;
@@ -138,21 +170,20 @@ Code-side readiness is DONE (data safety, telemetry, hardening, error logging). 
 
 ## 👉 What the NEXT session should do
 
-**Everything through M4 is code-complete, the hardening pass is DONE, deployment audit SHIPPED
-2026-07-09, and the 2026-07-11 stretch session closed every "loose end" (codes non-coin rewards,
-traps, `MutateOnSteal`, onboarding first-60s, Tool.Grip initial pose) plus the M5 pass/product
-core.**
+**Everything through M4 is code-complete, the M5 pass/product core is live, and the ADDITIONS
+SESSION (all 17 `additions.txt` items) SHIPPED 2026-07-12** — see the header block above and
+GDD §5 for the full inventory. `additions.txt` is fully consumed (it can be deleted or archived
+whenever Nate likes).
 
-**THE NEXT SESSION IS THE ADDITIONS SESSION:** Nate's 17-item wishlist lives in
-**`additions.txt`** (project root) — quick polish (commas, roof, storage counter) through majors
-(base-entry blocker, vault-unlock steal item, new top rarity, multi-floor stove tiers, map-wide
-conveyor, obby, spin-wheel grill, clipfarm hookup). Flow: read `additions.txt` → interview Nate
-on the open calls (seeded question list in `docs/NEXT_SESSION_PROMPT.md` Step 1) → plan mode →
-implement. ⚠️ #4 and #7 consciously override locked decisions (theft-access guarantee /
-vault-safety) — each confirmed override gets a GDD §7 row. **Commit cadence changed (Nate
-2026-07-11): batch commits at checkpoints, NOT one per feature; still never push.**
+⚠️ **The additions have NEVER been seen in Studio.** Before (or alongside) new work, run the
+single-player smoke pass: plots/street/roof render sane at the new 76×58 footprint, chef at the
+stove, spinner-strip reveal lands on the toast'd rarity, 120s cook countdown + ready glow, odds
+board updates on grill upgrade, storage HUD fractions, stove tier gating message, conveyor spans
+the street with the podium at the east plaza, Glizzy Run pays ~100× income, commas everywhere.
+The 2-account published-place test additionally covers: Security Field cycle + owner passage +
+inside-eject, Vault Breaker drill + victim alarm + cancel-on-net, floor-sorted steal reach.
 
-After the additions, the build order resumes:
+The build order then resumes:
 1. **M5 remainder:** cosmetics (`CosmeticService`/`Cosmetics.client` stubs; catalog + prestige
    prices already in `GameConfig.Cosmetics`) · doubleCoins/autoCollect pass EFFECTS (ownership
    detection already runs; fold `DoubleCoinsMult` into `Main.incomeMultiplier`-adjacent math,

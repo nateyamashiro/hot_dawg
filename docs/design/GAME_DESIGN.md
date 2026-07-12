@@ -421,12 +421,69 @@ stretch menu; one commit per feature):
   Passes panel: config-driven labels, owned greys out, dev-product buttons.
   doubleCoins/autoCollect: detected, effects TODO(M5). Purchase telemetry via `Telemetry.event`.
 
+**THE ADDITIONS SESSION — SHIPPED 2026-07-11/12** (Nate's 17-item `additions.txt` wishlist,
+interviewed → planned → implemented in 5 code batches; two entries below consciously override
+locked rules — see the §7 rows):
+- **#3 Bigger everything:** plots 60×46 → **76×58** (row spacing 120, street separation 140,
+  street 1240×60); the stall shell grew to 60w × 27d × **12 tall** (floor2 slab y13, floor3 y26);
+  display glizzies render at **1.8×** (pedestal pitch 3.0). All BUILDERS re-laid; wall/gate now
+  derive from the config footprint.
+- **#2/#1 Stations look real + a chef works them:** the cook station is a kettle grill (legs,
+  grate rods, charcoal glow, propped lid, shelf); the stove is a range (burners, oven door,
+  handle) whose form steps up per tier band; a cosmetic parts-built **chef** flips a spatula at
+  the stove (synced tweens — no Humanoid) with a griddle-smoke wisp.
+- **#15 Roofs:** every stand is capped above its TOPMOST floor (y 13/26/39), striped
+  ketchup-and-cream, recomputed as floors go up; sides stay open so raider access is preserved;
+  the Rooftop Wiener now stands ON the roof.
+- **#16 Odds sign + spin-wheel reveal:** the HUD odds sidebar is GONE — drop rates + pity render
+  on a physical board beside each grill (updates with grill level/pity). The single-cook reveal
+  is a case-opening **spinner strip** landing exactly on the server's pre-decided rarity (roll
+  stays server-side + coin-only — locked), with a near-miss tier seeded next to the landing cell.
+- **#8/#12 Economy:** new top tier **Forbidden** (weight 0.01, 15,000/s, electric violet, 3 dogs:
+  The Forbidden Glizzy / Glizzy Prime / The Omega Wiener) and a steeper income ladder — payback
+  now FALLS with rarity (see §6). Event dogs bumped to Legendary parity (250/s).
+- **#10 Floor-gated stove tiers:** 7 named tiers (Camp Stove → **Glizzy Factory**, 1→350
+  coins/s); Lv4-5 need floor 2, Lv6-7 need floor 3 (upgrade-gated only — existing levels
+  grandfathered); the pad shows the tier name or "needs Nth Floor".
+- **#5 Cook cadence:** free-cook cooldown 300s → **120s**; the Cook button counts down, then
+  glows + toasts + plays `CookReady` (new silence-safe sound id). `CookStats` carries the
+  remaining seconds.
+- **#6 Rarity auto-sort:** displayed overflow fills anchors floor-DESC (floor 3 → 2 → ground) —
+  best dogs sit HIGH and thieves pay climb time; 📌 vault pins still claim the vault first.
+- **#9/#13 HUD polish:** storage fullness fractions on the HUD (`🌭 12/16 🔒 3/5`, new
+  `StorageUpdate` push) and **every** number renders with thousands separators (new shared
+  `Format.comma`, ~30 call-sites swept: panels, pads, plates, tags, toasts, podium).
+- **#4 Security Field** (override — see §7): BuildCatalog defense (25k, prereq gate) that FULLY
+  seals the plot in force-field panels up to y14, powering down 30s of every 300s on a
+  phase-staggered clock, loudly telegraphed (countdown billboard, red/green, `BlockerOpen` sfx).
+  Owner passes via client-side collision exemption; an anti-cage valve ejects raiders caught
+  inside at close (never traps them).
+- **#7 Vault Breaker** (override — see §7): coin consumable (50k, cap 3, bought on the StealHud
+  defense bar) that starts a 10s DRILL on one vault dog — victim gets a countdown alarm +
+  arrow, the sign flashes; any stun/death/leave/step-away cancels (breaker spent, no refund);
+  survival detaches that ONE dog into the normal carry pipeline. 600s per-pair cooldown; one
+  drill per vault; no steal charge spent.
+- **#11 Full-street conveyor:** belt spans ±560 (speed 14, ≤18 riding, 4s spawns); the podium
+  moved to the EAST street-end plaza (x=660).
+- **#14 Glizzy Run obby:** parkour course at the WEST street end; finish pays **100 seconds of
+  the runner's live income** (dogs + stove, multipliers — never obsolete); 300s cooldown
+  persisted (`obbyReadyAt`); anti-teleport = ordered checkpoints + 25s minimum run; falls cost a
+  walk-back, never a respawn.
+- **#17 Clipfarm hookup:** content-plan doc only this session → `docs/CONTENT_PLAN.md` (game
+  moments → capture → ClipForge pipeline inputs → cadence).
+- Data: `_v5` back-fill adds `vaultBreakers` + `obbyReadyAt` (no `_vN` bump). New remotes:
+  `StorageUpdate`, `VaultBreach`; extended: `CookStats` (+cookRemaining), `StatsUpdate`
+  (+vaultBreakers), `BuyDefense` ("breaker").
+
 ## 6. Current tuning values (from `GameConfig.luau` / `HotDogDex.luau`)
 
-**Economy**
+**Economy** *(income ladder steepened 2026-07-11, additions #12 — reasoned, not observed)*
 - Tick interval: 1s · **Starting coins: 100** · Cook cost: 10 (flat, coin-only)
-- Rarity → income/sec: Common 1, Uncommon 3, Rare 8, Epic 20, Legendary 55, Mythic 150, Secret 500
-- Rarity → roll weight: **100 / 40 / 12 / 4 / 1.5 / 0.4 / 0.06** (total ≈ 157.96)
+- Rarity → income/sec: Common 1, Uncommon **4**, Rare **16**, Epic **60**, Legendary **250**,
+  Mythic **1,000**, Secret **4,500**, **Forbidden 15,000** — against FIXED shop prices the
+  payback time now FALLS with rarity (150s → ~67s; Forbidden ~80s as the chase tier), so rarer
+  dogs are strictly better per coin. Event dogs: 250/s (Legendary parity).
+- Rarity → roll weight: **100 / 40 / 12 / 4 / 1.5 / 0.4 / 0.06 / 0.01** (total ≈ 157.97)
   - P(Rare-or-better) per cook ≈ **11.4%** → expected first Rare in ~9 cooks. With 100
     starting coins (~10 cooks) + early idle income, a fresh player should hit their first Rare
     inside the opening minute or two — "earned, not guaranteed."
@@ -438,8 +495,9 @@ stretch menu; one commit per feature):
 - Per-target cooldown: 120s + diminishing returns (×1.5 hold per repeat raid) · Newbie shield: 600s
 - Net: 3s stun, 12-stud range · Wall: 250 coins (+2s hold) · Guard: 600 coins, scans every 1.5s
 
-**Plots**
-- 20 plots, two rows, 42-stud spacing, 128-stud street · 8 display (stealable) + 3 vault slots
+**Plots** *(footprint grown 2026-07-11, additions #3)*
+- 20 plots, two rows · pad **76×58** · 120-stud row spacing · 140-stud row separation
+  (street 1240×60) · 8 display (stealable) + 3 vault slots at level 1
 
 > ⚠️ **These are reasoned values, not yet playtest-confirmed.** The 2026-07-03 tuning pass adjusted
 > starting coins (50→100), carry speed (9→10), and the rare-tier roll weights to hit the "first Rare
@@ -460,10 +518,10 @@ stretch menu; one commit per feature):
 - 6 distinct dogs per rotation · refresh every 24h (UTC), chosen deterministically by day index
   so every player/server sees the same shop that day
 - Shop rarity draw weights (flatter than cook odds): Common 30 · Uncommon 30 · Rare 20 · Epic 12 ·
-  Legendary 5 · Mythic 2 · Secret 0.5
+  Legendary 5 · Mythic 2 · Secret 0.5 · Forbidden 0.1
 - Prices by rarity: Common 150 · Uncommon 500 · Rare 1.8k · Epic 6k · Legendary 22k · Mythic 75k ·
-  Secret 300k. Payback (price ÷ income/s) rises 150s→600s with rarity, so the shop is a
-  "pay for certainty" premium, never the coin-efficient path (cooking stays cheaper per coin).
+  Secret 300k · Forbidden 1.2M. Since the #12 income ladder, payback (price ÷ income/s) FALLS
+  with rarity (150s → ~67s) — the shop is "pay for certainty" and high tiers are worth chasing.
 - v1 = unlimited buys, no new persisted fields. Per-rotation purchase cap deferred (would need `_v5`).
 
 **New scaffold config (all reasoned placeholders, `GameConfig.luau`) — tune when each feature lands**
@@ -486,14 +544,20 @@ stretch menu; one commit per feature):
   `MaxVaultSlots` 8 (headroom past coin-max 16/6 so pass slots render)
 - Cosmetics: 3 items (10–25 prestige) · Trade: 30s cooldown, ≤6 items · Emotes: 5 presets
 
-**Tycoon layer (overhaul, all reasoned placeholders — tune in playtest)**
-- Plot pad: 60×46 · row spacing 96 · row separation (street) 124
-- Cook cooldown: **300s (5 min)** free single cook · cook-10 stays `CookCost`×10 = 100 coins
-- Auto-cooker stove tiers (cost / coins-sec): **0/1**, 400/3, 2000/8, 9000/20, 35000/50
+**Tycoon layer (overhaul + additions, all reasoned placeholders — tune in playtest)**
+- Plot pad: **76×58** · row spacing 120 · row separation (street) 140
+- Cook cooldown: **120s** free single cook (+ ready notify) · cook-10 stays `CookCost`×10 = 100
+- Auto-cooker stove tiers (cost / coins-sec / gate): 0/1, 400/3, 2000/8, **9000/22 (floor2)**,
+  **35000/55 (floor2)**, **120000/140 (floor3)**, **400000/350 (floor3)** — named Camp Stove →
+  Glizzy Factory; gates apply to UPGRADES only (existing levels grandfathered)
 - Cooker upgrader tiers (cost / output×): 0/1.0, 2500/1.25, 12000/1.6, 60000/2.0
-- Build catalog: floor2 1500, stairs 400, floor3 6000, elevator 8000, wall 1200, gate 3000
+- Build catalog: floor2 1500, stairs 400, floor3 6000, elevator 8000, wall 1200, gate 3000,
+  **Security Field 25000 (prereq gate)**
+- Security Field cycle: closed 270s / OPEN 30s per 300s, phase-staggered per plot (index×47)
+- Vault Breaker: 50k coins · cap 3 · 10s drill · 12-stud hold range · 600s per-pair cooldown
+- Obby: pays 100s of live income · 300s cooldown · 25s minimum run · 2 ordered checkpoints
 - Weapons (non-damaging): mustard-slow 800, ketchup-knockback 4000, relish-stun 15000
-- Conveyor: spawn every 6s, ≤8 on belt · Zones (prestige): 0, 5, 15
+- Conveyor: spawn every 4s, ≤18 on belt (±560 run at 14 studs/s) · Zones (prestige): 0, 5, 15
 
 ## 7. Decision log
 
@@ -545,4 +609,11 @@ stretch menu; one commit per feature):
 | 2026-07-11 | **Trap = Touched trigger + disarm/re-arm state** (was a poll; `TrapRange` retired) | Event-driven beats a per-plot poll loop; the grey "spent" pad telegraphs counterplay (sprint through while disarmed) and Neon-red-when-armed follows the Theme.Materials signal rule |
 | 2026-07-11 | **Pass ownership = persisted `data.passes` + effects derived at read time** (never banked into `bonus*Slots`) | Refund-safe + re-check-safe (no double-grant); mirrors the BuildGrants philosophy; `bonus*Slots` stays exclusively the prestige shop's ledger |
 | 2026-07-11 | **Anchor maxima bumped to 18 display / 8 vault** (coin-max stays 16/6) | The extra-slots pass + prestige vault unlock must physically render to be worth buying; stacked build/zone bonuses beyond anchors remain accepted-unshown at the extreme |
+| 2026-07-11 | ⚠️ **OVERRIDE: Security Field may FULLY block entry** — supersedes "theft access is always possible" (wall gap permanent / gate slows-never-blocks) — but only on a telegraphed timer (30s open per 300s, phase-staggered, countdown + color + sfx) with an anti-cage eject valve | Nate confirmed the override (additions #4). Raiding becomes a TIMING game instead of impossible: the window is public knowledge, staggered across plots, and defenders pay 25k + the whole wall→gate chain for it. The valve keeps the one hard rule left: raiders can always LEAVE |
+| 2026-07-11 | ⚠️ **OVERRIDE: the vault is no longer absolutely safe** — a coin-priced Vault Breaker consumable can extract ONE vault dog per successful 10s drill | Nate confirmed the override (additions #7). Counterplay is structural: the drill is loud (alarm + arrow + countdown), slow, cancels on any stun/death/step-away, spends the breaker with NO refund, and locks the pair for 600s — so defense is rewarded and vault-camping whales can't chain-drain. Coin-only keeps non-pay-to-win intact |
+| 2026-07-11 | **Income-vs-cost curve inverted: payback FALLS with rarity** (prices fixed, incomes raised super-linearly; Forbidden = new chase tier above Secret) | Nate's ask (#12): "the boost should increase more than the cost." High tiers were prestige-only (600s payback); now the chase is also the economically correct play. Knock-on (accepted): earn-missions/build costs become trivial for Mythic+ owners — they're past that content anyway |
+| 2026-07-11 | **Odds disclosure moved WORLD-side** (physical board at each grill replaces the HUD sidebar); the single-cook reveal is a spinner strip that lands on the server's pre-decided rarity | Disclosure stays permanent + glanceable at the point of use (coin-only gacha rule intact — the wheel is pure presentation, seeded from the same disclosed odds). A strip beats a literal pie wheel in Roblox GUI and sells near-misses better |
+| 2026-07-11 | **Best dogs display HIGH** (rarity auto-sort fills floor 3 → 2 → ground; pins still own the vault) | Height = defense value: the climb time thieves pay for top loot is the same currency the floors already sell; also makes tall bases read as rich bases from the street |
+| 2026-07-11 | **Obby reward = seconds-of-own-income, not flat coins** (100s worth, 300s cooldown, ordered checkpoints + minimum-run anti-teleport) | Nate's ask (#14): leveling must never make the obby obsolete. Income-scaled pay stays exactly "worth ~2 free cooks of time" at every progression stage; flat coins would be OP at minute 1 and pennies at hour 10 |
+| 2026-07-12 | **Conveyor per-frame exception cap raised 8 → 18** (belt now spans the full 1240 street) | Still the ONE bounded per-frame server job; 18 anchored pivots/Heartbeat is trivial, and a full-length empty belt read as broken |
 | 2026-07-11 | **Onboarding stage DERIVED from existing data** (`cookReadyAt`/`autoCookerLvl`/`built`), pushed as a number | No new `_v5` field, veterans auto-derive to done (zero UI), and the tick only re-pushes on change — the whole feature costs 3 field reads per tick until completed |
