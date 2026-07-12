@@ -32,7 +32,7 @@ type WeaponTier = {
 }
 
 local WEAPON_RANGE = 24 -- studs from the firer a carrying thief can be tagged
-local PLOT_DEFENSE_RADIUS = 45 -- the thief must be this close to the firer's plot
+local PLOT_DEFENSE_RADIUS = 55 -- the thief must be this close to the firer's plot (76×58 pads)
 local SLOW_SECONDS = 2 -- how long the "slow" effect lasts
 
 local updateLeaderstats: (player: Player) -> ()

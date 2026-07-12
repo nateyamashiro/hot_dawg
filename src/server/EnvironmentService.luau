@@ -142,18 +142,20 @@ local function buildMap()
 	ground.Parent = map
 
 	-- Street: the central aisle between the two plot rows (also the Phase-4 belt lane).
+	-- 1240 long × 60 wide since the footprint growth (additions #3): plots now span
+	-- x ±578 (10 per row on the 120-stud pitch), rows at z = ±70.
 	local street = makePart({
 		Name = "Street",
-		Size = Vector3.new(1040, 0.7, 56),
+		Size = Vector3.new(1240, 0.7, 60),
 		Color = Theme.Palette.Asphalt,
 		CanCollide = true,
 		CFrame = CFrame.new(0, 0.05, 0),
 	})
 	street.Parent = map
 
-	-- Lane dashes: mustard road paint (on-theme), 20 dashes down the middle.
+	-- Lane dashes: mustard road paint (on-theme), dashes down the middle.
 	-- Lifted a hair off the street top (0.4) so the faces never share a plane.
-	for x = -456, 456, 48 do
+	for x = -552, 552, 48 do
 		local dash = makePart({
 			Name = "LaneDash",
 			Size = Vector3.new(6, 0.1, 1.2),
@@ -168,23 +170,23 @@ local function buildMap()
 	for _, side in { -1, 1 } do
 		local sidewalk = makePart({
 			Name = "Sidewalk",
-			Size = Vector3.new(1040, 0.5, 8),
+			Size = Vector3.new(1240, 0.5, 8),
 			Color = Theme.Palette.Sidewalk,
 			CanCollide = true,
-			CFrame = CFrame.new(0, 0.15, side * 32),
+			CFrame = CFrame.new(0, 0.15, side * 34),
 		})
 		sidewalk.Parent = map
 	end
 
 	-- Lamp posts along both sidewalks (decorative — no PointLights; noon is bright).
-	for x = -480, 480, 96 do
+	for x = -600, 600, 120 do
 		for _, side in { -1, 1 } do
 			local pole = makePart({
 				Name = "LampPole",
 				Size = Vector3.new(1, 9, 1),
 				Color = Theme.Palette.Steel,
 				CanCollide = true,
-				CFrame = CFrame.new(x, 4.5, side * 30),
+				CFrame = CFrame.new(x, 4.5, side * 32),
 			})
 			pole.Parent = map
 			local head = makePart({
@@ -194,7 +196,7 @@ local function buildMap()
 				Color = Theme.Palette.Cream,
 				-- Matte, not Neon: ~22 glowing balls lining the street was glare soup.
 				CastShadow = false,
-				CFrame = CFrame.new(x, 9.7, side * 30),
+				CFrame = CFrame.new(x, 9.7, side * 32),
 			})
 			head.Parent = map
 		end

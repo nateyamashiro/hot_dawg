@@ -123,7 +123,7 @@ local function buildGuard(plot: PlotManager.Plot)
 	torso.CanCollide = false
 	torso.Size = Vector3.new(2, 3, 1)
 	torso.Color = Color3.fromRGB(40, 60, 120)
-	torso.CFrame = plot.facing * CFrame.new(9, 2, 4)
+	torso.CFrame = plot.facing * CFrame.new(11, 2, 6)
 	torso.Parent = guard
 	local head = Instance.new("Part")
 	head.Anchored = true
@@ -156,7 +156,8 @@ local function buildGuard(plot: PlotManager.Plot)
 		while plot.guardModel == guard and guard.Parent do
 			task.wait(GameConfig.GuardScanSeconds)
 			local owner = plot.owner
-			local carrier = nearestCarrierNear(plot.center, 22, owner)
+			-- 28-stud watch radius (grown with the 76×58 footprint, additions #3).
+			local carrier = nearestCarrierNear(plot.center, 28, owner)
 			if carrier then
 				netCarrier(carrier, nil)
 			end
@@ -180,7 +181,8 @@ local function buildTrap(plot: PlotManager.Plot)
 	pad.Color = Color3.fromRGB(200, 60, 60)
 	pad.Material = Enum.Material.Neon
 	pad.Transparency = 0.4
-	pad.CFrame = plot.facing * CFrame.new(0, 0.3, 1)
+	-- Between the doorway (z=8) and the vault shelf (z=-13): the carrier's exit lane.
+	pad.CFrame = plot.facing * CFrame.new(0, 0.3, -2)
 	pad.Parent = trap
 	trap.Parent = plot.model
 	plot.trapModel = trap

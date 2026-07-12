@@ -217,6 +217,18 @@ local function pushCookStats(player: Player)
 		return
 	end
 	cookStats:FireClient(player, data.grillLvl, data.cooksSinceRare, GameConfig.PityCooks)
+	-- Physical drop-rates board (additions #16): the lines the HUD sidebar used to
+	-- show now live on the sign beside the owner's grill. Same callers keep it fresh
+	-- (join handshake, every cook, grill upgrades via UpgradeService).
+	local lines = { string.format("🎲 Drop rates — Grill Lv %d", data.grillLvl) }
+	for _, o in HotDogDex.odds(data.grillLvl) do
+		table.insert(lines, string.format("%s   %.2f%%", o.rarity, o.chance * 100))
+	end
+	table.insert(
+		lines,
+		string.format("⏳ Pity: %d/%d cooks → Rare+", data.cooksSinceRare, GameConfig.PityCooks)
+	)
+	PlotManager.setOddsSign(player, table.concat(lines, "\n"))
 end
 
 local function pushProgression(player: Player)

@@ -19,14 +19,15 @@ local GameConfig = {
 	-- Plots are laid out as two long parallel rows facing a central aisle.
 	-- Pad footprint (studs). Big enough for the pedestal row PLUS a front apron of
 	-- walk-on tycoon pads (cook station, stove, upgrade pads) with room to walk between.
-	PlotPadWidth = 60,
-	PlotPadDepth = 46,
-	-- Distance between neighbouring stands along a row (studs). Keeps a clear gap given
-	-- the bigger footprint.
-	PlotRowSpacing = 96,
+	-- Grown 2026-07-11 (additions #3): bigger bases inside and out.
+	PlotPadWidth = 76,
+	PlotPadDepth = 58,
+	-- Distance between neighbouring stands along a row (studs). Must satisfy the zone
+	-- expansion: PlotPadWidth × top ZoneTiers.padSizeMult + 6-stud gap ≤ spacing.
+	PlotRowSpacing = 120,
 	-- Distance between the two rows — the width of the central street (studs). Leaves a
 	-- walkable aisle (also home to the Phase 4 conveyor lane) without feeling cavernous.
-	PlotRowSeparation = 124,
+	PlotRowSeparation = 140,
 	-- NOTE: display (stealable) + vault slot counts are now upgrade-driven — see
 	-- DisplaySlotLevels / VaultSlotLevels / MaxDisplaySlots / MaxVaultSlots below.
 
