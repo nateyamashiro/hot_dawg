@@ -58,6 +58,29 @@ local function applyLabel(label: TextLabel, owned: boolean)
 	end
 end
 
+-- The Security Field (additions #4) never blocks its OWNER: character physics is
+-- client-owned, so a local CanCollide=false on your own plot's BlockerPanels lets
+-- you walk home while raiders bounce off. The server re-writes CanCollide at every
+-- field open/close, so we re-apply whenever it flips back on. Rival fields are
+-- never touched. (Plots are only released when their owner disconnects, so a plot
+-- can't silently change hands under this client.)
+local hookedPanels: { [BasePart]: boolean } = setmetatable({}, { __mode = "k" }) :: any
+local function applyBlockerPanel(part: BasePart, plotModel: Model)
+	if not isOwned(plotModel) then
+		return
+	end
+	part.CanCollide = false
+	if hookedPanels[part] then
+		return
+	end
+	hookedPanels[part] = true
+	part:GetPropertyChangedSignal("CanCollide"):Connect(function()
+		if part.CanCollide and isOwned(plotModel) then
+			part.CanCollide = false
+		end
+	end)
+end
+
 -- The owner-only visuals (highlight + banner) we create for the local player's plot.
 local ownedVisuals: { [Model]: { highlight: Highlight, banner: BillboardGui } } = {}
 
@@ -117,6 +140,8 @@ local function refresh(model: Model)
 			applyPromptState(d, owned)
 		elseif d:IsA("TextLabel") then
 			applyLabel(d, owned)
+		elseif d:IsA("BasePart") and d.Name == "BlockerPanel" then
+			applyBlockerPanel(d, model)
 		end
 	end
 end
@@ -135,6 +160,8 @@ local function watchPlot(model: Model)
 			applyPromptState(d, owned)
 		elseif d:IsA("TextLabel") then
 			applyLabel(d, owned)
+		elseif d:IsA("BasePart") and d.Name == "BlockerPanel" then
+			applyBlockerPanel(d, model)
 		end
 	end)
 end

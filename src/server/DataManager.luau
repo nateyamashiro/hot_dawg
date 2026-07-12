@@ -143,6 +143,12 @@ export type PlayerData = {
 	upgraderLvl: number,
 	-- Plot zone/expansion tier (index into GameConfig.ZoneTiers).
 	zoneLvl: number,
+	-- === Additions 2026-07-11 ===
+	-- Vault Breaker consumables owned (additions #7: one is spent to start a vault
+	-- break-in drill on a rival's stand).
+	vaultBreakers: number,
+	-- os.time before which the obby can't pay out again (additions #14).
+	obbyReadyAt: number,
 }
 
 local function keyFor(player: Player): string
@@ -199,6 +205,8 @@ local function defaultData(): PlayerData
 		weaponEquipped = nil,
 		upgraderLvl = 1,
 		zoneLvl = 1,
+		vaultBreakers = 0,
+		obbyReadyAt = 0,
 	}
 end
 
@@ -413,6 +421,13 @@ function DataManager.load(player: Player): PlayerData?
 		end
 		if type(result.zoneLvl) == "number" then
 			data.zoneLvl = math.max(1, math.floor(result.zoneLvl))
+		end
+		-- Additions 2026-07-11 (#7 vault breaker consumables, #14 obby cooldown).
+		if type(result.vaultBreakers) == "number" then
+			data.vaultBreakers = math.max(0, math.floor(result.vaultBreakers))
+		end
+		if type(result.obbyReadyAt) == "number" then
+			data.obbyReadyAt = result.obbyReadyAt
 		end
 		if type(result.shopBuys) == "table" then
 			if type(result.shopBuys.day) == "number" then

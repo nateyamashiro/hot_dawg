@@ -19,6 +19,7 @@ local Format = require(ReplicatedStorage.Shared.Format)
 local GameConfig = require(ReplicatedStorage.Shared.GameConfig)
 local GlizzyModel = require(ReplicatedStorage.Shared.GlizzyModel)
 local HotDogDex = require(ReplicatedStorage.Shared.HotDogDex)
+local Sfx = require(ReplicatedStorage.Shared.Sfx)
 local Theme = require(ReplicatedStorage.Shared.Theme)
 local Variants = require(ReplicatedStorage.Shared.Variants)
 local DataManager = require(ServerScriptService.Server.DataManager)
@@ -64,6 +65,9 @@ local ownerToPlot: { [number]: Plot } = {}
 -- Handlers registered by StealService (dependency inversion: PlotManager owns the
 -- prompts, StealService owns the rules).
 type StealHandler = (thief: Player, victimUserId: number, dogName: string, unitPart: BasePart) -> ()
+-- A rival held the Break In prompt on a VAULT dog (additions #7) — StealService
+-- owns the drill rules; same shape as StealHandler.
+type BreakHandler = (thief: Player, victimUserId: number, dogKey: string, unitPart: BasePart) -> ()
 type DepositHandler = (thief: Player) -> ()
 -- Owner steps on a build/upgrade pad → route the purchase (Main decides the effect).
 type PadHandler = (owner: Player, padId: string) -> ()
@@ -76,6 +80,7 @@ type GateHandler = (toucher: Player) -> ()
 -- (PickupService owns the rule: builds the hand Tool + excludes the slot).
 type PickupHandler = (player: Player, key: string) -> ()
 local stealHandler: StealHandler? = nil
+local breakHandler: BreakHandler? = nil
 local depositHandler: DepositHandler? = nil
 local padHandler: PadHandler? = nil
 local cookHandler: CookHandler? = nil
@@ -84,6 +89,10 @@ local pickupHandler: PickupHandler? = nil
 
 function PlotManager.setStealHandler(fn: StealHandler)
 	stealHandler = fn
+end
+
+function PlotManager.setBreakHandler(fn: BreakHandler)
+	breakHandler = fn
 end
 
 function PlotManager.setPickupHandler(fn: PickupHandler)
@@ -946,6 +955,102 @@ BUILDERS.elevator = function(plot: Plot): Model
 	return model
 end
 
+BUILDERS.blocker = function(plot: Plot): Model
+	-- Security Field (additions #4) — the CONSCIOUS override of balance rule 1
+	-- (GDD §7 row): translucent panels seal the whole perimeter, INCLUDING the
+	-- wall's 16-stud gap, from the ground to y=14… but the field powers DOWN for
+	-- BlockerOpenSeconds out of every BlockerCycleSeconds, loudly telegraphed
+	-- (countdown billboard + red/green panels), so raiding becomes a timing game
+	-- instead of impossible. The OWNER passes through via a client-side collision
+	-- exemption (PlotPresentation) — character physics is client-owned, consistent
+	-- with the game's existing physical-barrier threat model.
+	local model = Instance.new("Model")
+	local w = GameConfig.PlotPadWidth
+	local d = GameConfig.PlotPadDepth
+	local panels: { BasePart } = {}
+	local function fieldPanel(size: Vector3, cf: CFrame): BasePart
+		local part = structurePart(model, plot, {
+			Name = "BlockerPanel",
+			Size = size,
+			Color = Theme.Semantic.Expensive,
+			Material = Enum.Material.ForceField,
+			Transparency = 0.35,
+			CanCollide = true,
+			CFrame = cf,
+		})
+		table.insert(panels, part)
+		return part
+	end
+	local frontPanel = fieldPanel(Vector3.new(w - 1, 14, 0.6), CFrame.new(0, 7, d / 2 - 1.3))
+	fieldPanel(Vector3.new(w - 1, 14, 0.6), CFrame.new(0, 7, -(d / 2 - 1.3)))
+	for _, sx in { -(w / 2 - 1.3), w / 2 - 1.3 } do
+		fieldPanel(Vector3.new(0.6, 14, d - 4), CFrame.new(sx, 7, 0))
+	end
+	local countdown =
+		makeBillboard(frontPanel, "", Color3.fromRGB(255, 255, 255), 30, "BlockerLabel", {
+			width = 170,
+			maxDistance = 80,
+			offsetY = 1,
+		})
+
+	-- Anti-trap valve: the field must never CAGE a raider — a non-owner touching a
+	-- CLOSED panel from INSIDE the perimeter is ejected just past the front gap
+	-- (any carried loot rides along; they still have to run it home).
+	for _, part in panels do
+		part.Touched:Connect(function(hit: BasePart)
+			if not part.CanCollide then
+				return -- open window; walk on through
+			end
+			local character = hit.Parent
+			local toucher = character and Players:GetPlayerFromCharacter(character)
+			if not toucher or toucher == plot.owner then
+				return
+			end
+			local char = toucher.Character
+			if not char then
+				return
+			end
+			local rel = plot.facing:PointToObjectSpace(char:GetPivot().Position)
+			if math.abs(rel.X) < w / 2 - 2 and math.abs(rel.Z) < d / 2 - 2 then
+				char:PivotTo(plot.facing * CFrame.new(0, 4, d / 2 + 6))
+			end
+		end)
+	end
+
+	-- The field's clock: os.time-derived (save-free) with a per-plot phase offset so
+	-- the street's open windows stagger. The loop lives and dies with the structure
+	-- model (clearStructures/release destroy it → `model.Parent` goes nil).
+	local phase = plot.index * 47
+	local wasOpen: boolean? = nil
+	task.spawn(function()
+		while model.Parent do
+			local cycle = GameConfig.BlockerCycleSeconds
+			local openFor = GameConfig.BlockerOpenSeconds
+			local into = (os.time() + phase) % cycle
+			local open = into >= cycle - openFor
+			if open ~= wasOpen then
+				wasOpen = open
+				for _, part in panels do
+					part.CanCollide = not open
+					part.Color = if open
+						then Theme.Semantic.Affordable
+						else Theme.Semantic.Expensive
+					part.Transparency = if open then 0.75 else 0.35
+				end
+				if open then
+					Sfx.play("BlockerOpen", frontPanel)
+				end
+			end
+			local left = if open then cycle - into else cycle - openFor - into
+			countdown.Text = if open
+				then "⚡ FIELD DOWN — " .. math.ceil(left) .. "s"
+				else "🔒 Security Field — opens in " .. math.ceil(left) .. "s"
+			task.wait(1)
+		end
+	end)
+	return model
+end
+
 BUILDERS.awning = function(plot: Plot): Model
 	-- Pitched striped canopy over the counters.
 	local model = Instance.new("Model")
@@ -1375,6 +1480,25 @@ local function spawnUnit(plot: Plot, anchor: BasePart, dog: HotDogDex.Unit, stea
 		pickup.Triggered:Connect(function(picker: Player)
 			if plot.owner == picker and pickupHandler then
 				pickupHandler(picker, dog.key)
+			end
+		end)
+	else
+		-- VAULT units (additions #7): no Steal prompt — the vault's classic safety —
+		-- but a rival holding a 🔓 Vault Breaker can start a drill here. StealService
+		-- validates everything (breaker count, shield, per-pair cooldown, one drill
+		-- per vault); PlotPresentation hides this prompt on your own stand.
+		local breakPrompt = Instance.new("ProximityPrompt")
+		breakPrompt.Name = "BreakPrompt"
+		breakPrompt.ActionText = "Break In (1 Breaker)"
+		breakPrompt.ObjectText = "🔒 " .. dog.displayName
+		breakPrompt.HoldDuration = 1
+		breakPrompt.MaxActivationDistance = 8
+		breakPrompt.RequiresLineOfSight = false
+		breakPrompt.Parent = primary
+		breakPrompt.Triggered:Connect(function(thief: Player)
+			local victim = plot.owner
+			if victim and breakHandler then
+				breakHandler(thief, victim.UserId, dog.key, primary)
 			end
 		end)
 	end

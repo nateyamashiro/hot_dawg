@@ -66,6 +66,7 @@ end
 local cookHotDog = makeRemote("CookHotDog") -- client -> server: "cook one"
 local cookResult = makeRemote("CookResult") -- server -> client: reveal popup
 makeRemote("StealAlert") -- server -> victim: "you're being robbed"
+makeRemote("VaultBreach") -- server -> victim: a Vault Breaker drill started (additions #7)
 makeRemote("CarryUpdate") -- server -> thief: carrying on/off
 local stealFeedback = makeRemote("StealFeedback") -- server -> player: toast messages
 makeRemote("StatsUpdate") -- server -> player: steal charges + shield

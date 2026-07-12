@@ -36,6 +36,14 @@ local carrying: { [number]: Carry } = {}
 -- recentSteals[thiefUserId][victimUserId] -> Cooldown
 local recentSteals: { [number]: { [number]: Cooldown } } = {}
 
+-- === Vault-breach state (additions #7) ===
+type Drill = { victimUserId: number, token: number }
+local drilling: { [number]: Drill } = {} -- thiefUserId -> active drill
+local drillOnVault: { [number]: boolean } = {} -- victimUserId -> a drill is running
+-- recentBreaches[thiefUserId][victimUserId] -> os.time the pair unlocks again
+local recentBreaches: { [number]: { [number]: number } } = {}
+local drillToken = 0
+
 local updateLeaderstats: (player: Player) -> ()
 -- Notify callbacks wired by Main: inventory changed (dex/snapshot push) and a
 -- successful permanent steal (daily-mission progress).
@@ -48,6 +56,7 @@ local remFeedback: RemoteEvent
 local remStats: RemoteEvent
 local remCarryUpdate: RemoteEvent
 local remStealAlert: RemoteEvent
+local remVaultBreach: RemoteEvent
 local remCelebrate: RemoteEvent
 
 -- === Helpers ===
@@ -60,7 +69,13 @@ local function pushStats(player: Player)
 	if not data then
 		return
 	end
-	remStats:FireClient(player, data.stealCharges, GameConfig.MaxStealCharges, data.shieldUntil)
+	remStats:FireClient(
+		player,
+		data.stealCharges,
+		GameConfig.MaxStealCharges,
+		data.shieldUntil,
+		data.vaultBreakers
+	)
 end
 StealService.pushStats = pushStats
 
@@ -263,6 +278,179 @@ end
 -- carry rig all apply no matter where the dog was grabbed from.
 StealService.triggerSteal = onStealTriggered
 
+-- === Vault Breaker (additions #7 — the CONSCIOUS "vault = safe" override, GDD §7) ===
+-- A coin consumable starts a LOUD drill on one vault dog: the victim gets an alarm +
+-- countdown, everyone nearby sees it, and any net/trap/blaster-stun/death/leave (or
+-- just stepping away) cancels it. Surviving the full drill detaches that ONE dog
+-- into the normal carry pipeline — the thief still has to run it home. The breaker
+-- is consumed at drill START, no refund: defending pays. No steal charge is spent
+-- (the breaker replaces it); the per-pair breach cooldown replaces the per-target
+-- steal cooldown.
+local function endDrill(thief: Player, victimUserId: number)
+	drilling[thief.UserId] = nil
+	drillOnVault[victimUserId] = nil
+end
+
+local function onBreakTriggered(
+	thief: Player,
+	victimUserId: number,
+	dogKey: string,
+	unitPart: BasePart
+)
+	if thief.UserId == victimUserId then
+		return
+	end
+	if carrying[thief.UserId] then
+		feedback(thief, false, "You're already carrying a dog!")
+		return
+	end
+	if drilling[thief.UserId] then
+		return
+	end
+
+	local thiefData = DataManager.get(thief)
+	local victim = Players:GetPlayerByUserId(victimUserId)
+	local victimData = victim and DataManager.get(victim)
+	if not (thiefData and victim and victimData) then
+		return
+	end
+
+	local now = os.time()
+	if now < victimData.shieldUntil then
+		feedback(thief, false, victim.DisplayName .. " is shielded — can't break in yet.")
+		return
+	end
+	if thiefData.vaultBreakers <= 0 then
+		feedback(thief, false, "You need a 🔓 Vault Breaker — buy one on the defense bar.")
+		return
+	end
+	if drillOnVault[victimUserId] then
+		feedback(thief, false, "Someone is already drilling that vault!")
+		return
+	end
+	local pairUnlock = recentBreaches[thief.UserId] and recentBreaches[thief.UserId][victimUserId]
+	if pairUnlock and now < pairUnlock then
+		feedback(thief, false, "That vault's been cracked recently — give it time.")
+		return
+	end
+	if (victimData.hotDogs[dogKey] or 0) <= 0 or not unitPart.Parent then
+		return -- stale prompt
+	end
+
+	-- Consume at drill START (no refund) + arm the per-pair cooldown immediately so
+	-- a cancelled drill can't be instantly retried against the same victim.
+	thiefData.vaultBreakers -= 1
+	pushStats(thief)
+	recentBreaches[thief.UserId] = recentBreaches[thief.UserId] or {}
+	recentBreaches[thief.UserId][victimUserId] = now + GameConfig.VaultBreachCooldownSeconds
+	drillToken += 1
+	local myToken = drillToken
+	drilling[thief.UserId] = { victimUserId = victimUserId, token = myToken }
+	drillOnVault[victimUserId] = true
+
+	-- The alarm: victim banner + arrow (VaultBreach mirrors StealAlert), the plot's
+	-- sign flashes for everyone, and the drill itself makes noise at the vault.
+	remVaultBreach:FireClient(
+		victim,
+		thief.UserId,
+		thief.DisplayName,
+		GameConfig.VaultBreakerDrillSeconds
+	)
+	local signPost = PlotManager.signPostOf(victim)
+	if signPost then
+		remCelebrate:FireAllClients("stealAlarm", signPost)
+	end
+	Sfx.play("VaultDrill", unitPart)
+	feedback(thief, true, "🔓 Drilling the vault — hold your ground!")
+
+	-- World countdown on the vault dog (the victim's counterplay timer).
+	local bb = Instance.new("BillboardGui")
+	bb.Name = "DrillLabel"
+	bb.Size = UDim2.fromOffset(150, 34)
+	bb.StudsOffsetWorldSpace = Vector3.new(0, 3.2, 0)
+	bb.AlwaysOnTop = true
+	bb.MaxDistance = 90
+	bb.Parent = unitPart
+	local label = Instance.new("TextLabel")
+	label.Size = UDim2.fromScale(1, 1)
+	label.BackgroundTransparency = 1
+	label.TextColor3 = Color3.fromRGB(255, 90, 90)
+	label.TextStrokeTransparency = 0
+	label.TextScaled = true
+	label.Font = Enum.Font.GothamBlack
+	label.Parent = bb
+
+	task.spawn(function()
+		for t = GameConfig.VaultBreakerDrillSeconds, 1, -1 do
+			local drill = drilling[thief.UserId]
+			if not drill or drill.token ~= myToken then
+				bb:Destroy()
+				return
+			end
+			local char = thief.Character
+			local hrp = char and char:FindFirstChild("HumanoidRootPart") :: BasePart?
+			local humanoid = char and char:FindFirstChildOfClass("Humanoid")
+			local holding = hrp
+				and humanoid
+				and humanoid.Health > 0
+				and humanoid.WalkSpeed > 0 -- any stun (net/trap/blaster) breaks the drill
+				and unitPart.Parent ~= nil
+				and thief.Parent ~= nil
+				and victim.Parent ~= nil
+				and (hrp.Position - unitPart.Position).Magnitude <= GameConfig.VaultBreakerRange
+			if not holding then
+				endDrill(thief, victimUserId)
+				bb:Destroy()
+				feedback(thief, false, "The drill was interrupted — breaker wasted!")
+				if victim.Parent then
+					feedback(victim, true, "🛡️ You stopped the vault break-in!")
+				end
+				return
+			end
+			label.Text = "💥 BREAK-IN " .. t .. "s"
+			task.wait(1)
+		end
+		endDrill(thief, victimUserId)
+		bb:Destroy()
+
+		-- Success — re-validate, then commit through the NORMAL carry pipeline.
+		local vData = DataManager.get(victim)
+		if not vData or (vData.hotDogs[dogKey] or 0) <= 0 then
+			feedback(thief, false, "The vault emptied mid-drill!")
+			return
+		end
+		if carrying[thief.UserId] then
+			return -- grabbed something else mid-drill; no double-carry
+		end
+		vData.hotDogs[dogKey] -= 1
+		if vData.hotDogs[dogKey] <= 0 then
+			vData.hotDogs[dogKey] = nil
+		end
+		updateLeaderstats(victim)
+		PlotManager.syncDisplay(victim)
+		onInventoryChanged(victim)
+
+		local visuals = attachCarry(thief, dogKey)
+		if not visuals then
+			grantDog(victim, dogKey) -- no character to attach to; refund the victim
+			return
+		end
+		carrying[thief.UserId] = {
+			dogName = dogKey,
+			victimUserId = victimUserId,
+			folder = visuals.folder,
+			highlight = visuals.highlight,
+		}
+		local dogLabel = Variants.displayName(dogKey)
+		PlotManager.setDepositEnabled(thief, true)
+		remCarryUpdate:FireClient(thief, true, dogLabel)
+		remStealAlert:FireClient(victim, thief.UserId, thief.DisplayName, dogLabel)
+		Telemetry.event("VaultBreach")
+		feedback(thief, true, "🔓 Vault cracked — now RUN it home!")
+	end)
+end
+StealService.triggerBreak = onBreakTriggered
+
 -- === Public: deposit at own stand (registered with PlotManager) ===
 local function onDeposit(thief: Player)
 	local carry = carrying[thief.UserId]
@@ -366,9 +554,11 @@ function StealService.init(deps: {
 	remStats = deps.remotes:WaitForChild("StatsUpdate") :: RemoteEvent
 	remCarryUpdate = deps.remotes:WaitForChild("CarryUpdate") :: RemoteEvent
 	remStealAlert = deps.remotes:WaitForChild("StealAlert") :: RemoteEvent
+	remVaultBreach = deps.remotes:WaitForChild("VaultBreach") :: RemoteEvent
 	remCelebrate = deps.remotes:WaitForChild("Celebrate") :: RemoteEvent
 
 	PlotManager.setStealHandler(onStealTriggered)
+	PlotManager.setBreakHandler(onBreakTriggered)
 	PlotManager.setDepositHandler(onDeposit)
 
 	-- Drop any carry if the thief dies mid-run. Wire both future spawns and the
@@ -394,6 +584,13 @@ function StealService.init(deps: {
 		-- Return a carried dog to its owner before the thief disconnects.
 		StealService.dropCarry(player)
 		recentSteals[player.UserId] = nil
+		-- A drill dies with its driller (the loop also self-cancels on thief.Parent).
+		local drill = drilling[player.UserId]
+		if drill then
+			endDrill(player, drill.victimUserId)
+		end
+		recentBreaches[player.UserId] = nil
+		drillOnVault[player.UserId] = nil -- and any drill running ON their vault ends
 	end)
 
 	startChargeLoop()

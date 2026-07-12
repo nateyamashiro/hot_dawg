@@ -16,6 +16,7 @@ local player = Players.LocalPlayer
 
 local remotes = ReplicatedStorage:WaitForChild("Remotes")
 local stealAlert = remotes:WaitForChild("StealAlert") :: RemoteEvent
+local vaultBreach = remotes:WaitForChild("VaultBreach") :: RemoteEvent
 local carryUpdate = remotes:WaitForChild("CarryUpdate") :: RemoteEvent
 local stealFeedback = remotes:WaitForChild("StealFeedback") :: RemoteEvent
 local statsUpdate = remotes:WaitForChild("StatsUpdate") :: RemoteEvent
@@ -111,6 +112,13 @@ end
 -- bought on the 🏗️ build pad at your stand.)
 makeBuyButton(string.format("🛡️ Guard (%s)", Format.comma(GameConfig.GuardCost)), -60, "guard")
 makeBuyButton(string.format("🪤 Trap (%s)", Format.comma(GameConfig.TrapCost)), -110, "trap")
+-- Vault Breaker (additions #7): the offense consumable rides the same validated
+-- BuyDefense remote; the owned count on the label updates via StatsUpdate.
+local breakerBtn = makeBuyButton(
+	string.format("🔓 Breaker (%s)", Format.comma(GameConfig.VaultBreakerCost)),
+	-160,
+	"breaker"
+)
 
 gui.Parent = player:WaitForChild("PlayerGui")
 
@@ -128,10 +136,17 @@ end
 
 local lastCharges, lastMax = 0, GameConfig.MaxStealCharges
 statsUpdate.OnClientEvent:Connect(
-	function(charges: number, maxCharges: number, newShieldUntil: number)
+	function(charges: number, maxCharges: number, newShieldUntil: number, breakers: number?)
 		lastCharges, lastMax = charges, maxCharges
 		shieldUntil = newShieldUntil
 		refreshStats(charges, maxCharges)
+		if type(breakers) == "number" then
+			breakerBtn.Text = string.format(
+				"🔓 Breaker ×%d (%s)",
+				breakers,
+				Format.comma(GameConfig.VaultBreakerCost)
+			)
+		end
 	end
 )
 -- Keep the shield countdown ticking even without new pushes.
@@ -178,6 +193,17 @@ stealAlert.OnClientEvent:Connect(function(userId: number, thiefName: string, dog
 	arrow.Visible = true
 	thiefUserId = userId
 	alertUntil = os.clock() + 8
+end)
+
+-- Vault-breach alarm (additions #7): same banner + arrow, but the countdown IS the
+-- counterplay window — net/trap/blast the driller before it hits zero.
+vaultBreach.OnClientEvent:Connect(function(userId: number, thiefName: string, seconds: number)
+	robbedBanner.Text =
+		string.format("💥 %s is DRILLING YOUR VAULT! %ds to stop them!", thiefName, seconds)
+	robbedBanner.Visible = true
+	arrow.Visible = true
+	thiefUserId = userId
+	alertUntil = os.clock() + seconds
 end)
 
 local camera = Workspace.CurrentCamera

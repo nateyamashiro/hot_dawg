@@ -228,6 +228,27 @@ local GameConfig = {
 	TrapStunSeconds = 4,
 	TrapRearmSeconds = 6,
 
+	-- === Security Field (additions #4 — CONSCIOUS override of the locked
+	-- "theft access is always possible" rule; GDD §7). The blocker build fully seals
+	-- the plot behind force-field panels, but powers DOWN for BlockerOpenSeconds out
+	-- of every BlockerCycleSeconds — telegraphed to raiders (countdown billboard +
+	-- green/red panels), so raiding becomes a timing game instead of impossible.
+	-- Per-plot phase offsets stagger the windows across the street.
+	BlockerCycleSeconds = 300,
+	BlockerOpenSeconds = 30,
+
+	-- === Vault Breaker (additions #7 — CONSCIOUS override of the locked
+	-- "vault = absolutely safe" promise; GDD §7). A COIN consumable (never Robux —
+	-- non-pay-to-win holds): spend one near a rival's vault to start a loud, slow
+	-- DRILL; survive it (nets/traps/blasters/death all cancel) and ONE vault dog
+	-- detaches into the normal carry pipeline. Breaker is consumed at drill START,
+	-- no refund — defending pays.
+	VaultBreakerCost = 50000,
+	VaultBreakerMax = 3,
+	VaultBreakerDrillSeconds = 10,
+	VaultBreachCooldownSeconds = 600, -- per thief→victim pair, in-memory
+	VaultBreakerRange = 12, -- thief must stay this close to the vault while drilling
+
 	-- === Weekly events (M4) ===
 	-- Active event is chosen deterministically by week index (like the shop's UTC-day
 	-- trick) so all servers agree. `modifier` interpreted by EventService.
@@ -406,6 +427,8 @@ local GameConfig = {
 		Purchase = "", -- walk-on pad purchase pop
 		BuildComplete = "", -- structure raised
 		StealAlarm = "", -- victim's sign alarm
+		BlockerOpen = "", -- a Security Field powers down (additions #4 raid window)
+		VaultDrill = "", -- a Vault Breaker drill is running (additions #7)
 		Deposit = "", -- stolen dog banked
 		UIClick = "", -- button presses (P-D)
 		UIOpen = "", -- window open (P-D)
@@ -469,6 +492,15 @@ local GameConfig = {
 			cost = 8000,
 			prereq = "floor3",
 			grants = { kind = "access", access = "elevator", floor = 3 },
+		},
+		{
+			-- Additions #4: the timed full-block defense (see the Security Field
+			-- block above). Top of the defense chain: wall → gate → blocker.
+			id = "blocker",
+			label = "Security Field",
+			cost = 25000,
+			prereq = "gate",
+			grants = { kind = "defense", defense = "blocker" },
 		},
 		{
 			id = "awning",

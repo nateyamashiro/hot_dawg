@@ -11,6 +11,7 @@ local Players = game:GetService("Players")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local ServerScriptService = game:GetService("ServerScriptService")
 
+local Format = require(ReplicatedStorage.Shared.Format)
 local GameConfig = require(ReplicatedStorage.Shared.GameConfig)
 local DataManager = require(ServerScriptService.Server.DataManager)
 local RateLimit = require(ServerScriptService.Server.RateLimit)
@@ -270,6 +271,36 @@ local function onBuyDefense(player: Player, which: string)
 		buildTrap(plot)
 		updateLeaderstats(player)
 		feedback(player, true, "Trap set! Raiders who linger get zapped.")
+	elseif which == "breaker" then
+		-- Vault Breaker consumable (additions #7) — an OFFENSE bought on the defense
+		-- bar: rides the same validated remote. Count is capped; spent by the drill.
+		if data.vaultBreakers >= GameConfig.VaultBreakerMax then
+			feedback(
+				player,
+				false,
+				"You can hold at most " .. GameConfig.VaultBreakerMax .. " Vault Breakers."
+			)
+			return
+		end
+		if data.coins < GameConfig.VaultBreakerCost then
+			feedback(
+				player,
+				false,
+				"Need "
+					.. Format.comma(GameConfig.VaultBreakerCost)
+					.. " coins for a Vault Breaker."
+			)
+			return
+		end
+		data.coins -= GameConfig.VaultBreakerCost
+		data.vaultBreakers += 1
+		updateLeaderstats(player)
+		StealService.pushStats(player) -- breaker count rides StatsUpdate
+		feedback(
+			player,
+			true,
+			"🔓 Vault Breaker bought (" .. data.vaultBreakers .. " owned). Find a rival vault…"
+		)
 	end
 end
 
