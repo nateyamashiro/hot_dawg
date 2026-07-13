@@ -64,9 +64,17 @@ Each should be independently testable in Studio. `✅ done · 🔜 next · ⏳ l
 > ⚠️ two locked-rule OVERRIDES (GDD §7): **Security Field** timed full-block (30s open / 300s,
 > telegraphed) + **Vault Breaker** coin consumable (10s loud drill extracts ONE vault dog) ·
 > full-street conveyor (≤18) + podium to the east plaza · **Glizzy Run obby** paying 100s of
-> live income · `docs/CONTENT_PLAN.md` (clipfarm hookup plan). **NEXT: Studio smoke pass of the
-> additions → M5 remainder (cosmetics + doubleCoins/autoCollect effects + offlineRefill) → M6
-> trading + the published-place 2-account loop test.** See `docs/NEXT_SESSION_PROMPT.md`.
+> live income · `docs/CONTENT_PLAN.md` (clipfarm hookup plan).
+>
+> **2026-07-12 shipped — M5 REMAINDER + M6 TRADING:** cosmetics live (6-item prestige wardrobe,
+> one equipped per kind: shell-repaint stand skins, character trails, sign-title chips) ·
+> **2× Coins pass effect** (multiplicative in `Main.incomeMultiplier`; autoCollect awaits Nate's
+> design call) · **offlineRefill dev product** (cap-truncated seconds bank in
+> `offlineMissedSeconds`, paid at the buyer's live rate; id may now be configured) · **trading
+> live** (invite→accept handshake, proximity-gated, offer steppers, both-confirm with commit-gate
+> re-validation, 30s cooldown, `tradeLog_v1` DataStore log). **NEXT: Studio smoke pass (additions
+> + this batch) → M6 emotes/parties → M7 polish + the published-place 2-account loop test.**
+> See `docs/NEXT_SESSION_PROMPT.md`.
 
 ---
 
@@ -151,23 +159,29 @@ Built 2026-07-03 (Top-10 items 5–10; static-clean, needs a Studio playtest to 
   prestige / mutation luck, plain-number back-compat), `FREEGLIZZY` demo, `NATE` 1B dev code
   (⚠️ delete before launch).
 
-## 🔨 Milestone 5 — Monetization (core SHIPPED 2026-07-11; cosmetics remain)
-- ✅ Game passes — **Extra slots + VIP live** (refund-safe `data.passes` cache of
-  `UserOwnsGamePassAsync`, effects derived at read time: capacity + VIP income; Studio test
-  overrides while ids are 0; anchors bumped 18/8 so pass slots render). doubleCoins/autoCollect:
-  detected, effects TODO(M5).
-- ✅ Dev products via `ProcessReceipt` — coinsSmall/coinsLarge/stealCharges grant → mark receipt →
-  PurchaseGranted; unmapped (incl. `offlineRefill`, bespoke logic pending) stay NotProcessedYet.
-  **No paid gacha.** Both in `PurchaseService`/`Passes.client` (panel real: owned greys out,
-  product buttons live). **Blocked on Nate:** dashboard ids.
-- 🏗️ Cosmetics (stand skins, trails, titles) — `CosmeticService`/`Cosmetics.client`. **Next up.**
+## ✅ Milestone 5 — Monetization (COMPLETE 2026-07-12 except one Nate design call)
+- ✅ Game passes — **Extra slots + VIP + 2× Coins live** (refund-safe `data.passes` cache of
+  `UserOwnsGamePassAsync`, effects derived at read time: capacity + VIP income + multiplicative
+  doubleCoins; Studio test overrides while ids are 0; anchors bumped 18/8 so pass slots render).
+  **autoCollect: detected, effect awaits Nate** (income already automatic; candidate =
+  auto-claim daily streak/missions).
+- ✅ Dev products via `ProcessReceipt` — coinsSmall/coinsLarge/stealCharges + **offlineRefill**
+  (2026-07-12: pays the cap-truncated seconds banked in `offlineMissedSeconds` at the buyer's
+  live rate; empty bank stays NotProcessedYet). **No paid gacha.** Both in
+  `PurchaseService`/`Passes.client`. **Blocked on Nate:** dashboard ids (ALL may be configured now).
+- ✅ Cosmetics **shipped 2026-07-12** — 6-item prestige wardrobe (stand skins repaint the shell,
+  trails ride the character, titles chip the owner sign), one equipped per kind, buy auto-equips
+  (`CosmeticService`/`Cosmetics.client`).
 - ✅ **Anti-exploit hardening pass done early (2026-07-09):** every legacy `OnServerEvent`
   (cook/cook-10, daily claims, rebirth, shop, upgrades, defenses, vault pins) now behind
   `RateLimit.check` + arg guards; `RequestState` join bursts coalesce instead of dropping.
   *Ref: `docs/roblox-reference/monetization/`.*
 
-## 🏗️ Milestone 6 — Social & virality (scaffolded — stubs to fill in)
-- 🏗️ Trading (baseline safeguards: confirm + cooldown + log) — `TradeService`/`Trade.client`.
+## 🔨 Milestone 6 — Social & virality (trading SHIPPED 2026-07-12; emotes/parties remain)
+- ✅ Trading **shipped 2026-07-12** — invite→accept handshake (mutual `TradeRequest`, 40-stud
+  range, 60s expiry), composite-key stack offers (≤6/side) with commit-gate re-validation,
+  both-confirm, atomic transfer, 30s cooldown, `tradeLog_v1` server log, items-never-coins
+  (`TradeService`/`Trade.client`).
 - 🏗️ Emotes/taunts (preset, no free text) — `EmoteService`. · Parties (join-friend) — later.
 - Shareable "big steal / rare pull" moments engineered for clips (client juice on existing events).
 

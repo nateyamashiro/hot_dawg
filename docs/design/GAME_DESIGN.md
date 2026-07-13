@@ -475,6 +475,39 @@ locked rules — see the §7 rows):
   `StorageUpdate`, `VaultBreach`; extended: `CookStats` (+cookRemaining), `StatsUpdate`
   (+vaultBreakers), `BuyDefense` ("breaker").
 
+**M5 REMAINDER + M6 TRADING SHIPPED 2026-07-12** (static-clean; two commits `433433e`/`d4be72c`):
+- **Cosmetics live** (`CosmeticService` real): prestige-priced catalog grown to 6 (2 stand skins /
+  2 trails / 2 titles, 10–40 ✨), ONE equipped per kind — `data.cosmetics.equipped` reshaped
+  string→per-kind map BEFORE the feature ever shipped (no live save affected). Stand skin =
+  shell repaint (`PlotManager.applyStandSkin`: BackWall/SideWall/Counter + CounterTop trim,
+  reset on release); trail = `Trail` on the character root, re-applied each respawn; title =
+  gold chip billboard under the owner sign (`PlotManager.setTitle`; same sign post — the one
+  far-label rule holds). Buy auto-equips; visuals re-derive from data on join (rebuild-safe).
+  Wardrobe panel rebuilt: balance header + buy/equip/equipped rows.
+- **2× Coins pass effect**: `DoubleCoinsMult` multiplies `Main.incomeMultiplier` (like income2x,
+  never diluted by additive stacking); derives from `data.passes` at read time — refund-safe.
+  **autoCollect effect deliberately NOT built** — income is already automatic; needs Nate's call
+  (candidate: auto-claim daily streak/missions).
+- **offlineRefill dev product** (bespoke): the join-time offline calc BANKS the seconds the 8h
+  cap truncated into new `_v5` field `offlineMissedSeconds` (bounded `OfflineRefillMaxSeconds`
+  7d); `ProcessReceipt` pays the bank at the buyer's LIVE income rate (Main's
+  `computeLiveIncome` closure, shared with the obby), zeroes it, marks the receipt; empty bank →
+  NotProcessedYet (receipt survives to a later session or auto-refunds — never eaten).
+  `PromptPurchase` blocks empty refills up front; the welcome-back popup advertises banked hours
+  (≥1h). Its dashboard id may NOW be configured.
+- **M6 trading live** (`TradeService` real; locked baseline safeguards GDD §4.8/§7): invite →
+  accept handshake over the existing `TradeRequest` remote (mutual request within 60s; server
+  toast + panel nudge), proximity-gated (`TradeMaxDistance` 40); offers = composite-key stacks
+  (≤ `TradeMaxItems` 6/side), validated on SET and RE-validated at the both-confirmed commit
+  gate; any offer change clears both confirms (anti-swap-scam); atomic transfer, both sides
+  stamped `tradeCooldownUntil` (+30s), fire-and-forget append to the `tradeLog_v1` DataStore,
+  `TradeCompleted` telemetry, sessions torn down on cancel/leave. Items only, NEVER coins.
+  Hand-held dogs whose stack was fully traded away are force-returned (new
+  `PickupService.heldKeyOf`/`forceReturn`). `Trade.client` real: nearby-player request list,
+  invite accept, offer +/− steppers over every owned stack, confirm states.
+- Drive-by: `ObbyService`'s `Telemetry.event` was missing the `player` arg (silent no-op inside
+  pcall) — ObbyComplete now logs.
+
 ## 6. Current tuning values (from `GameConfig.luau` / `HotDogDex.luau`)
 
 **Economy** *(income ladder steepened 2026-07-11, additions #12 — reasoned, not observed)*
@@ -542,7 +575,11 @@ locked rules — see the §7 rows):
 - Passes/products: ids 0 (unconfigured; `StudioTestPasses` overrides for testing) · extra-slots
   +2 display/+1 vault · VIP +10% income · 2× coins · anchors `MaxDisplaySlots` 18 /
   `MaxVaultSlots` 8 (headroom past coin-max 16/6 so pass slots render)
-- Cosmetics: 3 items (10–25 prestige) · Trade: 30s cooldown, ≤6 items · Emotes: 5 presets
+- Cosmetics (**shipped 2026-07-12**): 6 items, one equipped per kind — skins Relish 12 / Gold 20,
+  trails Fire 10 / Rainbow 30, titles Glizzy King 25 / Street Menace 40 (all prestige)
+- Trade (**shipped 2026-07-12**): 30s post-trade cooldown · ≤6 stacks/side · 40-stud handshake
+  range · 60s invite expiry · items only, never coins
+- offlineRefill: banks cap-truncated seconds (≤7 days) → pays at live income rate · Emotes: 5 presets
 
 **Tycoon layer (overhaul + additions, all reasoned placeholders — tune in playtest)**
 - Plot pad: **76×58** · row spacing 120 · row separation (street) 140
@@ -617,3 +654,10 @@ locked rules — see the §7 rows):
 | 2026-07-11 | **Obby reward = seconds-of-own-income, not flat coins** (100s worth, 300s cooldown, ordered checkpoints + minimum-run anti-teleport) | Nate's ask (#14): leveling must never make the obby obsolete. Income-scaled pay stays exactly "worth ~2 free cooks of time" at every progression stage; flat coins would be OP at minute 1 and pennies at hour 10 |
 | 2026-07-12 | **Conveyor per-frame exception cap raised 8 → 18** (belt now spans the full 1240 street) | Still the ONE bounded per-frame server job; 18 anchored pivots/Heartbeat is trivial, and a full-length empty belt read as broken |
 | 2026-07-11 | **Onboarding stage DERIVED from existing data** (`cookReadyAt`/`autoCookerLvl`/`built`), pushed as a number | No new `_v5` field, veterans auto-derive to done (zero UI), and the tick only re-pushes on change — the whole feature costs 3 field reads per tick until completed |
+| 2026-07-12 | **`data.cosmetics.equipped` reshaped string → per-kind map** (`{ [kind]: id }`) with no migration | The single-string shape couldn't hold a skin AND a title; the service was a stub until now, so NO live save ever wrote cosmetics — a free window to fix the shape that closes at ship |
+| 2026-07-12 | **Cosmetic visual recipes live in `CosmeticService`, keyed by catalog id** (config stays `{id, kind, label, prestigeCost}`) | Colors/gradients are presentation, not tuning — keeping `GameConfig` recipe-free lets Nate rebalance prices without touching Color3s, and the recipes can reference `Theme.Palette` (a shared-config cycle if they lived in GameConfig) |
+| 2026-07-12 | **2× Coins pass is MULTIPLICATIVE on the whole income multiplier** (like the income2x event), derived from `data.passes` at read time | An additive +100% would dilute as rebirths/decor stack (paid value shrinking over progression is a refund magnet); multiplicative stays exactly "double" forever and inherits tick + offline + obby via the shared closure |
+| 2026-07-12 | **offlineRefill = banked truncated seconds** (`offlineMissedSeconds`, ≤7d) **paid at the buyer's LIVE rate; empty bank → NotProcessedYet** | "Re-run the calc uncapped" needs state a later-session receipt retry wouldn't have; a persisted bank makes the receipt processable across sessions, keeps the product honest (you recover only what the cap took), and NotProcessedYet on an empty bank means Roblox retries/refunds instead of eating Robux |
+| 2026-07-12 | **Trade accept = mutual request** (B answering A's invite fires the same `TradeRequest` back) instead of a new accept remote | The scaffold's four trade remotes stay sufficient; an invite is just parked state keyed by target with a 60s expiry — less surface for the hardening pass to cover |
+| 2026-07-12 | **Trade offers re-validated at the both-confirmed COMMIT gate** (not just when set) | Inventory can change mid-session (steals land, fusions consume, cooks add); failing the commit into "offer changed — re-confirm" closes every duplication race without locking inventory during a trade |
+| 2026-07-12 | **autoCollect pass effect deferred to Nate** (ownership detection live, effect unbuilt) | Income is already automatic, so the honest effect is unclear; candidate = auto-claim daily streak/missions. Building a guess risks shipping a pass that does nothing visible — a paid-product no-no |

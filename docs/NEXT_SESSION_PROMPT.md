@@ -3,55 +3,53 @@
 ---
 
 You are continuing development of **"Steal a Glizzy"**, a server-authoritative Roblox
-steal-and-defend idle **tycoon** (repo `hot_dawg`). The game is **feature-complete through M4,
-the M5 monetization CORE is live, and THE ADDITIONS SESSION shipped 2026-07-11/12** — all 17
-items from Nate's `additions.txt` wishlist (76×58 plots + roofs + chef + real stations, the
-Forbidden tier + steepened income curve, 7 floor-gated stove tiers, 120s cook + ready notify,
-odds board + spinner-strip reveal, rarity auto-sort, commas + storage HUD, the **Security
-Field** and **Vault Breaker** locked-rule overrides, full-street conveyor, the Glizzy Run obby,
-and `docs/CONTENT_PLAN.md` for the clipfarm hookup). `additions.txt` is fully consumed.
-Launch checklist: `docs/HANDOFF.md §Launch checklist`. **No live validation has EVER run** —
-neither the old 2-player loop test nor any Studio look at the additions.
+steal-and-defend idle **tycoon** (repo `hot_dawg`). The game is **feature-complete through M5
+(one Nate design call open: the autoCollect pass effect), M6 TRADING is live, and the ADDITIONS
+SESSION (all 17 `additions.txt` items) shipped 2026-07-11/12.** The 2026-07-12 batch: cosmetics
+(6-item prestige wardrobe — shell-repaint skins, character trails, sign-title chips), the 2×
+Coins pass effect (multiplicative), the offlineRefill dev product (banks cap-truncated offline
+seconds, pays at the buyer's live rate — its dashboard id may NOW be configured), and trading
+(invite→accept, stack offers, both-confirm with commit-gate re-validation, 30s cooldown,
+`tradeLog_v1` server log). Launch checklist: `docs/HANDOFF.md §Launch checklist`.
+**No live validation has EVER run** — neither the old 2-player loop test nor any Studio look at
+anything shipped since 2026-07-11.
 
 ## Step 0 — Read these first (all the context lives here)
 - **`CLAUDE.md`** — architecture rules, workflow, toolchain, full code map + status. READ FULLY.
-- **`docs/HANDOFF.md`** — start-here status, the additions smoke checklist, launch checklist,
-  gotchas. READ FULLY.
-- **`docs/design/GAME_DESIGN.md`** — §4 locked decisions · §5 built (incl. the additions
-  inventory) · §6 tuning (all reasoned-not-observed) · §7 decision log (incl. the two override
-  rows).
+- **`docs/HANDOFF.md`** — start-here status, the smoke checklist (additions + 07-12 batch),
+  launch checklist, gotchas. READ FULLY.
+- **`docs/design/GAME_DESIGN.md`** — §4 locked decisions · §5 built (incl. the 07-12 batch
+  inventory) · §6 tuning (all reasoned-not-observed) · §7 decision log (incl. the trade/refill/
+  cosmetics rows and the two override rows).
 - Offline Roblox docs in `docs/roblox-reference/` — use them instead of guessing APIs.
 
 ## Step 1 — This session's work, in order
 
-1. **If Nate is in Studio: run the additions smoke pass FIRST** (checklist in
-   `docs/HANDOFF.md §What the NEXT session should do`). The whole 2026-07-11/12 batch is
-   static-clean but has never rendered. Expect coordinate nits (chef pose, odds board size,
-   roof overhangs, obby jump difficulty) — fix live, they're all constants in
-   `PlotManager`/`ObbyService`. Also owed in the same sitting: Tool.Grip tuning
-   (`PickupService.buildTool`), `StudioTestPasses` flips, onboarding arrows on a fresh profile.
-2. **M5 remainder** (the build-order head):
-   - **Cosmetics** — `CosmeticService`/`Cosmetics.client` are stubs; catalog + prestige prices
-     already in `GameConfig.Cosmetics` (stand skins / trails / titles). Mirror the
-     PrestigeShopService validate→charge→apply→push shape; persist in `data.cosmetics`
-     (already in `_v5`). Stand skin = recolor pass over the plot shell; trail = attachment on
-     the character; title = billboard chip on the owner sign.
-   - **doubleCoins/autoCollect pass EFFECTS** — ownership detection already runs
-     (`data.passes`). Fold `DoubleCoinsMult` in where `incomeMultiplier` composes (decide:
-     multiplicative like income2x); design auto-collect (probably a no-op for now — income is
-     already automatic — so it may become "auto-claim daily streak" or similar; confirm with
-     Nate before building).
-   - **`offlineRefill` dev product** — bespoke grant: re-run the offline calc ignoring the cap
-     (or reset `lastSeen`?). Design first, then implement in `PurchaseService.ProcessReceipt`,
-     and only THEN may Nate configure its dashboard id.
-3. **Then M6 trading** — `TradeService`/`Trade.client` stubs; baseline safeguards locked
-   (two-sided confirm + `TradeCooldownSeconds` + server log). Inventory moves are composite-key
-   stack transfers; re-use `syncDisplay`/`pushInventory` after commit.
-4. Keep an eye on the additions' balance knobs once seen live: blocker cycle (300/30), breaker
-   price/drill (50k/10s), obby reward (100s) — §6 flags them reasoned-not-observed.
+1. **If Nate is in Studio: run the smoke pass FIRST** (checklist in
+   `docs/HANDOFF.md §What the NEXT session should do`). Everything since 2026-07-11 is
+   static-clean but has never rendered: the additions (76×58 layout, chef, odds board, spinner
+   reveal, conveyor/podium/obby, commas) AND the 07-12 batch (buy/equip each cosmetic kind —
+   repaint/trail/chip + reset-on-leave; welcome-back refill line after a capped absence).
+   2-account items: Security Field cycle, Vault Breaker drill, floor-sorted steal reach, and a
+   FULL TRADE end-to-end (invite → accept → steppers → both confirm → transfer + cooldown +
+   the offer-changed re-confirm path). Also owed in the same sitting: Tool.Grip tuning
+   (`PickupService.buildTool`), `StudioTestPasses` flips (incl. doubleCoins doubling the tick),
+   onboarding arrows on a fresh profile.
+2. **M6 remainder** (the build-order head):
+   - **Emotes** — `EmoteService`/the client side are stubs; presets in `GameConfig.Emotes`
+     (5, no free text). Validated relay/broadcast (RateLimit + preset-index guard); render as a
+     chat bubble/billboard over the character (small, near-fade — world-text rules). Keep it
+     tiny; it's a taunt layer for steals.
+   - **Parties (join-friend)** — NO scaffold exists; design first (GDD §4.8 wants co-op raiding
+     later). Confirm scope with Nate before building anything beyond a design note.
+3. **Then M7 polish:** clip-moment juice on big steals/rare pulls (`docs/CONTENT_PLAN.md` §1
+   moments), then launch-checklist remainder.
+4. Keep an eye on balance knobs once seen live: blocker cycle (300/30), breaker (50k/10s), obby
+   (100s), trade cooldown/distance (30s/40), cosmetic prices (12–40 ✨) — §6 flags them all
+   reasoned-not-observed.
 
 ## Step 2 — Non-negotiable flow (how we work)
-- **Server authoritative, client untrusted.** All economy/inventory/steal/build logic in
+- **Server authoritative, client untrusted.** All economy/inventory/steal/build/trade logic in
   `src/server`; `src/client` displays + fires RemoteEvents; shared config/tokens in `src/shared`.
   EVERY `OnServerEvent` gets `RateLimit.check` + type/length arg guards (100% covered — keep it).
 - `--!strict` atop every file; StyLua (tabs, 100 col); Selene clean. **Lua gotcha:** never start a
@@ -70,19 +68,21 @@ neither the old 2-player loop test nor any Studio look at the additions.
   `MenuLayout` helpers (`styleButton` is one-shot — flip colors directly for state changes).
   World text: ONE far label per plot; small/occludable/near-fade elsewhere. Neon only for small
   accents + gameplay signals. Rarity colors in `HotDogDex.RARITY`; variant colors in `Variants`.
-- **Grants derive at read time** (`BuildGrants` / `displayCapacity` / `data.passes` pattern);
-  `bonus*Slots` is exclusively the prestige shop's ledger. **All numbers render via
-  `Format.comma`** — keep new UI on it.
+- **Grants derive at read time** (`BuildGrants` / `displayCapacity` / `data.passes` /
+  `data.cosmetics.equipped` pattern); `bonus*Slots` is exclusively the prestige shop's ledger.
+  **All numbers render via `Format.comma`** — keep new UI on it.
 - **Inventory is composite-key stacks** (`"Name#Gold"`); decode via `Variants`/`getByKey`.
-  Event-only dogs live in `byName` but NOT `DOGS_BY_RARITY`; Forbidden IS a normal roster tier.
+  Trades/steals/fusions all move stacks; validate ownership at the COMMIT moment, not just at
+  request time (see `TradeService.completeTrade` for the pattern).
 - **New server→client initial-state pushes** go in `Main.pushAllState` + ride `RequestState`
   (which COALESCES bursts). Yielding work NEVER inline in a push path.
 - **Telemetry:** new funnel steps append with the NEXT number (never renumber); one-line
-  `Telemetry.funnelStep/event` calls at the success point.
-- **Reuse, don't reinvent:** service shape = `BuildService`/`ZoneService`/`ObbyService`; buy
-  paths = `tryBuy`/`tryUpgrade`; world juice = the `Celebrate` remote; timers = os.time-derived
-  cycles (blocker) or absolute-deadline client ticking (shield/cook countdown); alarms = the
-  StealAlert/VaultBreach banner+arrow pattern in StealHud.
+  `Telemetry.funnelStep/event(player, name)` calls at the success point (the player arg is
+  required — ObbyComplete was silently dropped for a while).
+- **Reuse, don't reinvent:** service shape = `BuildService`/`ZoneService`/`TradeService`; buy
+  paths = `tryBuy`/`tryUpgrade`; income payouts = Main's `computeLiveIncome` closure; world juice
+  = the `Celebrate` remote; timers = os.time-derived cycles (blocker) or absolute-deadline client
+  ticking (shield/cook countdown); alarms = the StealAlert/VaultBreach banner+arrow in StealHud.
 
 ## Step 3 — Handoff ritual (DO THIS at each milestone / when you hand off) ⭐
 **Nate's cadence:** batch the ritual — DON'T run the full doc-update after every feature, and
@@ -99,16 +99,18 @@ near a real context/agent handoff. When you do hand off:
 That's the loop: **plan → implement in batches → validate → (at handoff) docs + rewrite this prompt.**
 
 ## Standing caveats
-- **No live validation has ever run.** The additions smoke pass (single-player) and the
-  2-account loop test on the PUBLISHED place are the human gates before public (HANDOFF).
+- **No live validation has ever run.** The single-player smoke pass and the 2-account loop test
+  on the PUBLISHED place are the human gates before public (HANDOFF).
 - **⚠️ The `NATE` code is OPEN and grants 1B coins once to anyone** — launch-checklist delete.
   (Capture clipfarm footage BEFORE deleting it; see `docs/CONTENT_PLAN.md §5`.)
+- **autoCollect pass: detection live, EFFECT unbuilt — needs Nate's design call** (income is
+  already automatic; candidate = auto-claim daily streak/missions). Don't sell that pass until
+  it does something; don't build a guess.
 - The Security Field + Vault Breaker deliberately override old locked rules — their §7 rows are
   the record; don't "fix" them back without Nate.
-- All `GAME_DESIGN §6` numbers are reasoned-not-observed — including the whole additions batch
-  (new income ladder, stove tiers, blocker/breaker/obby knobs).
+- All `GAME_DESIGN §6` numbers are reasoned-not-observed — including trading (30s/6/40/60) and
+  cosmetic prices.
 - **M5 end-to-end testing needs real pass/product ids** from Nate's dashboard; until then use
-  `GameConfig.StudioTestPasses`. Do NOT configure `offlineRefill`'s id until its bespoke grant
-  is implemented.
-- Nate asset passes still open (zero code): `GameConfig.Sounds` ids (now incl. `CookReady`,
+  `GameConfig.StudioTestPasses`. **ALL ids may be configured now, incl. `offlineRefill`.**
+- Nate asset passes still open (zero code): `GameConfig.Sounds` ids (incl. `CookReady`,
   `BlockerOpen`, `VaultDrill`) · `GlizzyMeshIds` · `SkyboxAssetId`.

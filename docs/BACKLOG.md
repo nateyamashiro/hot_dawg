@@ -59,19 +59,40 @@ New files: `src/client/PlotPresentation.client.luau`, `src/client/Menu.client.lu
 
 ## 🔜 Top of the list now
 
-- **Studio smoke pass of the ADDITIONS** (shipped 2026-07-12, never seen live): new 76×58
-  layout/roof/chef/stations render sane · spinner reveal · 120s cook notify · odds board ·
-  storage HUD · stove floor-gating · full-street belt + east podium · Glizzy Run payout ·
-  commas. 2-account items: Security Field cycle/owner-pass/eject · Vault Breaker drill +
-  alarm + cancel · floor-sorted steal reach.
-- **M5 remainder** — cosmetics (`CosmeticService`/`Cosmetics.client`; catalog in
-  `GameConfig.Cosmetics`) · doubleCoins/autoCollect pass EFFECTS (detection already runs) ·
-  `offlineRefill` dev product (bespoke offline-cap refill; keep its dashboard id unset until then).
-- **M6 trading** (`TradeService`; baseline safeguards locked: confirm + cooldown + log).
-- **Nate:** create pass/product ids on the Creator Dashboard (unblocks end-to-end M5 testing) ·
-  Tool.Grip live tuning round in Studio · the published-place 2-account loop test ·
-  ⚠️ delete the `NATE` code before public launch · clipfarm gates (`docs/CONTENT_PLAN.md` §5:
-  OAuth, AUTO_UPLOAD, footage capture).
+- **Studio smoke pass** (nothing since 2026-07-11 has been seen live): the ADDITIONS items
+  (76×58 layout/roof/chef/stations · spinner reveal · 120s cook notify · odds board · storage
+  HUD · stove floor-gating · full-street belt + east podium · Glizzy Run payout · commas) PLUS
+  the 2026-07-12 batch (cosmetics wardrobe buy/equip + skin repaint/trail/title chip ·
+  welcome-back refill line). 2-account items: Security Field cycle/owner-pass/eject · Vault
+  Breaker drill + alarm + cancel · floor-sorted steal reach · **a full trade** (invite → accept
+  → offers → both confirm → transfer + cooldown).
+- **M6 remainder** — emotes (`EmoteService` stub; presets in `GameConfig.Emotes`, validated
+  relay/broadcast) · parties (join-friend; design first).
+- **M7 polish** — sounds/meshes/skybox asset passes (Nate) · icon/thumbnails · soft launch per
+  the HANDOFF checklist.
+- **Nate decisions/actions:** autoCollect pass EFFECT design (income already automatic;
+  candidate = auto-claim daily streak/missions) · create pass/product ids on the Creator
+  Dashboard — **including offlineRefill now, its grant is live** · Tool.Grip live tuning round ·
+  the published-place 2-account loop test · ⚠️ delete the `NATE` code before public launch ·
+  clipfarm gates (`docs/CONTENT_PLAN.md` §5).
+
+## ✅ Shipped 2026-07-12 (M5 remainder + M6 trading; static-clean, no live validation)
+
+- **Cosmetics live** — 6-item prestige wardrobe (2 skins / 2 trails / 2 titles), one equipped
+  per kind (`data.cosmetics.equipped` reshaped to a per-kind map pre-ship), buy auto-equips;
+  skin = shell repaint, trail = character Trail across respawns, title = sign chip; visuals
+  re-derive on join, reset on plot release.
+- **2× Coins pass effect** — multiplicative `DoubleCoinsMult` in `Main.incomeMultiplier`
+  (read-time derive from `data.passes`; tick/offline/obby inherit). autoCollect awaits Nate.
+- **offlineRefill dev product** — join calc banks cap-truncated seconds
+  (`offlineMissedSeconds`, ≤7d); receipt pays the bank at the buyer's live rate via Main's
+  shared `computeLiveIncome`; empty bank → NotProcessedYet; prompt gated; welcome-back popup
+  advertises banked hours.
+- **M6 trading** — invite→accept over the existing remotes (mutual request, 40 studs, 60s
+  expiry); stack offers ≤6/side validated on set AND at the both-confirmed commit gate; atomic
+  transfer; 30s cooldown both sides; `tradeLog_v1` DataStore log; held-hand dogs force-returned
+  if traded away (`PickupService.heldKeyOf`/`forceReturn` new).
+- Drive-by: ObbyComplete telemetry actually logs now (missing player arg).
 
 ## ✅ Shipped 2026-07-11/12 (THE ADDITIONS SESSION; static-clean, no live validation)
 
@@ -163,11 +184,11 @@ feature by feature, don't re-architect.
   derive-at-read model; Studio overrides while ids are 0; anchors 18/8). doubleCoins/autoCollect
   effects still TODO.
 - ✅ Dev products via `ProcessReceipt` **shipped 2026-07-11** — coin packs + steal charges;
-  `offlineRefill` bespoke logic still TODO (keep its id unset).
-- 🏗️ Cosmetics: stand skins, trails/auras, titles (`CosmeticService`/`Cosmetics.client`) — **next.**
+  ✅ `offlineRefill` bespoke grant **shipped 2026-07-12** (id may be configured now).
+- ✅ Cosmetics **shipped 2026-07-12** — stand skins, trails, titles (one equipped per kind).
 
-**Social (later)** — 🏗️ trading (baseline safeguards, `TradeService`/`Trade.client`), 🏗️ emotes
-(`EmoteService`), parties/co-op, clans.
+**Social** — ✅ trading **shipped 2026-07-12** (baseline safeguards live) · 🏗️ emotes
+(`EmoteService`), parties/co-op, clans — later.
 
 **Hardening / infra** — ✅ the **FULL** pass **shipped 2026-07-09**: every `OnServerEvent` in the
 codebase is behind `RateLimit.check` + type/length arg guards (cook, cook-10, daily claims,

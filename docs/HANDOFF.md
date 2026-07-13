@@ -1,6 +1,36 @@
 # HANDOFF — Steal a Glizzy 🌭
 
-**Last updated:** 2026-07-12 (**THE ADDITIONS SESSION SHIPPED** — all 17 items from Nate's
+**Last updated:** 2026-07-12 (**M5 REMAINDER + M6 TRADING SHIPPED** — the monetization milestone
+is now COMPLETE except one Nate design call, and trading is live; two commits
+`433433e`/`d4be72c` + this docs commit, all static-clean:
+**Cosmetics** — `CosmeticService`/`Cosmetics.client` real: 6-item prestige catalog (2 stand
+skins / 2 trails / 2 titles, 10–40 ✨), ONE equipped per kind (`data.cosmetics.equipped`
+reshaped string→per-kind map BEFORE first ship — no live save affected), buy auto-equips;
+skin = shell repaint via `PlotManager.applyStandSkin` (reset on release), trail = character
+`Trail` re-applied each respawn, title = gold chip under the owner sign (`PlotManager.setTitle`,
+same post — one-far-label rule holds); visuals re-derive from data on join ·
+**2× Coins pass EFFECT** — `DoubleCoinsMult` MULTIPLIES `Main.incomeMultiplier` (income2x
+pattern; read-time derive from `data.passes`, refund-safe; tick/offline/obby inherit);
+**autoCollect deliberately unbuilt** — needs Nate (income is already automatic; candidate =
+auto-claim daily streak/missions) ·
+**offlineRefill dev product** — the join-time offline calc banks cap-truncated seconds into new
+`_v5` field `offlineMissedSeconds` (≤ `OfflineRefillMaxSeconds` 7d); `ProcessReceipt` pays the
+bank at the buyer's LIVE rate via Main's `computeLiveIncome` closure (now shared with the obby),
+zeroes it; empty bank → NotProcessedYet (never eats Robux); `PromptPurchase` blocks empty
+refills; the welcome-back popup grows a "⏰ Nh past the cap" line. **Its dashboard id may now be
+configured** ·
+**M6 TRADING** — `TradeService`/`Trade.client` real per the locked safeguards: invite→accept
+handshake (mutual `TradeRequest` within 60s, 40-stud `TradeMaxDistance`), composite-key stack
+offers (≤6/side) validated on SET and RE-validated at the both-confirmed COMMIT gate (any change
+clears both confirms), atomic transfer, both sides stamped +30s `tradeCooldownUntil`,
+fire-and-forget `tradeLog_v1` DataStore append, `TradeCompleted` telemetry; items only NEVER
+coins; sessions die on cancel/leave; hand-held dogs traded away are force-returned (new
+`PickupService.heldKeyOf`/`forceReturn`) ·
+Drive-by: ObbyComplete telemetry fixed (missing player arg = silent no-op).
+Data: `_v5` +`offlineMissedSeconds`; `WelcomeBack` +missed arg; `CosmeticUpdate` +prestige arg;
+no new remotes. Previous session summary follows.)
+
+**Previously (2026-07-12, earlier):** (**THE ADDITIONS SESSION SHIPPED** — all 17 items from Nate's
 `additions.txt`, interviewed → planned (`~/.claude/plans/bright-jumping-comet.md`, approved) →
 implemented in 5 batch commits + this docs commit, every batch static-clean:
 **A geometry** — plots 60×46→**76×58** (spacing 120 / separation 140 / street 1240×60), stall
@@ -163,40 +193,45 @@ Code-side readiness is DONE (data safety, telemetry, hardening, error logging). 
 7. ⚠️ **DELETE the `NATE` dev code** from `GameConfig.Codes` before going public — it's open
    (no lockdown, Nate's call) and grants 1,000,000,000 coins to anyone who types it, once.
 8. **Create the pass/product ids on the Creator Dashboard** and fill `GameConfig.GamePassIds` /
-   `DevProductIds` — the M5 logic is live and id-agnostic (0 = "not available yet" toast; do
-   NOT configure `offlineRefill`'s id until its bespoke grant is implemented).
+   `DevProductIds` — the M5 logic is live and id-agnostic (0 = "not available yet" toast).
+   **ALL products may be configured now, including `offlineRefill`** (its bespoke grant shipped
+   2026-07-12).
 9. Known-accepted gaps at launch: silent audio (`GameConfig.Sounds` all `""`), procedural dogs
-   (no AI meshes yet), cosmetics still stubs, doubleCoins/autoCollect pass effects TODO(M5).
+   (no AI meshes yet), autoCollect pass effect awaiting Nate's design call (ownership detection
+   works; don't sell that pass until it does something), emotes/parties still stubs.
 
 ## 👉 What the NEXT session should do
 
-**Everything through M4 is code-complete, the M5 pass/product core is live, and the ADDITIONS
-SESSION (all 17 `additions.txt` items) SHIPPED 2026-07-12** — see the header block above and
-GDD §5 for the full inventory. `additions.txt` is fully consumed (it can be deleted or archived
-whenever Nate likes).
+**Everything through M5 is code-complete (one Nate design call open: autoCollect), M6 TRADING is
+live, and the ADDITIONS SESSION (all 17 `additions.txt` items) shipped earlier on 2026-07-12** —
+see the header blocks above and GDD §5 for the full inventory. `additions.txt` is fully consumed
+(it can be deleted or archived whenever Nate likes).
 
-⚠️ **The additions have NEVER been seen in Studio.** Before (or alongside) new work, run the
-single-player smoke pass: plots/street/roof render sane at the new 76×58 footprint, chef at the
-stove, spinner-strip reveal lands on the toast'd rarity, 120s cook countdown + ready glow, odds
-board updates on grill upgrade, storage HUD fractions, stove tier gating message, conveyor spans
-the street with the podium at the east plaza, Glizzy Run pays ~100× income, commas everywhere.
+⚠️ **Nothing shipped since 2026-07-11 has been seen in Studio.** Before (or alongside) new work,
+run the single-player smoke pass: plots/street/roof render sane at the new 76×58 footprint, chef
+at the stove, spinner-strip reveal lands on the toast'd rarity, 120s cook countdown + ready glow,
+odds board updates on grill upgrade, storage HUD fractions, stove tier gating message, conveyor
+spans the street with the podium at the east plaza, Glizzy Run pays ~100× income, commas
+everywhere — PLUS the 2026-07-12 batch: buy/equip a cosmetic of each kind (shell repaints, trail
+follows the character through a respawn, title chip under the sign, all reset on leave), and the
+welcome-back popup's refill line after a capped absence (shorten `OfflineCapSeconds` to test).
 The 2-account published-place test additionally covers: Security Field cycle + owner passage +
-inside-eject, Vault Breaker drill + victim alarm + cancel-on-net, floor-sorted steal reach.
+inside-eject, Vault Breaker drill + victim alarm + cancel-on-net, floor-sorted steal reach, and
+**a full trade end-to-end** (invite → accept → stepper offers → both confirm → transfer, cooldown
+toast on immediate re-request, offer-changed re-confirm path if a steal lands mid-trade).
 
 The build order then resumes:
-1. **M5 remainder:** cosmetics (`CosmeticService`/`Cosmetics.client` stubs; catalog + prestige
-   prices already in `GameConfig.Cosmetics`) · doubleCoins/autoCollect pass EFFECTS (ownership
-   detection already runs; fold `DoubleCoinsMult` into `Main.incomeMultiplier`-adjacent math,
-   design auto-collect) · `offlineRefill` dev product (bespoke: refill the offline cap — do NOT
-   let Nate configure its dashboard id before this lands).
-2. **Then M6 social** — trading (`TradeService`, baseline safeguards locked: two-sided confirm +
-   cooldown + log), parties, emotes.
+1. **M6 remainder:** emotes (`EmoteService` stub; presets in `GameConfig.Emotes`; validated
+   relay/broadcast, no free text) · parties (join-friend; design first — no scaffold exists).
+2. **M7 polish:** clip-moment juice on big steals/rare pulls (`docs/CONTENT_PLAN.md` moments) ·
+   remaining launch-checklist items.
 3. **Interactive round with Nate in Studio (needs his eyes):** Tool.Grip tuning (initial pose is
    in; nudge `PickupService.buildTool`'s `tool.Grip` live) · flip `StudioTestPasses` to verify
-   pass effects · watch the onboarding arrows on a fresh profile.
-4. Nate asset passes (zero code): `GameConfig.Sounds` ids · `GlizzyMeshIds` meshes ·
-   `SkyboxAssetId` · **game-pass/dev-product ids on the Creator Dashboard (unblocks M5 testing
-   end-to-end)**.
+   pass effects (incl. doubleCoins doubling the tick) · watch the onboarding arrows on a fresh
+   profile.
+4. **Nate decisions/assets (zero code):** autoCollect pass effect design (candidate: auto-claim
+   daily streak/missions) · `GameConfig.Sounds` ids · `GlizzyMeshIds` meshes · `SkyboxAssetId` ·
+   **game-pass/dev-product ids on the Creator Dashboard — ALL of them now, incl. offlineRefill**.
 
 **Still owed (needs a human): playtest & tune Milestones 2 + 3 in a real 2-player Studio session.**
 Everything through M3 (plus mutations) is BUILT and passes static checks (rojo build + selene +
